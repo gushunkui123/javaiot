@@ -73,7 +73,7 @@ spring:
   # compatible with swagger
   mvc:
     pathmatch:
-      matching-strategy: ANT_PATH_MATCHER
+      matching-strategy: PATH_PATTERN_PARSER
   jackson:
     deserialization:
       fail-on-unknown-properties: false
@@ -87,8 +87,8 @@ spring:
 token:
     # 令牌自定义标识
     header: Authorization
-    # 令牌密钥 TODO 记得更换
-    secret: sdhfkjshBN6rr32df38
+    # 令牌密钥 TODO 记得更换（至少32字节以满足HMAC-SHA256要求）
+    secret: sdhfkjshBN6rr32df38AgileBootSecretKeyPadding2024!
     # 自动刷新token的时间
     autoRefreshTime: 20
 

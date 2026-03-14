@@ -11,7 +11,7 @@ import com.agileboot.admin.customize.service.permission.model.checker.OnlySelfDa
 import com.agileboot.admin.customize.service.permission.model.checker.SingleDeptDataPermissionChecker;
 import com.agileboot.infrastructure.user.web.DataScopeEnum;
 import com.agileboot.domain.system.dept.db.SysDeptService;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
 /**

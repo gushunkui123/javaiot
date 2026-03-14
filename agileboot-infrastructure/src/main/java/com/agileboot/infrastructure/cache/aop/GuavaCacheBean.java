@@ -5,7 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.springframework.cache.Cache;
 import org.springframework.cache.support.SimpleValueWrapper;
 /**

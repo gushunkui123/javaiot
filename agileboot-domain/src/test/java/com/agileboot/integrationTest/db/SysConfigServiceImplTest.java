@@ -3,7 +3,7 @@ package com.agileboot.integrationTest.db;
 import com.agileboot.domain.system.config.db.SysConfigService;
 import com.agileboot.integrationTest.IntegrationTestApplication;
 import com.agileboot.common.enums.common.ConfigKeyEnum;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;

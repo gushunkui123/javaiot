@@ -8,7 +8,7 @@ import com.agileboot.domain.system.dept.db.SysDeptEntity;
 import com.agileboot.domain.system.post.db.SysPostEntity;
 import com.agileboot.domain.system.role.db.SysRoleEntity;
 import com.agileboot.domain.system.user.db.SysUserEntity;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
 /**

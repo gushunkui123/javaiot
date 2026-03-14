@@ -5,7 +5,7 @@ import com.agileboot.admin.AgileBootAdminApplication;
 import com.agileboot.common.config.AgileBootConfig;
 import com.agileboot.common.constant.Constants.UploadSubDir;
 import java.io.File;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;

@@ -2,7 +2,7 @@ package com.agileboot.common.core.page;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import javax.validation.constraints.Max;
+import jakarta.validation.constraints.Max;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

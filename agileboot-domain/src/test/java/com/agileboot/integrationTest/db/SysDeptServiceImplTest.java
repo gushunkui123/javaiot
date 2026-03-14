@@ -2,7 +2,7 @@ package com.agileboot.integrationTest.db;
 
 import com.agileboot.integrationTest.IntegrationTestApplication;
 import com.agileboot.domain.system.dept.db.SysDeptService;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
