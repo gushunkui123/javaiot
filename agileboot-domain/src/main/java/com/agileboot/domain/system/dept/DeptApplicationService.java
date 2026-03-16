@@ -2,6 +2,7 @@ package com.agileboot.domain.system.dept;
 
 import cn.hutool.core.lang.tree.Tree;
 import cn.hutool.core.lang.tree.TreeUtil;
+import com.agileboot.domain.common.cache.CacheCenter;
 import com.agileboot.domain.system.dept.command.AddDeptCommand;
 import com.agileboot.domain.system.dept.command.UpdateDeptCommand;
 import com.agileboot.domain.system.dept.dto.DeptDTO;
@@ -72,6 +73,7 @@ public class DeptApplicationService {
         deptModel.generateAncestors();
 
         deptModel.updateById();
+        CacheCenter.deptCache.invalidate(String.valueOf(deptModel.getDeptId()));
     }
 
     public void removeDept(Long deptId) {
@@ -81,6 +83,7 @@ public class DeptApplicationService {
         deptModel.checkDeptAssignedToUsers();
 
         deptModel.deleteById();
+        CacheCenter.deptCache.invalidate(String.valueOf(deptModel.getDeptId()));
     }
 
 

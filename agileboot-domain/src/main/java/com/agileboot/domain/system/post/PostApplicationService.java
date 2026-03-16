@@ -2,6 +2,7 @@ package com.agileboot.domain.system.post;
 
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.domain.common.cache.CacheCenter;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.system.post.command.AddPostCommand;
 import com.agileboot.domain.system.post.command.UpdatePostCommand;
@@ -70,6 +71,7 @@ public class PostApplicationService {
         postModel.checkPostCodeUnique();
 
         postModel.updateById();
+        CacheCenter.postCache.delete(postModel.getPostId());
     }
 
 
@@ -80,6 +82,9 @@ public class PostApplicationService {
         }
 
         postService.removeBatchByIds(deleteCommand.getIds());
+        for (Long id : deleteCommand.getIds()) {
+            CacheCenter.postCache.delete(id);
+        }
     }
 
 }

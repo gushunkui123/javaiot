@@ -144,6 +144,7 @@ public class UserApplicationService {
             UserModel userModel = userModelFactory.loadById(id);
             userModel.checkCanBeDelete(loginUser);
             userModel.deleteById();
+            CacheCenter.userCache.delete(userModel.getUserId());
         }
     }
 
