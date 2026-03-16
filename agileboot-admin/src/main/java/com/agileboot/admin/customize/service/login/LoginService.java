@@ -4,11 +4,7 @@ import cn.hutool.core.codec.Base64;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.img.ImgUtil;
-import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.SecureUtil;
-import cn.hutool.crypto.asymmetric.KeyType;
 import cn.hutool.extra.servlet.JakartaServletUtil;
 import com.agileboot.common.config.AgileBootConfig;
 import com.agileboot.common.constant.Constants.Captcha;
@@ -80,11 +76,10 @@ public class LoginService {
         }
         // 用户验证
         Authentication authentication;
-        String decryptPassword = decryptPassword(loginCommand.getPassword());
         try {
             // 该方法会去调用UserDetailsServiceImpl#loadUserByUsername  校验用户名和密码  认证鉴权
             authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                loginCommand.getUsername(), decryptPassword));
+                loginCommand.getUsername(), loginCommand.getPassword()));
         } catch (BadCredentialsException e) {
             ThreadPoolManager.execute(AsyncTaskFactory.loginInfoTask(loginCommand.getUsername(), LoginStatusEnum.LOGIN_FAIL,
                 MessageUtils.message("Business.LOGIN_WRONG_USER_PASSWORD")));
@@ -206,13 +201,6 @@ public class LoginService {
         entity.setLoginIp(JakartaServletUtil.getClientIP(ServletHolderUtil.getRequest()));
         entity.setLoginDate(DateUtil.date());
         entity.updateById();
-    }
-
-    public String decryptPassword(String originalPassword) {
-        byte[] decryptBytes = SecureUtil.rsa(AgileBootConfig.getRsaPrivateKey(), null)
-            .decrypt(Base64.decode(originalPassword), KeyType.PrivateKey);
-
-        return StrUtil.str(decryptBytes, CharsetUtil.CHARSET_UTF_8);
     }
 
     private boolean isCaptchaOn() {
