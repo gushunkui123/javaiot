@@ -102,18 +102,29 @@ public class RedisCacheTemplate<T> {
 
 
     public void set(Object id, T obj) {
-        redisUtil.setCacheObject(generateKey(id), obj, redisRedisEnum.expiration(), redisRedisEnum.timeUnit());
-        guavaCache.refresh(generateKey(id));
+        String fullKey = generateKey(id);
+        redisUtil.setCacheObject(fullKey, obj, redisRedisEnum.expiration(), redisRedisEnum.timeUnit());
+        guavaCache.put(fullKey, Optional.ofNullable(obj));
+    }
+
+    /**
+     * 通过完整的Redis key直接设置缓存（同时更新Redis和Guava本地缓存）
+     */
+    public void setByKey(String fullKey, T obj) {
+        redisUtil.setCacheObject(fullKey, obj, redisRedisEnum.expiration(), redisRedisEnum.timeUnit());
+        guavaCache.put(fullKey, Optional.ofNullable(obj));
     }
 
     public void delete(Object id) {
-        redisUtil.deleteObject(generateKey(id));
-        guavaCache.refresh(generateKey(id));
+        String fullKey = generateKey(id);
+        redisUtil.deleteObject(fullKey);
+        guavaCache.invalidate(fullKey);
     }
 
     public void refresh(Object id) {
-        redisUtil.expire(generateKey(id), redisRedisEnum.expiration(), redisRedisEnum.timeUnit());
-        guavaCache.refresh(generateKey(id));
+        String fullKey = generateKey(id);
+        redisUtil.expire(fullKey, redisRedisEnum.expiration(), redisRedisEnum.timeUnit());
+        guavaCache.refresh(fullKey);
     }
 
     public String generateKey(Object id) {

@@ -1,6 +1,7 @@
 package com.agileboot.admin.controller.system;
 
 import cn.hutool.core.collection.ListUtil;
+import com.agileboot.admin.customize.service.login.OnlineLoginUserRefreshService;
 import com.agileboot.common.core.base.BaseController;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
@@ -47,6 +48,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class SysUserController extends BaseController {
 
     private final UserApplicationService userApplicationService;
+
+    private final OnlineLoginUserRefreshService onlineLoginUserRefreshService;
 
     /**
      * 获取用户列表
@@ -122,6 +125,7 @@ public class SysUserController extends BaseController {
     @PutMapping("/{userId}")
     public ResponseDTO<Void> edit(@Validated @RequestBody UpdateUserCommand command) {
         userApplicationService.updateUser(command);
+        onlineLoginUserRefreshService.refreshByUserIds(List.of(command.getUserId()));
         return ResponseDTO.ok();
     }
 
@@ -136,6 +140,7 @@ public class SysUserController extends BaseController {
         BulkOperationCommand<Long> bulkDeleteCommand = new BulkOperationCommand<>(userIds);
         SystemLoginUser loginUser = AuthenticationUtils.getSystemLoginUser();
         userApplicationService.deleteUsers(loginUser, bulkDeleteCommand);
+        onlineLoginUserRefreshService.refreshByUserIds(userIds);
         return ResponseDTO.ok();
     }
 

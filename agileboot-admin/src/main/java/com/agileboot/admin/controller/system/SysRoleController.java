@@ -1,5 +1,6 @@
 package com.agileboot.admin.controller.system;
 
+import com.agileboot.admin.customize.service.login.OnlineLoginUserRefreshService;
 import com.agileboot.common.core.base.BaseController;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
@@ -46,6 +47,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysRoleController extends BaseController {
 
     private final RoleApplicationService roleApplicationService;
+
+    private final OnlineLoginUserRefreshService onlineLoginUserRefreshService;
 
     @Operation(summary = "角色列表")
     @PreAuthorize("@permission.has('system:role:list')")
@@ -96,6 +99,7 @@ public class SysRoleController extends BaseController {
     @DeleteMapping(value = "/{roleId}")
     public ResponseDTO<Void> remove(@PathVariable("roleId") List<Long> roleIds) {
         roleApplicationService.deleteRoleByBulk(roleIds);
+        onlineLoginUserRefreshService.refreshByRoleIds(roleIds);
         return ResponseDTO.ok();
     }
 
@@ -108,6 +112,7 @@ public class SysRoleController extends BaseController {
     @PutMapping
     public ResponseDTO<Void> edit(@Validated @RequestBody UpdateRoleCommand updateCommand) {
         roleApplicationService.updateRole(updateCommand);
+        onlineLoginUserRefreshService.refreshByRoleIds(List.of(updateCommand.getRoleId()));
         return ResponseDTO.ok();
     }
 
@@ -123,6 +128,7 @@ public class SysRoleController extends BaseController {
         command.setRoleId(roleId);
 
         roleApplicationService.updateDataScope(command);
+        onlineLoginUserRefreshService.refreshByRoleIds(List.of(roleId));
         return ResponseDTO.ok();
     }
 
@@ -138,6 +144,7 @@ public class SysRoleController extends BaseController {
         command.setRoleId(roleId);
 
         roleApplicationService.updateStatus(command);
+        onlineLoginUserRefreshService.refreshByRoleIds(List.of(roleId));
         return ResponseDTO.ok();
     }
 
@@ -178,6 +185,7 @@ public class SysRoleController extends BaseController {
     @DeleteMapping("/users/{userIds}/grant/bulk")
     public ResponseDTO<Void> deleteRoleOfUserByBulk(@PathVariable("userIds") List<Long> userIds) {
         roleApplicationService.deleteRoleOfUserByBulk(userIds);
+        onlineLoginUserRefreshService.refreshByUserIds(userIds);
         return ResponseDTO.ok();
     }
 
@@ -191,6 +199,7 @@ public class SysRoleController extends BaseController {
     public ResponseDTO<Void> addRoleForUserByBulk(@PathVariable("roleId") Long roleId,
         @PathVariable("userIds") List<Long> userIds) {
         roleApplicationService.addRoleOfUserByBulk(roleId, userIds);
+        onlineLoginUserRefreshService.refreshByUserIds(userIds);
         return ResponseDTO.ok();
     }
 

@@ -1,6 +1,7 @@
 package com.agileboot.admin.controller.system;
 
 import cn.hutool.core.lang.tree.Tree;
+import com.agileboot.admin.customize.service.login.OnlineLoginUserRefreshService;
 import com.agileboot.admin.customize.service.permission.sync.PermissionSyncResultDTO;
 import com.agileboot.admin.customize.service.permission.sync.PermissionSyncService;
 import com.agileboot.common.core.base.BaseController;
@@ -18,6 +19,8 @@ import com.agileboot.common.enums.common.BusinessTypeEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +50,8 @@ public class SysMenuController extends BaseController {
     private final MenuApplicationService menuApplicationService;
 
     private final PermissionSyncService permissionSyncService;
+
+    private final OnlineLoginUserRefreshService onlineLoginUserRefreshService;
 
     /**
      * 获取菜单列表
@@ -100,6 +105,13 @@ public class SysMenuController extends BaseController {
     @PostMapping("/permissions/sync")
     public ResponseDTO<PermissionSyncResultDTO> syncPermissions() {
         PermissionSyncResultDTO result = permissionSyncService.sync();
+        if (result.isApplied()) {
+            List<Long> updatedMenuIds = result.getUpdated().stream()
+                .map(item -> item.getMenuId())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+            onlineLoginUserRefreshService.refreshByMenuIds(updatedMenuIds);
+        }
         return ResponseDTO.ok(result);
     }
 
@@ -128,6 +140,7 @@ public class SysMenuController extends BaseController {
     public ResponseDTO<Void> edit(@PathVariable("menuId") Long menuId, @RequestBody UpdateMenuCommand updateCommand) {
         updateCommand.setMenuId(menuId);
         menuApplicationService.updateMenu(updateCommand);
+        onlineLoginUserRefreshService.refreshByMenuIds(List.of(menuId));
         return ResponseDTO.ok();
     }
 

@@ -42,8 +42,8 @@ public class DataPermissionCheckerFactory {
 
 
     public static AbstractDataPermissionChecker getChecker(SystemLoginUser loginUser) {
-        if (loginUser == null) {
-            return deptTreeChecker;
+        if (loginUser == null || loginUser.getRoleInfo() == null || loginUser.getRoleInfo().getDataScope() == null) {
+            return defaultSelfChecker;
         }
 
         DataScopeEnum dataScope = loginUser.getRoleInfo().getDataScope();
