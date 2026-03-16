@@ -1,6 +1,8 @@
 package com.agileboot.admin.controller.system;
 
 import cn.hutool.core.lang.tree.Tree;
+import com.agileboot.admin.customize.service.permission.sync.PermissionSyncResultDTO;
+import com.agileboot.admin.customize.service.permission.sync.PermissionSyncService;
 import com.agileboot.common.core.base.BaseController;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.domain.system.menu.MenuApplicationService;
@@ -44,6 +46,8 @@ public class SysMenuController extends BaseController {
 
     private final MenuApplicationService menuApplicationService;
 
+    private final PermissionSyncService permissionSyncService;
+
     /**
      * 获取菜单列表
      */
@@ -75,6 +79,28 @@ public class SysMenuController extends BaseController {
         SystemLoginUser loginUser = AuthenticationUtils.getSystemLoginUser();
         List<Tree<Long>> dropdownList = menuApplicationService.getDropdownList(loginUser);
         return ResponseDTO.ok(dropdownList);
+    }
+
+    /**
+     * 预览接口权限点同步结果
+     */
+    @Operation(summary = "预览接口权限同步结果")
+    @PreAuthorize("@permission.has('system:menu:edit')")
+    @GetMapping("/permissions/sync-preview")
+    public ResponseDTO<PermissionSyncResultDTO> previewPermissionSync() {
+        PermissionSyncResultDTO result = permissionSyncService.preview();
+        return ResponseDTO.ok(result);
+    }
+
+    /**
+     * 执行接口权限点同步
+     */
+    @Operation(summary = "同步接口权限点")
+    @PreAuthorize("@permission.has('system:menu:edit')")
+    @PostMapping("/permissions/sync")
+    public ResponseDTO<PermissionSyncResultDTO> syncPermissions() {
+        PermissionSyncResultDTO result = permissionSyncService.sync();
+        return ResponseDTO.ok(result);
     }
 
     /**
