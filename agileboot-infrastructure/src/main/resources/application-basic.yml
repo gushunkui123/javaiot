@@ -120,8 +120,6 @@ springdoc:
     path: /v3/api-docs
     groups:
       enabled: true
-  # 配置需要生成接口文档的扫描包
-  packages-to-scan: com.agileboot
 
 
 

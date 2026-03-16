@@ -136,14 +136,14 @@ public class SecurityConfig {
                 // 对于登录login 注册register 验证码captchaImage 以及公共Api的请求允许匿名访问
                 // 注意： 当携带token请求以下这几个接口时 会返回403的错误
                 .requestMatchers("/login", "/register", "/getConfig", "/captchaImage", "/api/**").anonymous()
-                .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js",
+                .requestMatchers(HttpMethod.GET, "/", "/*.html", "/*.css", "/*.js",
                     "/profile/**").permitAll()
                 // TODO this is danger.
-                .requestMatchers("/swagger-ui.html").anonymous()
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**").anonymous()
                 .requestMatchers("/swagger-resources/**").anonymous()
                 .requestMatchers("/webjars/**").anonymous()
-                .requestMatchers("/*/api-docs", "/*/api-docs/swagger-config").anonymous()
-                .requestMatchers("/**/api-docs.yaml").anonymous()
+                .requestMatchers("/v3/api-docs/**").anonymous()
+                .requestMatchers("/*/api-docs.yaml").anonymous()
                 .requestMatchers("/druid/**").anonymous()
                 // 除上面外的所有请求全部需要鉴权认证
                 .anyRequest().authenticated()
