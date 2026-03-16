@@ -1,5 +1,9 @@
 package com.agileboot.infrastructure.config;
 
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.ExternalDocumentation;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -12,6 +16,14 @@ import org.springframework.context.annotation.Configuration;
  * SpringDoc API文档相关配置
  */
 @Configuration
+@SecurityScheme(
+    name = "BearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT",
+    description = "输入 JWT token，Swagger UI 会自动附加 Bearer 前缀"
+)
+@OpenAPIDefinition(security = @SecurityRequirement(name = "BearerAuth"))
 public class SpringDocConfig {
 
     @Bean

@@ -22,6 +22,7 @@ import com.agileboot.infrastructure.user.web.SystemLoginUser;
 import com.agileboot.infrastructure.annotations.ratelimit.RateLimitKey;
 import com.agileboot.admin.customize.service.login.LoginService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,7 @@ public class LoginController {
      * 访问首页，提示语
      */
     @Operation(summary = "首页")
+    @SecurityRequirements
     @GetMapping("/")
     @RateLimit(key = RateLimitKey.TEST_KEY, time = 10, maxCount = 5, cacheType = CacheType.Map,
         limitType = LimitType.GLOBAL)
@@ -66,6 +68,7 @@ public class LoginController {
      *
      * @return 配置信息
      */
+    @SecurityRequirements
     @GetMapping("/getConfig")
     public ResponseDTO<ConfigDTO> getConfig() {
         ConfigDTO configDTO = loginService.getConfig();
@@ -76,6 +79,7 @@ public class LoginController {
      * 生成验证码
      */
     @Operation(summary = "验证码")
+    @SecurityRequirements
     @RateLimit(key = RateLimitKey.LOGIN_CAPTCHA_KEY, time = 10, maxCount = 10, cacheType = CacheType.REDIS,
         limitType = LimitType.IP)
     @GetMapping("/captchaImage")
@@ -91,6 +95,7 @@ public class LoginController {
      * @return 结果
      */
     @Operation(summary = "登录")
+    @SecurityRequirements
     @PostMapping("/login")
     public ResponseDTO<TokenDTO> login(@RequestBody LoginCommand loginCommand) {
         // 生成令牌
@@ -131,6 +136,7 @@ public class LoginController {
 
 
     @Operation(summary = "注册接口", description = "暂未实现")
+    @SecurityRequirements
     @PostMapping("/register")
     public ResponseDTO<Void> register(@RequestBody AddUserCommand command) {
         return ResponseDTO.fail(new ApiException(Business.COMMON_UNSUPPORTED_OPERATION));
