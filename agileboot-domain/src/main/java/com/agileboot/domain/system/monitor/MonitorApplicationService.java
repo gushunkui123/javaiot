@@ -11,14 +11,11 @@ import com.agileboot.domain.system.monitor.dto.ServerInfo;
 import com.agileboot.infrastructure.cache.redis.CacheKeyEnum;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -33,10 +30,12 @@ public class MonitorApplicationService {
     private final RedisTemplate<String, ?> redisTemplate;
 
     public RedisCacheInfoDTO getRedisCacheInfo() {
-        Properties info = (Properties) redisTemplate.execute((RedisCallback<Object>) RedisServerCommands::info);
+        Properties info = (Properties) redisTemplate.execute(
+            (RedisCallback<Object>) connection -> connection.serverCommands().info());
         Properties commandStats = (Properties) redisTemplate.execute(
-            (RedisCallback<Object>) connection -> connection.info("commandstats"));
-        Long dbSize = redisTemplate.execute(RedisServerCommands::dbSize);
+            (RedisCallback<Object>) connection -> connection.serverCommands().info("commandstats"));
+        Long dbSize = redisTemplate.execute(
+            (RedisCallback<Long>) connection -> connection.serverCommands().dbSize());
 
         if (commandStats == null || info == null) {
             throw new ApiException(Internal.INTERNAL_ERROR, "获取Redis监控信息失败。");
@@ -68,15 +67,13 @@ public class MonitorApplicationService {
                     CacheCenter.loginUserCache.getObjectOnlyInCacheByKey(o))
             .filter(Objects::nonNull).map(OnlineUserDTO::new);
 
-        List<OnlineUserDTO> filteredOnlineUsers = onlineUserStream
+        return onlineUserStream
             .filter(o ->
                 StrUtil.isEmpty(username) || username.equals(o.getUsername())
             ).filter( o ->
                 StrUtil.isEmpty(ipAddress) || ipAddress.equals(o.getIpAddress())
-            ).collect(Collectors.toList());
-
-        Collections.reverse(filteredOnlineUsers);
-        return filteredOnlineUsers;
+            ).toList()
+            .reversed();
     }
 
     public ServerInfo getServerInfo() {

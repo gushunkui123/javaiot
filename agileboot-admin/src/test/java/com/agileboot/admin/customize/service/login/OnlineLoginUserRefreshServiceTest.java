@@ -29,6 +29,7 @@ import org.springframework.data.redis.core.ScanOptions;
 
 class OnlineLoginUserRefreshServiceTest {
 
+    @SuppressWarnings("unchecked")
     private final RedisTemplate<String, ?> redisTemplate = mock(RedisTemplate.class);
     private final RedisCacheService redisCache = mock(RedisCacheService.class);
     @SuppressWarnings("unchecked")

@@ -2,6 +2,7 @@ package com.agileboot.infrastructure.user.web;
 
 import com.agileboot.infrastructure.user.base.BaseLoginUser;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
  * @author valarchie
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class SystemLoginUser extends BaseLoginUser {
 

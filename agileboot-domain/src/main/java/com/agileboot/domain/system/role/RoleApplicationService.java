@@ -57,7 +57,7 @@ public class RoleApplicationService {
         SysRoleEntity byId = roleService.getById(roleId);
         RoleDTO roleDTO = new RoleDTO(byId);
         List<Long> selectedDeptList = StrUtil.split(byId.getDeptIdSet(), ",")
-            .stream().filter(StrUtil::isNotEmpty).map(Long::new).collect(Collectors.toList());
+            .stream().filter(StrUtil::isNotEmpty).map(Long::valueOf).toList();
         roleDTO.setSelectedDeptList(selectedDeptList);
         roleDTO.setSelectedMenuList(menuService.getMenuIdsByRoleId(roleId));
         return roleDTO;

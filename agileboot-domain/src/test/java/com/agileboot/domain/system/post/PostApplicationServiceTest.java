@@ -59,6 +59,7 @@ class PostApplicationServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void deletePostShouldInvalidateDeletedPostCaches() {
         PostModel postModel1 = mock(PostModel.class);
         PostModel postModel2 = mock(PostModel.class);
