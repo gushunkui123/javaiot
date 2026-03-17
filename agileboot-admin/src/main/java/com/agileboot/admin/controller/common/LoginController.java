@@ -15,7 +15,6 @@ import com.agileboot.infrastructure.annotations.ratelimit.RateLimit;
 import com.agileboot.infrastructure.annotations.ratelimit.RateLimit.CacheType;
 import com.agileboot.infrastructure.annotations.ratelimit.RateLimit.LimitType;
 import com.agileboot.infrastructure.user.AuthenticationUtils;
-import com.agileboot.admin.customize.service.login.dto.CaptchaDTO;
 import com.agileboot.admin.customize.service.login.dto.ConfigDTO;
 import com.agileboot.admin.customize.service.login.command.LoginCommand;
 import com.agileboot.infrastructure.user.web.SystemLoginUser;
@@ -73,19 +72,6 @@ public class LoginController {
     public ResponseDTO<ConfigDTO> getConfig() {
         ConfigDTO configDTO = loginService.getConfig();
         return ResponseDTO.ok(configDTO);
-    }
-
-    /**
-     * 生成验证码
-     */
-    @Operation(summary = "验证码")
-    @SecurityRequirements
-    @RateLimit(key = RateLimitKey.LOGIN_CAPTCHA_KEY, time = 10, maxCount = 10, cacheType = CacheType.REDIS,
-        limitType = LimitType.IP)
-    @GetMapping("/captchaImage")
-    public ResponseDTO<CaptchaDTO> getCaptchaImg() {
-        CaptchaDTO captchaImg = loginService.generateCaptchaImg();
-        return ResponseDTO.ok(captchaImg);
     }
 
     /**

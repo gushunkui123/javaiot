@@ -11,8 +11,6 @@ agileboot:
   demo-enabled: true
   # 获取ip地址开关
   addressEnabled: false
-  # 验证码类型 math 数组计算 char 字符验证
-  captchaType: math
   # 是否检查 i18n 资源文件（messages.properties）是否都有对应的键值对
   checkI18nKey: false
   traceRequestIdKey: AG-RequestId

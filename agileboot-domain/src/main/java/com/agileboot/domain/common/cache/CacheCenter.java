@@ -24,8 +24,6 @@ public class CacheCenter {
 
     public static AbstractGuavaCacheTemplate<SysDeptEntity> deptCache;
 
-    public static RedisCacheTemplate<String> captchaCache;
-
     public static RedisCacheTemplate<SystemLoginUser> loginUserCache;
 
     public static RedisCacheTemplate<SysUserEntity> userCache;
@@ -42,7 +40,6 @@ public class CacheCenter {
         configCache = guavaCache.configCache;
         deptCache = guavaCache.deptCache;
 
-        captchaCache = redisCache.captchaCache;
         loginUserCache = redisCache.loginUserCache;
         userCache = redisCache.userCache;
         roleCache = redisCache.roleCache;

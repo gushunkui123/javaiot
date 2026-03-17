@@ -133,9 +133,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // 过滤请求
             .authorizeHttpRequests(authorize -> authorize
-                // 对于登录login 注册register 验证码captchaImage 以及公共Api的请求允许匿名访问
+                // 对于登录login 注册register 以及公共Api的请求允许匿名访问
                 // 注意： 当携带token请求以下这几个接口时 会返回403的错误
-                .requestMatchers("/login", "/register", "/getConfig", "/captchaImage", "/api/**").anonymous()
+                .requestMatchers("/login", "/register", "/getConfig", "/api/**").anonymous()
                 .requestMatchers(HttpMethod.GET, "/", "/*.html", "/*.css", "/*.js",
                     "/profile/**").permitAll()
                 // TODO this is danger.

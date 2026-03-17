@@ -43,13 +43,13 @@ class ConfigApplicationServiceTest {
         command.setConfigId(1L);
         ConfigModel configModel = mock(ConfigModel.class);
         when(configModelFactory.loadById(1L)).thenReturn(configModel);
-        when(configModel.getConfigKey()).thenReturn("sys.account.captchaEnabled");
+        when(configModel.getConfigKey()).thenReturn("sys.account.registerUser");
 
         applicationService.updateConfig(command);
 
         verify(configModel).loadUpdateCommand(command);
         verify(configModel).checkCanBeModify();
         verify(configModel).updateById();
-        verify(configCache).invalidate("sys.account.captchaEnabled");
+        verify(configCache).invalidate("sys.account.registerUser");
     }
 }

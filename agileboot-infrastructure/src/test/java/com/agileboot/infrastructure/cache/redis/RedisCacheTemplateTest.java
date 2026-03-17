@@ -45,9 +45,9 @@ class RedisCacheTemplateTest {
 
     @Test
     void getObjectOnlyInCacheByIdShouldNotLoadFromDb() {
-        TestRedisCacheTemplate template = new TestRedisCacheTemplate(redisUtil, CacheKeyEnum.CAPTCHAT);
+        TestRedisCacheTemplate template = new TestRedisCacheTemplate(redisUtil, CacheKeyEnum.RATE_LIMIT_KEY);
         template.setDbValue("db-value");
-        when(redisUtil.getCacheObject("captcha_codes:code-1")).thenReturn(null);
+        when(redisUtil.getCacheObject("rate_limit:code-1")).thenReturn(null);
 
         String value = template.getObjectOnlyInCacheById("code-1");
 

@@ -15,7 +15,7 @@
 - 数据访问：MyBatis Spring Boot 3.0.3、MyBatis Plus 3.5.5、Dynamic Datasource 4.3.0、PageHelper 2.1.0。
 - 数据存储与连接：MySQL 8.3.0、Druid 1.2.21、Redis（`spring-boot-starter-data-redis`）；测试 / 本地场景包含 H2 与 embedded-redis。
 - 接口与运行：`agileboot-admin` 基于 Spring Boot Web；`agileboot-api` 使用 Undertow 作为容器；接口文档使用 Springdoc OpenAPI 2.3.0。
-- 常用组件：Lombok 1.18.30、Hutool 5.8.25、Guava 31.0.1-jre、Jackson、Apache POI 4.1.2、Velocity 2.3、Kaptcha 2.3.2、ip2region 2.6.5、OSHI 6.4.0。
+- 常用组件：Lombok 1.18.30、Hutool 5.8.25、Guava 31.0.1-jre、Jackson、Apache POI 4.1.2、Velocity 2.3、ip2region 2.6.5、OSHI 6.4.0。
 - 测试栈：JUnit 5、Spring Boot Test、Mockito 4.11.0。
 
 ## 构建、测试与开发命令

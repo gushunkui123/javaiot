@@ -25,7 +25,6 @@ public class RedisCacheService {
 
     private final RedisUtil redisUtil;
 
-    public RedisCacheTemplate<String> captchaCache;
     public RedisCacheTemplate<SystemLoginUser> loginUserCache;
     public RedisCacheTemplate<SysUserEntity> userCache;
     public RedisCacheTemplate<SysRoleEntity> roleCache;
@@ -36,9 +35,6 @@ public class RedisCacheService {
 
     @PostConstruct
     public void init() {
-
-        captchaCache = new RedisCacheTemplate<>(redisUtil, CacheKeyEnum.CAPTCHAT);
-
         loginUserCache = new RedisCacheTemplate<>(redisUtil, CacheKeyEnum.LOGIN_USER_KEY);
 
         userCache = new RedisCacheTemplate<SysUserEntity>(redisUtil, CacheKeyEnum.USER_ENTITY_KEY) {

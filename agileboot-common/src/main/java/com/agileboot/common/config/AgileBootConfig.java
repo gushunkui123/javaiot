@@ -46,11 +46,6 @@ public class AgileBootConfig {
      */
     private static boolean addressEnabled;
 
-    /**
-     * 验证码类型
-     */
-    private static String captchaType;
-
     private static String apiPrefix;
 
     public static String getFileBaseDir() {
@@ -75,14 +70,6 @@ public class AgileBootConfig {
 
     public void setAddressEnabled(boolean addressEnabled) {
         AgileBootConfig.addressEnabled = addressEnabled;
-    }
-
-    public static String getCaptchaType() {
-        return captchaType;
-    }
-
-    public void setCaptchaType(String captchaType) {
-        AgileBootConfig.captchaType = captchaType;
     }
 
     public static boolean isDemoEnabled() {

@@ -44,23 +44,6 @@ public class Constants {
 
     }
 
-    public static class Captcha {
-
-        private Captcha() {
-        }
-
-        /**
-         * 令牌
-         */
-        public static final String MATH_TYPE = "math";
-
-        /**
-         * 令牌前缀
-         */
-        public static final String CHAR_TYPE = "char";
-
-    }
-
     /**
      * 资源映射路径 前缀
      */

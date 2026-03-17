@@ -29,8 +29,6 @@ public class AgileBootConfigTest {
         Assertions.assertFalse(config.isDemoEnabled());
         Assertions.assertEquals(fileBaseDir, AgileBootConfig.getFileBaseDir());
         Assertions.assertFalse(AgileBootConfig.isAddressEnabled());
-        Assertions.assertEquals("math", AgileBootConfig.getCaptchaType());
-        Assertions.assertEquals("math", AgileBootConfig.getCaptchaType());
         Assertions.assertEquals(fileBaseDir + "\\import",
             AgileBootConfig.getFileBaseDir() + File.separator + UploadSubDir.IMPORT_PATH);
         Assertions.assertEquals(fileBaseDir + "\\avatar",

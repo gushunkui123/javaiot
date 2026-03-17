@@ -8,11 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agileboot.admin.customize.service.login.command.LoginCommand;
-import com.agileboot.common.enums.common.ConfigKeyEnum;
-import com.agileboot.domain.common.cache.GuavaCacheService;
 import com.agileboot.domain.common.cache.RedisCacheService;
-import com.agileboot.domain.system.config.db.SysConfigService;
-import com.agileboot.domain.system.dept.db.SysDeptService;
 import com.agileboot.infrastructure.user.web.SystemLoginUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -27,11 +23,8 @@ class LoginServiceTest {
     private final TokenService tokenService = mock(TokenService.class);
     private final RedisCacheService redisCache = mock(RedisCacheService.class);
     private final AuthenticationManager authenticationManager = mock(AuthenticationManager.class);
-    private final SysConfigService configService = mock(SysConfigService.class);
-    private final SysDeptService deptService = mock(SysDeptService.class);
-    private final GuavaCacheService guavaCache = new GuavaCacheService(configService, deptService);
     private final LoginService loginService =
-        new TestLoginService(tokenService, redisCache, guavaCache, authenticationManager);
+        new TestLoginService(tokenService, redisCache, authenticationManager);
 
     @AfterEach
     void tearDown() {
@@ -40,7 +33,6 @@ class LoginServiceTest {
 
     @Test
     void testLoginShouldAuthenticateWithPlainPassword() {
-        when(configService.getConfigValueByKey(ConfigKeyEnum.CAPTCHA.getValue())).thenReturn("false");
         SystemLoginUser loginUser = mock(SystemLoginUser.class);
         Authentication authenticationResult = mock(Authentication.class);
         when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticationResult);
@@ -65,9 +57,9 @@ class LoginServiceTest {
 
     private static final class TestLoginService extends LoginService {
 
-        private TestLoginService(TokenService tokenService, RedisCacheService redisCache, GuavaCacheService guavaCache,
+        private TestLoginService(TokenService tokenService, RedisCacheService redisCache,
             AuthenticationManager authenticationManager) {
-            super(tokenService, redisCache, guavaCache, authenticationManager);
+            super(tokenService, redisCache, authenticationManager);
         }
 
         @Override

@@ -20,14 +20,4 @@ public class LoginCommand {
      */
     private String password;
 
-    /**
-     * 验证码
-     */
-    private String captchaCode;
-
-    /**
-     * 唯一标识
-     */
-    private String captchaCodeKey;
-
 }

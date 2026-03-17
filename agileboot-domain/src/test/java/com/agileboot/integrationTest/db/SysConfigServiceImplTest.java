@@ -19,7 +19,7 @@ class  SysConfigServiceImplTest {
 
     @Test
     void testGetConfigValueByKey() {
-        String configValue = configService.getConfigValueByKey(ConfigKeyEnum.CAPTCHA.getValue());
+        String configValue = configService.getConfigValueByKey(ConfigKeyEnum.REGISTER.getValue());
         Assertions.assertFalse(Boolean.parseBoolean(configValue));
     }
 
