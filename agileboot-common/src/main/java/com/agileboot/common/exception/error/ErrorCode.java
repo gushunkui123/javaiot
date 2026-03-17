@@ -164,6 +164,10 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         ROLE_IS_NOT_AVAILABLE(11005, "角色：{} 已禁用，无法分配给用户", "Business.ROLE_IS_NOT_AVAILABLE"),
 
+        // -------------------------------- MATERIAL -------------------------------------------------
+
+        MATERIAL_TYPE_AND_NAME_IS_NOT_UNIQUE(11101, "原料类型:{} 下原料名称:{} 已存在", "Business.MATERIAL_TYPE_AND_NAME_IS_NOT_UNIQUE"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),
