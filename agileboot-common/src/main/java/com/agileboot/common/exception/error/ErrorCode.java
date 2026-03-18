@@ -168,6 +168,10 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         MATERIAL_TYPE_AND_NAME_IS_NOT_UNIQUE(11101, "原料类型:{} 下原料名称:{} 已存在", "Business.MATERIAL_TYPE_AND_NAME_IS_NOT_UNIQUE"),
 
+        // -------------------------------- FORMULA -------------------------------------------------
+
+        FORMULA_CODE_IS_NOT_UNIQUE(11201, "配方编号:{} 已存在", "Business.FORMULA_CODE_IS_NOT_UNIQUE"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),
