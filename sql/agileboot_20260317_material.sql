@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `sys_material`
+CREATE TABLE IF NOT EXISTS `biz_material`
 (
     `material_id`   bigint       NOT NULL AUTO_INCREMENT COMMENT '原料ID',
     `material_type` varchar(64)  NOT NULL COMMENT '原料类型',
@@ -16,36 +16,36 @@ CREATE TABLE IF NOT EXISTS `sys_material`
 INSERT INTO `sys_menu`
 (`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
  `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)
-SELECT `next_menu_id`, '原料管理', 1, 'Material', 1, '/system/material/index', 0, 'system:material:list',
+SELECT `next_menu_id`, '原料管理', 1, 'Material', 1, '/business/material/index', 0, 'business:material:list',
        '{"title":"原料管理","icon":"ep:box","showParent":true}', 1, '原料管理菜单', 1, NOW(), NULL, NULL, 0
 FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) menu_seq
-WHERE NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'system:material:list');
+WHERE NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'business:material:list');
 
-SET @material_menu_id := (SELECT `menu_id` FROM `sys_menu` WHERE `permission` = 'system:material:list' LIMIT 1);
-
-INSERT INTO `sys_menu`
-(`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
- `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)
-SELECT `next_menu_id`, '原料新增', 0, ' ', @material_menu_id, '', 1, 'system:material:add', '{"title":"原料新增"}',
-       1, '', 1, NOW(), NULL, NULL, 0
-FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) menu_seq
-WHERE @material_menu_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'system:material:add');
+SET @material_menu_id := (SELECT `menu_id` FROM `sys_menu` WHERE `permission` = 'business:material:list' LIMIT 1);
 
 INSERT INTO `sys_menu`
 (`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
  `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)
-SELECT `next_menu_id`, '原料修改', 0, ' ', @material_menu_id, '', 1, 'system:material:edit', '{"title":"原料修改"}',
+SELECT `next_menu_id`, '原料新增', 0, ' ', @material_menu_id, '', 1, 'business:material:add', '{"title":"原料新增"}',
        1, '', 1, NOW(), NULL, NULL, 0
 FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) menu_seq
 WHERE @material_menu_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'system:material:edit');
+  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'business:material:add');
 
 INSERT INTO `sys_menu`
 (`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
  `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)
-SELECT `next_menu_id`, '原料删除', 0, ' ', @material_menu_id, '', 1, 'system:material:remove', '{"title":"原料删除"}',
+SELECT `next_menu_id`, '原料修改', 0, ' ', @material_menu_id, '', 1, 'business:material:edit', '{"title":"原料修改"}',
        1, '', 1, NOW(), NULL, NULL, 0
 FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) menu_seq
 WHERE @material_menu_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'system:material:remove');
+  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'business:material:edit');
+
+INSERT INTO `sys_menu`
+(`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
+ `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)
+SELECT `next_menu_id`, '原料删除', 0, ' ', @material_menu_id, '', 1, 'business:material:remove', '{"title":"原料删除"}',
+       1, '', 1, NOW(), NULL, NULL, 0
+FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) menu_seq
+WHERE @material_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'business:material:remove');

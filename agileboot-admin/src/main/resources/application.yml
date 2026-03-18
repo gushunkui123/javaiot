@@ -42,5 +42,7 @@ springdoc:
       packages-to-scan: com.agileboot.admin.controller.common
     - group: '内置系统API'
       packages-to-scan: com.agileboot.admin.controller.system
+    - group: '业务API'
+      packages-to-scan: com.agileboot.admin.controller.business
 
 
