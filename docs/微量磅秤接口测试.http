@@ -1,0 +1,477 @@
+### ============================================================
+### 微量磅秤系统数据 Http API 接口测试
+### 查询接口 Base URL: {{aws_host}}/aws/api
+### 写入接口 Base URL: {{aws_host}}/aws/api/wr
+### ============================================================
+
+
+### ============================================================
+### 一、查询类接口 (GET)
+### ============================================================
+
+
+### 2. 查询工单数据
+# @name getWorkOrder
+# 参数说明:
+#   machineId    - 设备编号 (必填)
+#   workOrderNo  - 工单编号 (可选)
+#   formulaCode  - 配方编号 (可选)
+#   orderDateFrom - 起始日期 yyyyMMdd (可选)
+#   orderDateTo   - 截止日期 yyyyMMdd (可选)
+#   orderState   - 工单状态: 1未生产 2生产中 3已完工, 多个用逗号分隔 (可选)
+GET {{aws_host}}/aws/api?option=getWorkOrder&plant={{plant}}&machineId={{machineId}}&workOrderNo=&formulaCode=&orderDateFrom=20190301&orderDateTo=20260401&orderState=
+Accept: application/json
+
+> {%
+    client.log("=== 查询工单数据 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtnmsg"), "应包含 rtnmsg 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### 3. 查询称量记录
+# @name getWeighingRecord
+# 参数说明:
+#   machineId     - 设备编号 (必填)
+#   workOrderNo   - 工单编号 (可选)
+#   formulaCode   - 配方编号 (可选)
+#   weighTimeFrom - 起始时间 yyyyMMddHHmmss (必填)
+#   weighTimeTo   - 截止时间 yyyyMMddHHmmss (必填)
+GET {{aws_host}}/aws/api?option=getWeighingRecord&plant={{plant}}&machineId={{machineId}}&workOrderNo=&formulaCode=&weighTimeFrom=20190302152000&weighTimeTo=20260302173000
+Accept: application/json
+
+> {%
+    client.log("=== 查询称量记录 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 4. 查询报警记录
+# @name getAlarmLog
+# 参数说明:
+#   machineId     - 设备编号 (必填)
+#   alarmGroup    - 报警类别 (可选): E1-磅秤计量异常, E2-硬件/连线异常, E3-投料入桶异常
+#   alarmTimeFrom - 起始时间 yyyyMMddHHmmss (必填)
+#   alarmTimeTo   - 截止时间 yyyyMMddHHmmss (必填)
+GET {{aws_host}}/aws/api?option=getAlarmLog&plant={{plant}}&machineId={{machineId}}&alarmGroup=&alarmTimeFrom=20190302152000&alarmTimeTo=20260302173000
+Accept: application/json
+
+> {%
+    client.log("=== 查询报警记录 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 5. 依条码追溯生产记录
+# @name getTraceBackData
+# 参数说明:
+#   machineId - 设备编号 (必填)
+#   barcode   - 完工条码编号 (必填)
+GET {{aws_host}}/aws/api?option=getTraceBackData&plant={{plant}}&machineId={{machineId}}&barcode=A1118011000610001
+Accept: application/json
+
+> {%
+    client.log("=== 依条码追溯生产记录 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 6. 查询原料耗用
+# @name getMaterialConsumption
+# 参数说明:
+#   machineId    - 设备编号 (必填)
+#   workOrderNo  - 工单编号 (可选)
+#   materialNo   - 原料编号 (可选)
+#   consTimeFrom - 起始日期 yyyyMMdd (必填)
+#   consTimeTo   - 截止日期 yyyyMMdd (必填)
+GET {{aws_host}}/aws/api?option=getMaterialConsumption&plant={{plant}}&machineId={{machineId}}&workOrderNo=&materialNo=&consTimeFrom=20190301&consTimeTo=20260302
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料耗用 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 二、写入类接口 (POST) - 原料基本资料
+### ============================================================
+
+
+### 7.1 新增原料基本资料
+# @name addParts
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addParts",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "partNo": "ZNO01",
+  "partName": "氧化锌 01",
+  "partClass": "",
+  "unitBarcodeWeight": 25.0
+}
+
+> {%
+    client.log("=== 新增原料基本资料 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 7.2 修改原料基本资料
+# @name updateParts
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateParts",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "partNo": "ZNO01",
+  "partName": "氧化锌 01-更新",
+  "partClass": "",
+  "unitBarcodeWeight": 50.0
+}
+
+> {%
+    client.log("=== 修改原料基本资料 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 7.3 删除原料基本资料
+# @name deleteParts
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteParts",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "partNo": "ZNO01"
+}
+
+> {%
+    client.log("=== 删除原料基本资料 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 三、写入类接口 (POST) - 原料条码数据
+### ============================================================
+
+
+### 8.1 新增原料条码
+# @name addMaterialBarcode
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addMaterialBarcode",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "barcode": "ZNO190420000001",
+  "materialNo": "ZNO01",
+  "unitBarcodeWeight": 25.0,
+  "expirationDate": "2026-09-20",
+  "lotNo": ""
+}
+
+> {%
+    client.log("=== 新增原料条码 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 8.2 修改原料条码
+# @name updateMaterialBarcode
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateMaterialBarcode",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "barcode": "ZNO190420000001",
+  "materialNo": "ZNO01",
+  "unitBarcodeWeight": 50.0,
+  "expirationDate": "2026-09-25",
+  "lotNo": ""
+}
+
+> {%
+    client.log("=== 修改原料条码 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 8.3 删除原料条码
+# @name deleteMaterialBarcode
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteMaterialBarcode",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "barcode": "ZNO190420000001"
+}
+
+> {%
+    client.log("=== 删除原料条码 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 四、写入类接口 (POST) - 配方数据
+### ============================================================
+
+
+### 9.1 新增配方
+# @name addFormula
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addFormula",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001",
+  "formulaName": "配方 01",
+  "FormulaEntryList": [
+    {"MaterialNo": "M01", "MaterialWeight": 0.25},
+    {"MaterialNo": "M02", "MaterialWeight": 0.36}
+  ]
+}
+
+> {%
+    client.log("=== 新增配方 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 9.2 修改配方
+# @name updateFormula
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateFormula",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001",
+  "formulaName": "配方 01-更新",
+  "FormulaEntryList": [
+    {"MaterialNo": "M01", "MaterialWeight": 0.55},
+    {"MaterialNo": "M02", "MaterialWeight": 0.46}
+  ]
+}
+
+> {%
+    client.log("=== 修改配方 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 9.3 删除配方
+# @name deleteFormula
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteFormula",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001"
+}
+
+> {%
+    client.log("=== 删除配方 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 五、写入类接口 (POST) - 工单数据
+### ============================================================
+
+
+### 10.1 新增工单
+# @name addWorkOrder
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addWorkOrder",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "workOrderNo": "W0001",
+  "workOrderDate": "2026-03-18",
+  "formulaCode": "F001",
+  "batch": 10
+}
+
+> {%
+    client.log("=== 新增工单 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 10.2 修改工单
+# @name updateWorkOrder
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateWorkOrder",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "workOrderNo": "W0001",
+  "workOrderDate": "2026-03-19",
+  "formulaCode": "F001",
+  "batch": 15
+}
+
+> {%
+    client.log("=== 修改工单 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 10.3 删除工单
+# @name deleteWorkOrder
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteWorkOrder",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "workOrderNo": "W0001"
+}
+
+> {%
+    client.log("=== 删除工单 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###

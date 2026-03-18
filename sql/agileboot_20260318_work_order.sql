@@ -1,0 +1,29 @@
+-- 工单信息表
+CREATE TABLE IF NOT EXISTS `biz_work_order`
+(
+    `work_order_id`   bigint         NOT NULL AUTO_INCREMENT COMMENT '工单ID',
+    `work_order_no`   varchar(50)    NOT NULL COMMENT '工单编号',
+    `order_date`      date           NOT NULL COMMENT '工单日期',
+    `plant`           varchar(50)             DEFAULT NULL COMMENT '工厂别',
+    `machine_id`      int            NOT NULL COMMENT '设备编号',
+    `line_no`         varchar(10)             DEFAULT NULL COMMENT '产线编号(A/B)',
+    `formula_code`    varchar(50)    NOT NULL COMMENT '配方编号',
+    `order_batch_num` int            NOT NULL COMMENT '计划批次数',
+    `order_weight`    decimal(18, 4)          DEFAULT NULL COMMENT '工单总重(kg)',
+    `finish_batch_num` int                    DEFAULT 0 COMMENT '完工批次数',
+    `finish_weight`   decimal(18, 4)          DEFAULT 0 COMMENT '完工重量(kg)',
+    `start_time`      datetime                DEFAULT NULL COMMENT '生产开始时间',
+    `finish_time`     datetime                DEFAULT NULL COMMENT '生产结束时间',
+    `order_state`     tinyint        NOT NULL DEFAULT 1 COMMENT '工单状态(1:未生产 2:生产中 3:已完工)',
+    `creator_id`      bigint                  DEFAULT NULL COMMENT '创建者ID',
+    `create_time`     datetime                DEFAULT NULL COMMENT '创建时间',
+    `updater_id`      bigint                  DEFAULT NULL COMMENT '更新者ID',
+    `update_time`     datetime                DEFAULT NULL COMMENT '更新时间',
+    `deleted`         tinyint(1)     NOT NULL DEFAULT 0 COMMENT '删除标志(0:存在 1:删除)',
+    PRIMARY KEY (`work_order_id`),
+    UNIQUE KEY `uk_work_order_no` (`work_order_no`, `deleted`),
+    KEY `idx_order_date` (`order_date`),
+    KEY `idx_machine_id` (`machine_id`),
+    KEY `idx_formula_code` (`formula_code`),
+    KEY `idx_order_state` (`order_state`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '工单信息表';

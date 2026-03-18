@@ -172,6 +172,10 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         FORMULA_CODE_IS_NOT_UNIQUE(11201, "配方编号:{} 已存在", "Business.FORMULA_CODE_IS_NOT_UNIQUE"),
 
+        // -------------------------------- WORK ORDER -------------------------------------------------
+
+        WORK_ORDER_NO_IS_NOT_UNIQUE(11301, "工单编号:{} 已存在", "Business.WORK_ORDER_NO_IS_NOT_UNIQUE"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),

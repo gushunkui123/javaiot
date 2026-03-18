@@ -1,0 +1,472 @@
+### ============================================================
+### 主料磅秤系统数据 Http API 接口测试
+### 查询接口 Base URL: {{mws_host}}/mws/api
+### 写入接口 Base URL: {{mws_host}}/mws/api/wr
+### ============================================================
+
+
+### ============================================================
+### 一、查询类接口 (GET)
+### ============================================================
+
+
+### 2. 查询工单数据
+# @name getWorkOrder
+# 参数说明:
+#   machineId     - 设备编号 (必填)
+#   workOrderNo   - 工单编号 (可选)
+#   formulaCode   - 配方编号 (可选)
+#   orderDateFrom - 起始日期 yyyyMMdd (可选)
+#   orderDateTo   - 截止日期 yyyyMMdd (可选)
+#   orderState    - 工单状态: 1未生产 2生产中 3已完工, 多个用逗号分隔 (可选)
+GET {{mws_host}}/mws/api?option=getWorkOrder&plant={{plant}}&machineId={{machineId}}&workOrderNo=&formulaCode=&orderDateFrom=20190301&orderDateTo=20260401&orderState=
+Accept: application/json
+
+> {%
+    client.log("=== 查询工单数据 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtnmsg"), "应包含 rtnmsg 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### 3. 查询称量记录
+# @name getWeighingRecord
+# 参数说明:
+#   machineId     - 设备编号 (必填)
+#   workOrderNo   - 工单编号 (可选)
+#   formulaCode   - 配方编号 (可选)
+#   weighTimeFrom - 起始时间 yyyyMMddHHmmss (必填)
+#   weighTimeTo   - 截止时间 yyyyMMddHHmmss (必填)
+GET {{mws_host}}/mws/api?option=getWeighingRecord&plant={{plant}}&machineId={{machineId}}&workOrderNo=&formulaCode=&weighTimeFrom=20190302152000&weighTimeTo=20260302173000
+Accept: application/json
+
+> {%
+    client.log("=== 查询称量记录 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 4. 查询报警记录
+# @name getAlarmLog
+# 参数说明:
+#   machineId     - 设备编号 (必填)
+#   alarmGroup    - 报警类别 (可选): 1-1号秤异常, 2-2号秤异常, 3-3号秤异常, 0-胶料秤异常, 10-密炼机异常, 100-其他异常
+#   alarmTimeFrom - 起始时间 yyyyMMddHHmmss (必填)
+#   alarmTimeTo   - 截止时间 yyyyMMddHHmmss (必填)
+GET {{mws_host}}/mws/api?option=getAlarmLog&plant={{plant}}&machineId={{machineId}}&alarmGroup=&alarmTimeFrom=20190302152000&alarmTimeTo=20260302173000
+Accept: application/json
+
+> {%
+    client.log("=== 查询报警记录 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 5. 查询原料耗用
+# @name getMaterialConsumption
+# 参数说明:
+#   machineId    - 设备编号 (必填)
+#   workOrderNo  - 工单编号 (可选)
+#   materialNo   - 原料编号 (可选)
+#   consTimeFrom - 起始日期 yyyyMMdd (必填)
+#   consTimeTo   - 截止日期 yyyyMMdd (必填)
+GET {{mws_host}}/mws/api?option=getMaterialConsumption&plant={{plant}}&machineId={{machineId}}&workOrderNo=&materialNo=&consTimeFrom=20190301&consTimeTo=20260302
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料耗用 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 6. 查询密炼机工艺数据
+# @name getProcessData
+# 参数说明:
+#   machineId   - 设备编号 (必填)
+#   workOrderNo - 工单编号 (必填)
+#   batch       - 工单批次 (必填)
+GET {{mws_host}}/mws/api?option=getProcessData&plant={{plant}}&machineId={{machineId}}&workOrderNo=A1301810100001&batch=1
+Accept: application/json
+
+> {%
+    client.log("=== 查询密炼机工艺数据 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 二、写入类接口 (POST) - 原料基本资料
+### 注意: 主料磅秤的原料接口不需要 plant/machineId
+### ============================================================
+
+
+### 7.1 新增原料基本资料
+# @name addParts
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addParts",
+  "partNo": "ZNO01",
+  "partName": "氧化锌 01",
+  "partClass": "",
+  "unitBarcodeWeight": 25.0
+}
+
+> {%
+    client.log("=== 新增原料基本资料 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 7.2 修改原料基本资料
+# @name updateParts
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateParts",
+  "partNo": "ZNO01",
+  "partName": "氧化锌 01-更新",
+  "partClass": "",
+  "unitBarcodeWeight": 50.0
+}
+
+> {%
+    client.log("=== 修改原料基本资料 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 7.3 删除原料基本资料
+# @name deleteParts
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteParts",
+  "partNo": "ZNO01"
+}
+
+> {%
+    client.log("=== 删除原料基本资料 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 三、写入类接口 (POST) - 原料条码
+### 注意: 主料磅秤的条码接口不需要 plant/machineId
+### ============================================================
+
+
+### 8.1 新增原料条码
+# @name addMaterialBarcode
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addMaterialBarcode",
+  "barcode": "B000000001",
+  "materialNo": "ZNO01",
+  "unitBarcodeWeight": 50.0,
+  "expirationDate": "2026-09-30",
+  "lotNo": "L19060000001"
+}
+
+> {%
+    client.log("=== 新增原料条码 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 8.2 修改原料条码
+# @name updateMaterialBarcode
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateMaterialBarcode",
+  "barcode": "B000000001",
+  "materialNo": "ZNO01",
+  "unitBarcodeWeight": 50.0,
+  "expirationDate": "2026-10-27",
+  "lotNo": "L19050008"
+}
+
+> {%
+    client.log("=== 修改原料条码 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 8.3 删除原料条码
+# @name deleteMaterialBarcode
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteMaterialBarcode",
+  "barcode": "B000000001"
+}
+
+> {%
+    client.log("=== 删除原料条码 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 四、写入类接口 (POST) - 配方数据
+### ============================================================
+
+
+### 9.1 新增配方
+# @name addFormula
+# 注意: 主料磅秤配方多一个 StepNo (下料段序) 字段
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addFormula",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001",
+  "formulaName": "配方 01",
+  "FormulaEntryList": [
+    {"MaterialNo": "ZNO01", "MaterialWeight": 28.0, "StepNo": 1},
+    {"MaterialNo": "ZNO02", "MaterialWeight": 61.0, "StepNo": 1}
+  ]
+}
+
+> {%
+    client.log("=== 新增配方 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 9.2 修改配方
+# @name updateFormula
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateFormula",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001",
+  "formulaName": "配方 001-更新",
+  "FormulaEntryList": [
+    {"MaterialNo": "ZNO01", "MaterialWeight": 20.0, "StepNo": 1},
+    {"MaterialNo": "ZNO02", "MaterialWeight": 61.5, "StepNo": 1}
+  ]
+}
+
+> {%
+    client.log("=== 修改配方 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 9.3 删除配方
+# @name deleteFormula
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteFormula",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001"
+}
+
+> {%
+    client.log("=== 删除配方 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 五、写入类接口 (POST) - 工单数据
+### ============================================================
+
+
+### 10.1 新增工单
+# @name addWorkOrder
+# 注意: 主料磅秤工单多一个 lineNo (产线编号) 字段, 一供二机台时必填 A/B
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "addWorkOrder",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "workOrderNo": "W0001",
+  "workOrderDate": "2026-03-18",
+  "formulaCode": "F001",
+  "batch": 10,
+  "lineNo": ""
+}
+
+> {%
+    client.log("=== 新增工单 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 10.2 修改工单
+# @name updateWorkOrder
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateWorkOrder",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "workOrderNo": "W0001",
+  "workOrderDate": "2026-03-19",
+  "formulaCode": "F001",
+  "batch": 18,
+  "lineNo": ""
+}
+
+> {%
+    client.log("=== 修改工单 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 10.3 删除工单
+# @name deleteWorkOrder
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "deleteWorkOrder",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "workOrderNo": "W0001"
+}
+
+> {%
+    client.log("=== 删除工单 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
