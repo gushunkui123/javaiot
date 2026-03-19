@@ -3,6 +3,7 @@ package com.agileboot.domain.system.role;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.cache.CacheCenter;
 import com.agileboot.domain.system.role.command.AddRoleCommand;
 import com.agileboot.domain.system.role.command.UpdateDataScopeCommand;
@@ -45,6 +46,8 @@ public class RoleApplicationService {
     private final SysUserService userService;
 
     private final SysMenuService menuService;
+
+    private final AuditUserEnricher auditUserEnricher;
 
 
     public PageDTO<RoleDTO> getRoleList(RoleQuery query) {
@@ -123,12 +126,14 @@ public class RoleApplicationService {
     public PageDTO<UserDTO> getAllocatedUserList(AllocatedRoleQuery query) {
         Page<SysUserEntity> page = userService.getUserListByRole(query);
         List<UserDTO> dtoList = page.getRecords().stream().map(UserDTO::new).collect(Collectors.toList());
+        auditUserEnricher.enrich(dtoList);
         return new PageDTO<>(dtoList, page.getTotal());
     }
 
     public PageDTO<UserDTO> getUnallocatedUserList(UnallocatedRoleQuery query) {
         Page<SysUserEntity> page = userService.getUserListByRole(query);
         List<UserDTO> dtoList = page.getRecords().stream().map(UserDTO::new).collect(Collectors.toList());
+        auditUserEnricher.enrich(dtoList);
         return new PageDTO<>(dtoList, page.getTotal());
     }
 

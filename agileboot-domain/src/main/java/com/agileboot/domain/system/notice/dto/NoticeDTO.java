@@ -1,30 +1,23 @@
 package com.agileboot.domain.system.notice.dto;
 
-import com.agileboot.domain.common.cache.CacheCenter;
+import cn.hutool.core.bean.BeanUtil;
+import com.agileboot.domain.common.audit.AuditableDTO;
 import com.agileboot.domain.system.notice.db.SysNoticeEntity;
-import com.agileboot.domain.system.user.db.SysUserEntity;
 import java.util.Date;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * @author valarchie
  */
 @Data
-public class NoticeDTO {
+@NoArgsConstructor
+public class NoticeDTO implements AuditableDTO {
 
     public NoticeDTO(SysNoticeEntity entity) {
         if (entity != null) {
+            BeanUtil.copyProperties(entity, this);
             this.noticeId = entity.getNoticeId() + "";
-            this.noticeTitle = entity.getNoticeTitle();
-            this.noticeType = entity.getNoticeType();
-            this.noticeContent = entity.getNoticeContent();
-            this.status = entity.getStatus();
-            this.createTime = entity.getCreateTime();
-
-            SysUserEntity cacheUser = CacheCenter.userCache.getObjectById(entity.getCreatorId());
-            if (cacheUser != null) {
-                this.creatorName = cacheUser.getUsername();
-            }
         }
     }
 
@@ -38,8 +31,16 @@ public class NoticeDTO {
 
     private Integer status;
 
-    private Date createTime;
+    private Long creatorId;
 
     private String creatorName;
+
+    private Date createTime;
+
+    private Long updaterId;
+
+    private String updaterName;
+
+    private Date updateTime;
 
 }

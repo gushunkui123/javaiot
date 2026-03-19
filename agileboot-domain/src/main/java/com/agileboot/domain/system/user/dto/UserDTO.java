@@ -3,6 +3,7 @@ package com.agileboot.domain.system.user.dto;
 import cn.hutool.core.bean.BeanUtil;
 import com.agileboot.common.annotation.ExcelColumn;
 import com.agileboot.common.annotation.ExcelSheet;
+import com.agileboot.domain.common.audit.AuditableDTO;
 import com.agileboot.domain.common.cache.CacheCenter;
 import com.agileboot.domain.system.dept.db.SysDeptEntity;
 import com.agileboot.domain.system.post.db.SysPostEntity;
@@ -17,7 +18,7 @@ import lombok.Data;
  */
 @ExcelSheet(name = "用户列表")
 @Data
-public class UserDTO {
+public class UserDTO implements AuditableDTO {
 
     public UserDTO(SysUserEntity entity) {
         if (entity != null) {
@@ -28,18 +29,13 @@ public class UserDTO {
                 this.deptName = dept.getDeptName();
             }
 
-            SysUserEntity creator = CacheCenter.userCache.getObjectById(entity.getCreatorId());
-            if (creator != null) {
-                this.creatorName = creator.getUsername();
-            }
-
             if (entity.getRoleId() != null) {
                 SysRoleEntity roleEntity = CacheCenter.roleCache.getObjectById(entity.getRoleId());
                 this.roleName = roleEntity != null ? roleEntity.getRoleName() : "";
             }
 
             if (entity.getPostId() != null) {
-                SysPostEntity post = CacheCenter.postCache.getObjectById(entity.getRoleId());
+                SysPostEntity post = CacheCenter.postCache.getObjectById(entity.getPostId());
                 this.postName = post != null ? post.getPostName() : "";
             }
 

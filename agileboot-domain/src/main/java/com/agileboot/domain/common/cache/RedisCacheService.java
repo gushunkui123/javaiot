@@ -31,6 +31,8 @@ public class RedisCacheService {
 
     public RedisCacheTemplate<SysPostEntity> postCache;
 
+    public RedisCacheTemplate<String> usernameCache;
+
 //    public RedisCacheTemplate<RoleInfo> roleModelInfoCache;
 
     @PostConstruct
@@ -69,6 +71,15 @@ public class RedisCacheService {
                 return postService.getById((Serializable) id);
             }
 
+        };
+
+        usernameCache = new RedisCacheTemplate<String>(redisUtil, CacheKeyEnum.USER_USERNAME_KEY) {
+            @Override
+            public String getObjectFromDb(Object id) {
+                SysUserService userService = SpringUtil.getBean(SysUserService.class);
+                SysUserEntity user = userService.getById((Serializable) id);
+                return user != null ? user.getUsername() : null;
+            }
         };
 
 

@@ -1,6 +1,7 @@
 package com.agileboot.domain.system.notice;
 
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.system.notice.command.NoticeAddCommand;
 import com.agileboot.domain.system.notice.command.NoticeUpdateCommand;
@@ -27,16 +28,21 @@ public class NoticeApplicationService {
 
     private final NoticeModelFactory noticeModelFactory;
 
+    private final AuditUserEnricher auditUserEnricher;
+
     public PageDTO<NoticeDTO> getNoticeList(NoticeQuery query) {
         Page<SysNoticeEntity> page = noticeService.getNoticeList(query.toPage(), query.toQueryWrapper());
         List<NoticeDTO> records = page.getRecords().stream().map(NoticeDTO::new).collect(Collectors.toList());
+        auditUserEnricher.enrich(records);
         return new PageDTO<>(records, page.getTotal());
     }
 
 
     public NoticeDTO getNoticeInfo(Long id) {
         NoticeModel noticeModel = noticeModelFactory.loadById(id);
-        return new NoticeDTO(noticeModel);
+        NoticeDTO dto = new NoticeDTO(noticeModel);
+        auditUserEnricher.enrich(dto);
+        return dto;
     }
 
 

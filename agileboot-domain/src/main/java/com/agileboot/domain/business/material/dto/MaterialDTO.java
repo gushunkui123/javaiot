@@ -2,6 +2,7 @@ package com.agileboot.domain.business.material.dto;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.agileboot.domain.business.material.db.BizMaterialEntity;
+import com.agileboot.domain.common.audit.AuditableDTO;
 import java.util.Date;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,7 +12,7 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class MaterialDTO {
+public class MaterialDTO implements AuditableDTO {
 
     public MaterialDTO(BizMaterialEntity entity) {
         if (entity != null) {
@@ -27,9 +28,13 @@ public class MaterialDTO {
 
     private Long creatorId;
 
+    private String creatorName;
+
     private Date createTime;
 
     private Long updaterId;
+
+    private String updaterName;
 
     private Date updateTime;
 

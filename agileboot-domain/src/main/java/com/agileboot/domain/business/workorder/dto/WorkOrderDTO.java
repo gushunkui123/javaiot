@@ -2,6 +2,7 @@ package com.agileboot.domain.business.workorder.dto;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.agileboot.domain.business.workorder.db.BizWorkOrderEntity;
+import com.agileboot.domain.common.audit.AuditableDTO;
 import java.math.BigDecimal;
 import java.util.Date;
 import lombok.Data;
@@ -12,7 +13,7 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class WorkOrderDTO {
+public class WorkOrderDTO implements AuditableDTO {
 
     public WorkOrderDTO(BizWorkOrderEntity entity) {
         if (entity != null) {
@@ -50,9 +51,13 @@ public class WorkOrderDTO {
 
     private Long creatorId;
 
+    private String creatorName;
+
     private Date createTime;
 
     private Long updaterId;
+
+    private String updaterName;
 
     private Date updateTime;
 

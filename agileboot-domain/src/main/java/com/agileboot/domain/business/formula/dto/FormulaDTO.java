@@ -2,6 +2,7 @@ package com.agileboot.domain.business.formula.dto;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.agileboot.domain.business.formula.db.BizFormulaEntity;
+import com.agileboot.domain.common.audit.AuditableDTO;
 import java.util.Date;
 import java.util.List;
 import lombok.Data;
@@ -12,7 +13,7 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class FormulaDTO {
+public class FormulaDTO implements AuditableDTO {
 
     public FormulaDTO(BizFormulaEntity entity) {
         if (entity != null) {
@@ -28,9 +29,13 @@ public class FormulaDTO {
 
     private Long creatorId;
 
+    private String creatorName;
+
     private Date createTime;
 
     private Long updaterId;
+
+    private String updaterName;
 
     private Date updateTime;
 

@@ -32,6 +32,8 @@ public class CacheCenter {
 
     public static RedisCacheTemplate<SysPostEntity> postCache;
 
+    public static RedisCacheTemplate<String> usernameCache;
+
     @PostConstruct
     public void init() {
         GuavaCacheService guavaCache = SpringUtil.getBean(GuavaCacheService.class);
@@ -44,6 +46,26 @@ public class CacheCenter {
         userCache = redisCache.userCache;
         roleCache = redisCache.roleCache;
         postCache = redisCache.postCache;
+        usernameCache = redisCache.usernameCache;
+    }
+
+    /**
+     * 删除用户相关的所有缓存（实体缓存 + 用户名缓存）
+     */
+    public static void deleteUserCache(Long userId) {
+        if (userCache != null) {
+            userCache.delete(userId);
+        }
+        if (usernameCache != null) {
+            usernameCache.delete(userId);
+        }
+    }
+
+    public static String getUsernameById(Long userId) {
+        if (userId == null || usernameCache == null) {
+            return null;
+        }
+        return usernameCache.getObjectById(userId);
     }
 
 }

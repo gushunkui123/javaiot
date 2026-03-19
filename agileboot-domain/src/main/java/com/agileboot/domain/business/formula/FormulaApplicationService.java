@@ -2,6 +2,7 @@ package com.agileboot.domain.business.formula;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.business.formula.command.AddFormulaCommand;
 import com.agileboot.domain.business.formula.command.UpdateFormulaCommand;
@@ -34,15 +35,19 @@ public class FormulaApplicationService {
 
     private final BizFormulaItemService formulaItemService;
 
+    private final AuditUserEnricher auditUserEnricher;
+
     public PageDTO<FormulaDTO> getFormulaList(FormulaQuery query) {
         Page<BizFormulaEntity> page = formulaService.page(query.toPage(), query.toQueryWrapper());
         List<FormulaDTO> records = page.getRecords().stream().map(FormulaDTO::new).toList();
+        auditUserEnricher.enrich(records);
         return new PageDTO<>(records, page.getTotal());
     }
 
     public FormulaDTO getFormulaInfo(Long formulaId) {
         FormulaModel model = formulaModelFactory.loadById(formulaId);
         FormulaDTO dto = new FormulaDTO(model);
+        auditUserEnricher.enrich(dto);
 
         LambdaQueryWrapper<BizFormulaItemEntity> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(BizFormulaItemEntity::getFormulaId, formulaId)

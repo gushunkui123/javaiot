@@ -16,6 +16,7 @@ public enum CacheKeyEnum {
     ROLE_ENTITY_KEY("role_entity:", 60, TimeUnit.MINUTES),
     POST_ENTITY_KEY("post_entity:", 60, TimeUnit.MINUTES),
     ROLE_MODEL_INFO_KEY("role_model_info:", 60, TimeUnit.MINUTES),
+    USER_USERNAME_KEY("user_username:", 60, TimeUnit.MINUTES),
 
     ;
 

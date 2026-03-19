@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.cache.CacheCenter;
 import com.agileboot.domain.system.menu.db.SysMenuService;
 import com.agileboot.domain.system.role.command.UpdateDataScopeCommand;
@@ -28,8 +29,10 @@ class RoleApplicationServiceTest {
     private final SysRoleService roleService = mock(SysRoleService.class);
     private final SysUserService userService = mock(SysUserService.class);
     private final SysMenuService menuService = mock(SysMenuService.class);
+    private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
     private final RoleApplicationService applicationService =
-        new RoleApplicationService(roleModelFactory, userModelFactory, roleService, userService, menuService);
+        new RoleApplicationService(roleModelFactory, userModelFactory, roleService, userService, menuService,
+            auditUserEnricher);
 
     @SuppressWarnings("unchecked")
     private final RedisCacheTemplate<SysRoleEntity> roleCache = mock(RedisCacheTemplate.class);

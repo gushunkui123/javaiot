@@ -2,6 +2,7 @@ package com.agileboot.domain.business.material;
 
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.domain.common.command.BulkOperationCommand;
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.business.material.command.AddMaterialCommand;
 import com.agileboot.domain.business.material.command.UpdateMaterialCommand;
 import com.agileboot.domain.business.material.db.BizMaterialEntity;
@@ -26,9 +27,12 @@ public class MaterialApplicationService {
 
     private final BizMaterialService materialService;
 
+    private final AuditUserEnricher auditUserEnricher;
+
     public PageDTO<MaterialDTO> getMaterialList(MaterialQuery query) {
         Page<BizMaterialEntity> page = materialService.page(query.toPage(), query.toQueryWrapper());
         List<MaterialDTO> records = page.getRecords().stream().map(MaterialDTO::new).toList();
+        auditUserEnricher.enrich(records);
         return new PageDTO<>(records, page.getTotal());
     }
 

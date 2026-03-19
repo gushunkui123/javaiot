@@ -2,6 +2,7 @@ package com.agileboot.domain.business.workorder;
 
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.domain.common.command.BulkOperationCommand;
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.business.workorder.command.AddWorkOrderCommand;
 import com.agileboot.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.agileboot.domain.business.workorder.db.BizWorkOrderEntity;
@@ -26,15 +27,20 @@ public class WorkOrderApplicationService {
 
     private final BizWorkOrderService workOrderService;
 
+    private final AuditUserEnricher auditUserEnricher;
+
     public PageDTO<WorkOrderDTO> getWorkOrderList(WorkOrderQuery query) {
         Page<BizWorkOrderEntity> page = workOrderService.page(query.toPage(), query.toQueryWrapper());
         List<WorkOrderDTO> records = page.getRecords().stream().map(WorkOrderDTO::new).toList();
+        auditUserEnricher.enrich(records);
         return new PageDTO<>(records, page.getTotal());
     }
 
     public WorkOrderDTO getWorkOrderInfo(Long workOrderId) {
         WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
-        return new WorkOrderDTO(model);
+        WorkOrderDTO dto = new WorkOrderDTO(model);
+        auditUserEnricher.enrich(dto);
+        return dto;
     }
 
     public void addWorkOrder(AddWorkOrderCommand addCommand) {

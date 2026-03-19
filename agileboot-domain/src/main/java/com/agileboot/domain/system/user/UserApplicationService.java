@@ -2,6 +2,7 @@ package com.agileboot.domain.system.user;
 
 import cn.hutool.core.convert.Convert;
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.cache.CacheCenter;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.common.dto.CurrentLoginUserDTO;
@@ -50,10 +51,13 @@ public class UserApplicationService {
 
     private final UserModelFactory userModelFactory;
 
+    private final AuditUserEnricher auditUserEnricher;
+
 
     public PageDTO<UserDTO> getUserList(SearchUserQuery<SearchUserDO> query) {
         Page<SearchUserDO> userPage = userService.getUserList(query);
         List<UserDTO> userDTOList = userPage.getRecords().stream().map(UserDTO::new).collect(Collectors.toList());
+        auditUserEnricher.enrich(userDTOList);
         return new PageDTO<>(userDTOList, userPage.getTotal());
     }
 
@@ -63,7 +67,9 @@ public class UserApplicationService {
         SysPostEntity postEntity = userService.getPostOfUser(userId);
         SysRoleEntity roleEntity = userService.getRoleOfUser(userId);
 
-        return new UserProfileDTO(userEntity, postEntity, roleEntity);
+        UserProfileDTO profileDTO = new UserProfileDTO(userEntity, postEntity, roleEntity);
+        auditUserEnricher.enrich(profileDTO.getUser());
+        return profileDTO;
     }
 
 
@@ -75,7 +81,9 @@ public class UserApplicationService {
     public CurrentLoginUserDTO getLoginUserInfo(SystemLoginUser loginUser) {
         CurrentLoginUserDTO permissionDTO = new CurrentLoginUserDTO();
 
-        permissionDTO.setUserInfo(new UserDTO(CacheCenter.userCache.getObjectById(loginUser.getUserId())));
+        UserDTO userDTO = new UserDTO(CacheCenter.userCache.getObjectById(loginUser.getUserId()));
+        auditUserEnricher.enrich(userDTO);
+        permissionDTO.setUserInfo(userDTO);
         permissionDTO.setRoleKey(loginUser.getRoleInfo().getRoleKey());
         permissionDTO.setPermissions(loginUser.getRoleInfo().getMenuPermissions());
 
@@ -92,7 +100,7 @@ public class UserApplicationService {
 
         userModel.updateById();
 
-        CacheCenter.userCache.delete(userModel.getUserId());
+        CacheCenter.deleteUserCache(userModel.getUserId());
     }
 
     public UserDetailDTO getUserDetailInfo(Long userId) {
@@ -107,7 +115,9 @@ public class UserApplicationService {
         detailDTO.setPostOptions(postDtoList);
 
         if (userEntity != null) {
-            detailDTO.setUser(new UserDTO(userEntity));
+            UserDTO userDTO = new UserDTO(userEntity);
+            auditUserEnricher.enrich(userDTO);
+            detailDTO.setUser(userDTO);
             detailDTO.setRoleId(userEntity.getRoleId());
             detailDTO.setPostId(userEntity.getPostId());
         }
@@ -136,7 +146,7 @@ public class UserApplicationService {
         model.checkFieldRelatedEntityExist();
         model.updateById();
 
-        CacheCenter.userCache.delete(model.getUserId());
+        CacheCenter.deleteUserCache(model.getUserId());
     }
 
     public void deleteUsers(SystemLoginUser loginUser, BulkOperationCommand<Long> command) {
@@ -144,7 +154,7 @@ public class UserApplicationService {
             UserModel userModel = userModelFactory.loadById(id);
             userModel.checkCanBeDelete(loginUser);
             userModel.deleteById();
-            CacheCenter.userCache.delete(userModel.getUserId());
+            CacheCenter.deleteUserCache(userModel.getUserId());
         }
     }
 
@@ -153,7 +163,7 @@ public class UserApplicationService {
         userModel.modifyPassword(command);
         userModel.updateById();
 
-        CacheCenter.userCache.delete(userModel.getUserId());
+        CacheCenter.deleteUserCache(userModel.getUserId());
     }
 
     public void resetUserPassword(ResetPasswordCommand command) {
@@ -162,7 +172,7 @@ public class UserApplicationService {
         userModel.resetPassword(command.getPassword());
         userModel.updateById();
 
-        CacheCenter.userCache.delete(userModel.getUserId());
+        CacheCenter.deleteUserCache(userModel.getUserId());
     }
 
     public void changeUserStatus(ChangeStatusCommand command) {
@@ -171,7 +181,7 @@ public class UserApplicationService {
         userModel.setStatus(Convert.toInt(command.getStatus()));
         userModel.updateById();
 
-        CacheCenter.userCache.delete(userModel.getUserId());
+        CacheCenter.deleteUserCache(userModel.getUserId());
     }
 
     public void updateUserAvatar(UpdateUserAvatarCommand command) {
@@ -180,7 +190,7 @@ public class UserApplicationService {
         userModel.setAvatar(command.getAvatar());
         userModel.updateById();
 
-        CacheCenter.userCache.delete(userModel.getUserId());
+        CacheCenter.deleteUserCache(userModel.getUserId());
     }
 
 
