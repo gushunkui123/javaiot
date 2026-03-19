@@ -5,6 +5,7 @@ import com.agileboot.common.core.base.BaseController;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.common.enums.common.BusinessTypeEnum;
+import com.agileboot.common.utils.poi.CustomExcelUtil;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.business.workorder.WorkOrderApplicationService;
 import com.agileboot.domain.business.workorder.command.AddWorkOrderCommand;
@@ -13,6 +14,7 @@ import com.agileboot.domain.business.workorder.dto.WorkOrderDTO;
 import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -49,6 +51,17 @@ public class BizWorkOrderController extends BaseController {
     public ResponseDTO<PageDTO<WorkOrderDTO>> list(WorkOrderQuery query) {
         PageDTO<WorkOrderDTO> pageDTO = workOrderApplicationService.getWorkOrderList(query);
         return ResponseDTO.ok(pageDTO);
+    }
+
+    @Operation(summary = "工单列表导出")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.EXPORT)
+    @PreAuthorize("@permission.has('business:workOrder:export')")
+    @GetMapping(value = "/excel", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public void export(HttpServletResponse response, WorkOrderQuery query) {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=workorder_export.xlsx");
+        List<WorkOrderDTO> all = workOrderApplicationService.getWorkOrderListAll(query);
+        CustomExcelUtil.writeToResponse(all, WorkOrderDTO.class, response);
     }
 
     @Operation(summary = "工单详情")

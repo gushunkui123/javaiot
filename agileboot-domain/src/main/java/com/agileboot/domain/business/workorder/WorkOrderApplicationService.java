@@ -36,6 +36,13 @@ public class WorkOrderApplicationService {
         return new PageDTO<>(records, page.getTotal());
     }
 
+    public List<WorkOrderDTO> getWorkOrderListAll(WorkOrderQuery query) {
+        List<BizWorkOrderEntity> all = workOrderService.list(query.toQueryWrapper());
+        List<WorkOrderDTO> records = all.stream().map(WorkOrderDTO::new).toList();
+        auditUserEnricher.enrich(records);
+        return records;
+    }
+
     public WorkOrderDTO getWorkOrderInfo(Long workOrderId) {
         WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
         WorkOrderDTO dto = new WorkOrderDTO(model);
