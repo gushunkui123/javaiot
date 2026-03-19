@@ -54,4 +54,10 @@ public class MaterialApplicationService {
         materialService.removeBatchByIds(deleteCommand.getIds());
     }
 
+    public void importMaterial(List<AddMaterialCommand> commands) {
+        for (AddMaterialCommand command : commands) {
+            addMaterial(command);
+        }
+    }
+
 }

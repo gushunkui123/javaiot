@@ -1,10 +1,12 @@
 package com.agileboot.admin.controller.business;
 
+import cn.hutool.core.collection.ListUtil;
 import com.agileboot.admin.customize.aop.accessLog.AccessLog;
 import com.agileboot.common.core.base.BaseController;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.common.enums.common.BusinessTypeEnum;
+import com.agileboot.common.utils.poi.CustomExcelUtil;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.business.material.MaterialApplicationService;
 import com.agileboot.domain.business.material.command.AddMaterialCommand;
@@ -13,6 +15,7 @@ import com.agileboot.domain.business.material.dto.MaterialDTO;
 import com.agileboot.domain.business.material.query.MaterialQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -25,8 +28,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 原料信息操作处理
@@ -48,6 +53,35 @@ public class BizMaterialController extends BaseController {
     public ResponseDTO<PageDTO<MaterialDTO>> list(MaterialQuery query) {
         PageDTO<MaterialDTO> pageDTO = materialApplicationService.getMaterialList(query);
         return ResponseDTO.ok(pageDTO);
+    }
+
+    @Operation(summary = "原料列表导出")
+    @PreAuthorize("@permission.has('business:material:export')")
+    @AccessLog(title = "原料管理", businessType = BusinessTypeEnum.EXPORT)
+    @GetMapping(value = "/excel", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public void exportByExcel(HttpServletResponse response, MaterialQuery query) {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=material_export.xlsx");
+        PageDTO<MaterialDTO> materialList = materialApplicationService.getMaterialList(query);
+        CustomExcelUtil.writeToResponse(materialList.getRows(), MaterialDTO.class, response);
+    }
+
+    @Operation(summary = "原料列表导入")
+    @PreAuthorize("@permission.has('business:material:import')")
+    @AccessLog(title = "原料管理", businessType = BusinessTypeEnum.IMPORT)
+    @PostMapping(value = "/excel", consumes = "multipart/form-data")
+    public ResponseDTO<Void> importByExcel(@RequestPart("file") MultipartFile file) {
+        List<AddMaterialCommand> commands = CustomExcelUtil.readFromRequest(AddMaterialCommand.class, file);
+        materialApplicationService.importMaterial(commands);
+        return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "原料导入模板下载")
+    @GetMapping(value = "/excelTemplate", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public void downloadExcelTemplate(HttpServletResponse response) {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=material_template.xlsx");
+        CustomExcelUtil.writeToResponse(ListUtil.toList(new AddMaterialCommand()), AddMaterialCommand.class, response);
     }
 
     @Operation(summary = "添加原料")
