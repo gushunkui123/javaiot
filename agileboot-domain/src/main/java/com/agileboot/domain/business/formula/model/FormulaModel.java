@@ -98,6 +98,8 @@ public class FormulaModel extends BizFormulaEntity {
                 entity.setFormulaId(getFormulaId());
                 entity.setMaterialId(item.getMaterialId());
                 entity.setMaterialWeight(item.getMaterialWeight());
+                entity.setRatio(item.getRatio());
+                entity.setWeightUnit(item.getWeightUnit() != null ? item.getWeightUnit() : "g");
                 entity.setStepNo(item.getStepNo());
                 entity.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
                 list.add(entity);

@@ -172,6 +172,8 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         FORMULA_CODE_IS_NOT_UNIQUE(11201, "配方编号:{} 已存在", "Business.FORMULA_CODE_IS_NOT_UNIQUE"),
 
+        FORMULA_IMPORT_MATERIAL_NOT_FOUND(11202, "导入配方时原料不存在:{}", "Business.FORMULA_IMPORT_MATERIAL_NOT_FOUND"),
+
         // -------------------------------- WORK ORDER -------------------------------------------------
 
         WORK_ORDER_NO_IS_NOT_UNIQUE(11301, "工单编号:{} 已存在", "Business.WORK_ORDER_NO_IS_NOT_UNIQUE"),

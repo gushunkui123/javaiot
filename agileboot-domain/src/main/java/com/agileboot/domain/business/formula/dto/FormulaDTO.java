@@ -27,6 +27,16 @@ public class FormulaDTO implements AuditableDTO {
 
     private String formulaName;
 
+    private String formulaDate;
+
+    private String moldCode;
+
+    private String batch;
+
+    private String batchCount;
+
+    private String orderNo;
+
     private Long creatorId;
 
     private String creatorName;

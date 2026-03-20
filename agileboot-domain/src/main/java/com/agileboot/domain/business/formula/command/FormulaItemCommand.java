@@ -23,6 +23,12 @@ public class FormulaItemCommand {
     @Positive(message = "原料重量必须为正数")
     private BigDecimal materialWeight;
 
+    @Schema(description = "比率")
+    private BigDecimal ratio;
+
+    @Schema(description = "重量单位")
+    private String weightUnit;
+
     @Schema(description = "下料段序")
     private Integer stepNo;
 

@@ -25,6 +25,21 @@ public class AddFormulaCommand {
     @Size(max = 50, message = "配方名称长度不能超过50个字符")
     protected String formulaName;
 
+    @Schema(description = "日期")
+    protected String formulaDate;
+
+    @Schema(description = "模具代号")
+    protected String moldCode;
+
+    @Schema(description = "批次")
+    protected String batch;
+
+    @Schema(description = "手数")
+    protected String batchCount;
+
+    @Schema(description = "生产订单号")
+    protected String orderNo;
+
     @Schema(description = "配方明细列表")
     @NotEmpty(message = "配方明细不能为空")
     @Valid

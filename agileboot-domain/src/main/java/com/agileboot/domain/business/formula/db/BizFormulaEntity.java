@@ -35,6 +35,26 @@ public class BizFormulaEntity extends BaseEntity<BizFormulaEntity> {
     @TableField("formula_name")
     private String formulaName;
 
+    @Schema(description = "日期")
+    @TableField("formula_date")
+    private String formulaDate;
+
+    @Schema(description = "模具代号")
+    @TableField("mold_code")
+    private String moldCode;
+
+    @Schema(description = "批次")
+    @TableField("batch")
+    private String batch;
+
+    @Schema(description = "手数")
+    @TableField("batch_count")
+    private String batchCount;
+
+    @Schema(description = "生产订单号")
+    @TableField("order_no")
+    private String orderNo;
+
     @Override
     public Serializable pkVal() {
         return this.formulaId;

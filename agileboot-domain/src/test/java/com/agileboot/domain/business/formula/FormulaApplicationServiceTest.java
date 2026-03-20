@@ -15,6 +15,7 @@ import com.agileboot.domain.business.formula.dto.FormulaDTO;
 import com.agileboot.domain.business.formula.model.FormulaModel;
 import com.agileboot.domain.business.formula.model.FormulaModelFactory;
 import com.agileboot.domain.business.formula.query.FormulaQuery;
+import com.agileboot.domain.business.material.db.BizMaterialService;
 import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -27,8 +28,9 @@ class FormulaApplicationServiceTest {
     private final BizFormulaService formulaService = mock(BizFormulaService.class);
     private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
+    private final BizMaterialService materialService = mock(BizMaterialService.class);
     private final FormulaApplicationService applicationService =
-        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher);
+        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher, materialService);
 
     @Test
     void getFormulaListShouldEnrichAuditUsers() {

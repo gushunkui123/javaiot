@@ -17,6 +17,10 @@ public class FormulaItemDTO {
 
     private BigDecimal materialWeight;
 
+    private BigDecimal ratio;
+
+    private String weightUnit;
+
     private Integer stepNo;
 
     private Integer sortOrder;

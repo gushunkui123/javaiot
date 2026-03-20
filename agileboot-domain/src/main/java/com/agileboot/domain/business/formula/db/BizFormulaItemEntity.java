@@ -44,6 +44,14 @@ public class BizFormulaItemEntity extends Model<BizFormulaItemEntity> {
     @TableField("step_no")
     private Integer stepNo;
 
+    @Schema(description = "比率")
+    @TableField("ratio")
+    private BigDecimal ratio;
+
+    @Schema(description = "重量单位")
+    @TableField("weight_unit")
+    private String weightUnit;
+
     @Schema(description = "排序号")
     @TableField("sort_order")
     private Integer sortOrder;

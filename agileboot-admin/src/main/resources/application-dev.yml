@@ -103,3 +103,5 @@ agileboot:
     # 前端url请求转发前缀
     api-prefix: /dev-api
     demo-enabled: false
+    # 配方导入时，自动创建不存在的原料
+    formula-import-auto-create-material: true

@@ -37,6 +37,11 @@ public class AgileBootConfig {
     private static boolean demoEnabled;
 
     /**
+     * 配方导入时，自动创建不存在的原料
+     */
+    private static boolean formulaImportAutoCreateMaterial;
+
+    /**
      * 上传路径
      */
     private static String fileBaseDir;
@@ -78,6 +83,14 @@ public class AgileBootConfig {
 
     public void setDemoEnabled(boolean demoEnabled) {
         AgileBootConfig.demoEnabled = demoEnabled;
+    }
+
+    public static boolean isFormulaImportAutoCreateMaterial() {
+        return formulaImportAutoCreateMaterial;
+    }
+
+    public void setFormulaImportAutoCreateMaterial(boolean formulaImportAutoCreateMaterial) {
+        AgileBootConfig.formulaImportAutoCreateMaterial = formulaImportAutoCreateMaterial;
     }
 
 }

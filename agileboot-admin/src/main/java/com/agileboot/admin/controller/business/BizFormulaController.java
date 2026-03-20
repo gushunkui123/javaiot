@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +28,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 配方信息操作处理
@@ -57,6 +60,15 @@ public class BizFormulaController extends BaseController {
     public ResponseDTO<FormulaDTO> getInfo(@PathVariable Long formulaId) {
         FormulaDTO formulaDTO = formulaApplicationService.getFormulaInfo(formulaId);
         return ResponseDTO.ok(formulaDTO);
+    }
+
+    @Operation(summary = "配方Excel导入")
+    @PreAuthorize("@permission.has('business:formula:add')")
+    @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.IMPORT)
+    @PostMapping(value = "/excel", consumes = "multipart/form-data")
+    public ResponseDTO<Void> importByExcel(@RequestPart("file") MultipartFile file) throws IOException {
+        formulaApplicationService.importFormula(file.getInputStream());
+        return ResponseDTO.ok();
     }
 
     @Operation(summary = "添加配方")
