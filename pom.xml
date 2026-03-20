@@ -51,6 +51,8 @@
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
         <!-- Mockito 版本（或直接用 mockito-inline）-->
         <mockito.version>4.11.0</mockito.version>
+        <!-- 默认跳过测试 -->
+        <skipTests>true</skipTests>
     </properties>
 
     <!-- 依赖声明 -->
@@ -353,9 +355,9 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven.surefire.plugin.version}</version>
-                    <!-- 想跑test的话  设置成false  -->
+                    <!-- 默认跳过测试；运行测试请使用: mvn test -Punit-test -->
                     <configuration>
-                        <skipTests>true</skipTests>
+                        <skipTests>${skipTests}</skipTests>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -407,5 +409,14 @@
 <!--            </snapshots>-->
 <!--        </pluginRepository>-->
 <!--    </pluginRepositories>-->
+
+    <profiles>
+        <profile>
+            <id>unit-test</id>
+            <properties>
+                <skipTests>false</skipTests>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>
