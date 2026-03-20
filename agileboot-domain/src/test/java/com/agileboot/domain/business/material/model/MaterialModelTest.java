@@ -43,8 +43,8 @@ class MaterialModelTest {
         newMaterial.setMaterialType("金属");
         newMaterial.setMaterialName("铝线");
 
-        when(materialService.isMaterialDuplicated(MATERIAL_ID, eq("金属"), eq("铜线"))).thenReturn(true);
-        when(materialService.isMaterialDuplicated(MATERIAL_ID, eq("金属"), eq("铝线"))).thenReturn(false);
+        when(materialService.isMaterialDuplicated(eq(MATERIAL_ID), eq("金属"), eq("铜线"))).thenReturn(true);
+        when(materialService.isMaterialDuplicated(eq(MATERIAL_ID), eq("金属"), eq("铝线"))).thenReturn(false);
 
         ApiException exception = assertThrows(ApiException.class, duplicatedMaterial::checkMaterialUnique);
         Assertions.assertEquals(Business.MATERIAL_TYPE_AND_NAME_IS_NOT_UNIQUE, exception.getErrorCode());

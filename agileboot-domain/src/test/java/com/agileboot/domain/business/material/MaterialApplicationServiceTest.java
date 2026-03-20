@@ -103,4 +103,27 @@ class MaterialApplicationServiceTest {
         verify(materialService, never()).removeBatchByIds(any());
     }
 
+    @Test
+    void importMaterialShouldAddEachCommand() {
+        AddMaterialCommand cmd1 = new AddMaterialCommand();
+        cmd1.setMaterialName("铜线");
+        cmd1.setMaterialType("金属");
+        AddMaterialCommand cmd2 = new AddMaterialCommand();
+        cmd2.setMaterialName("铝线");
+        cmd2.setMaterialType("金属");
+
+        MaterialModel model1 = mock(MaterialModel.class);
+        MaterialModel model2 = mock(MaterialModel.class);
+        when(materialModelFactory.create()).thenReturn(model1, model2);
+
+        applicationService.importMaterial(List.of(cmd1, cmd2));
+
+        verify(model1).loadFromAddCommand(cmd1);
+        verify(model1).checkMaterialUnique();
+        verify(model1).insert();
+        verify(model2).loadFromAddCommand(cmd2);
+        verify(model2).checkMaterialUnique();
+        verify(model2).insert();
+    }
+
 }

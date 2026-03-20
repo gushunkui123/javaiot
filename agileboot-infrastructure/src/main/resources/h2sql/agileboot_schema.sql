@@ -62,7 +62,7 @@ create table sys_menu
     router_name varchar(255)  default ''   not null comment '路由名称（需保持和前端对应的vue文件中的name保持一致defineOptions方法中设置的name）',
     parent_id   bigint        default 0    not null comment '父菜单ID',
     path        varchar(255)               null comment '组件路径（对应前端项目view文件夹中的路径）',
-    is_button   tinyint(1)    default 0    not null comment '是否按钮',
+    is_button   tinyint    default 0    not null comment '是否按钮',
     permission  varchar(128)               null comment '权限标识',
     meta_info   varchar(1024) default '{}' not null comment '路由元信息（前端根据这个信息进行逻辑处理）',
     status      smallint      default 0    not null comment '菜单状态（1启用 0停用）',
@@ -71,7 +71,7 @@ create table sys_menu
     create_time datetime                   null comment '创建时间',
     updater_id  bigint                     null comment '更新者ID',
     update_time datetime                   null comment '更新时间',
-    deleted     tinyint(1)    default 0    not null comment '逻辑删除'
+    deleted     tinyint    default 0    not null comment '逻辑删除'
 );
 
 create sequence if not exists sys_notice_seq start with 3 increment by 1;

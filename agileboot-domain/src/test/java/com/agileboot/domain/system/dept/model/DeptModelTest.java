@@ -1,6 +1,7 @@
 package com.agileboot.domain.system.dept.model;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -52,7 +53,7 @@ class DeptModelTest {
     void testCheckHasChildDept() {
         DeptModel deptModel = deptModelFactory.create();
         deptModel.setDeptId(DEPT_ID);
-        when(deptService.hasChildrenDept((DEPT_ID), eq(null))).thenReturn(true);
+        when(deptService.hasChildrenDept(eq(DEPT_ID), isNull())).thenReturn(true);
 
         ApiException exception = assertThrows(ApiException.class, deptModel::checkHasChildDept);
 

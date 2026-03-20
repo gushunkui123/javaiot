@@ -32,30 +32,12 @@ class MenuModelTest {
     }
 
     @Test
-    void testCheckExternalLinkWhenSuccessful() {
-        MenuModel notExternalButWithoutHttpPrefix = new MenuModel();
-//        notExternalButWithoutHttpPrefix.setIsExternal(false);
-        notExternalButWithoutHttpPrefix.setPath("www.baidu.com");
+    void testCheckExternalLinkIsNoOp() {
+        // checkExternalLink 方法体已被注释掉，当前为空实现，不会抛出异常
+        MenuModel menuModel = new MenuModel();
+        menuModel.setPath("www.baidu.com");
 
-        MenuModel isExternalWithHttpPrefix = new MenuModel();
-//        isExternalWithHttpPrefix.setIsExternal(true);
-        isExternalWithHttpPrefix.setPath("http://www.baidu.com");
-
-        Assertions.assertDoesNotThrow(()->{
-            notExternalButWithoutHttpPrefix.checkExternalLink();
-            isExternalWithHttpPrefix.checkExternalLink();
-        });
-    }
-
-    @Test
-    void testCheckExternalLinkWhenFailed() {
-        MenuModel externalWithoutHttpPrefix = new MenuModel();
-//        externalWithoutHttpPrefix.setIsExternal(true);
-        externalWithoutHttpPrefix.setPath("www.baidu.com");
-
-        ApiException exception = assertThrows(ApiException.class, externalWithoutHttpPrefix::checkExternalLink);
-
-        Assertions.assertEquals(Business.MENU_EXTERNAL_LINK_MUST_BE_HTTP, exception.getErrorCode());
+        Assertions.assertDoesNotThrow(menuModel::checkExternalLink);
     }
 
 

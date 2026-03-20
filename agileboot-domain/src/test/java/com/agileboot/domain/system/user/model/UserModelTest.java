@@ -84,6 +84,7 @@ class UserModelTest {
     void testCheckCanBeDeleteWhenDeleteItself() {
         UserModel userModel = userModelFactory.create();
         userModel.setUserId(USER_ID);
+        userModel.setIsAdmin(false);
         SystemLoginUser loginUser = new SystemLoginUser();
         loginUser.setUserId(USER_ID);
 
@@ -97,6 +98,7 @@ class UserModelTest {
         UserModel userModel = userModelFactory.create();
         long adminId = 1L;
         userModel.setUserId(adminId);
+        userModel.setIsAdmin(true);
         SystemLoginUser loginUser = new SystemLoginUser();
         loginUser.setUserId(2L);
 
@@ -110,6 +112,7 @@ class UserModelTest {
     void testCheckCanBeDeleteWhenSuccessful() {
         UserModel userModel = userModelFactory.create();
         userModel.setUserId(2L);
+        userModel.setIsAdmin(false);
         SystemLoginUser loginUser = new SystemLoginUser();
         loginUser.setUserId(ADMIN_USER_ID);
 

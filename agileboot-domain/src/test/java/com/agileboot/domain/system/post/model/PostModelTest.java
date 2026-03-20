@@ -58,8 +58,8 @@ class PostModelTest {
         postWithNewName.setPostName("post 2");
         postWithNewName.setPostId(POST_ID);
 
-        when(postService.isPostNameDuplicated(POST_ID, eq("post 1"))).thenReturn(true);
-        when(postService.isPostNameDuplicated(POST_ID, eq("post 2"))).thenReturn(false);
+        when(postService.isPostNameDuplicated(eq(POST_ID), eq("post 1"))).thenReturn(true);
+        when(postService.isPostNameDuplicated(eq(POST_ID), eq("post 2"))).thenReturn(false);
 
         ApiException exception = assertThrows(ApiException.class, postWithSameName::checkPostNameUnique);
         Assertions.assertEquals(Business.POST_NAME_IS_NOT_UNIQUE, exception.getErrorCode());

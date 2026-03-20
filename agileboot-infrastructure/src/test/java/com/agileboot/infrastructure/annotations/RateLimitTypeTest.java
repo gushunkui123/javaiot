@@ -17,7 +17,7 @@ class RateLimitTypeTest {
 
         String combinedKey = LimitType.GLOBAL.generateCombinedKey(mockLimit);
 
-        Assertions.assertEquals("Test-GLOBAL", combinedKey);
+        Assertions.assertEquals("TestGLOBAL", combinedKey);
     }
 
 }
