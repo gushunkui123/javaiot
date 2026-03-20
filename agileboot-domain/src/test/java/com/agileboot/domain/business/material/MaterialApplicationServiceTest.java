@@ -1,14 +1,19 @@
 package com.agileboot.domain.business.material;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.agileboot.common.exception.ApiException;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.domain.business.formula.db.BizFormulaItemService;
 import com.agileboot.domain.business.material.command.AddMaterialCommand;
 import com.agileboot.domain.business.material.command.UpdateMaterialCommand;
 import com.agileboot.domain.business.material.dto.MaterialDTO;
@@ -27,9 +32,10 @@ class MaterialApplicationServiceTest {
 
     private final MaterialModelFactory materialModelFactory = mock(MaterialModelFactory.class);
     private final BizMaterialService materialService = mock(BizMaterialService.class);
+    private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
     private final MaterialApplicationService applicationService =
-        new MaterialApplicationService(materialModelFactory, materialService, auditUserEnricher);
+        new MaterialApplicationService(materialModelFactory, materialService, formulaItemService, auditUserEnricher);
 
     @Test
     void getMaterialListShouldEnrichAuditUsers() {
@@ -76,13 +82,25 @@ class MaterialApplicationServiceTest {
 
     @Test
     void deleteMaterialShouldRemoveBatchByIds() {
+        when(formulaItemService.exists(any())).thenReturn(false);
+
         applicationService.deleteMaterial(new BulkOperationCommand<>(List.of(2L, 3L)));
 
         ArgumentCaptor<Collection<Long>> deletedIdsCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(materialService).removeBatchByIds(deletedIdsCaptor.capture());
         Collection<Long> deletedIds = deletedIdsCaptor.getValue();
         assertEquals(2, deletedIds.size());
-        org.junit.jupiter.api.Assertions.assertTrue(deletedIds.containsAll(List.of(2L, 3L)));
+        assertTrue(deletedIds.containsAll(List.of(2L, 3L)));
+    }
+
+    @Test
+    void deleteMaterialShouldRejectWhenReferencedByFormula() {
+        when(formulaItemService.exists(any())).thenReturn(true);
+
+        assertThrows(ApiException.class, () ->
+            applicationService.deleteMaterial(new BulkOperationCommand<>(List.of(2L))));
+
+        verify(materialService, never()).removeBatchByIds(any());
     }
 
 }

@@ -34,8 +34,12 @@ public class FormulaExcelParser {
      */
     public static FormulaExcelDTO parse(InputStream inputStream) {
         ExcelReader reader = ExcelUtil.getReader(inputStream);
-        reader = pickDataSheet(reader);
-        return doParse(reader);
+        try {
+            reader = pickDataSheet(reader);
+            return doParse(reader);
+        } finally {
+            reader.close();
+        }
     }
 
     /**
@@ -43,8 +47,12 @@ public class FormulaExcelParser {
      */
     public static FormulaExcelDTO parse(String filePath) {
         ExcelReader reader = ExcelUtil.getReader(filePath);
-        reader = pickDataSheet(reader);
-        return doParse(reader);
+        try {
+            reader = pickDataSheet(reader);
+            return doParse(reader);
+        } finally {
+            reader.close();
+        }
     }
 
     /**
@@ -114,7 +122,6 @@ public class FormulaExcelParser {
         }
 
         dto.setItems(items);
-        reader.close();
         return dto;
     }
 

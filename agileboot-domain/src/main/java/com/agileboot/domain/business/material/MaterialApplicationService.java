@@ -1,8 +1,12 @@
 package com.agileboot.domain.business.material;
 
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.common.exception.ApiException;
+import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.common.audit.AuditUserEnricher;
+import com.agileboot.domain.business.formula.db.BizFormulaItemEntity;
+import com.agileboot.domain.business.formula.db.BizFormulaItemService;
 import com.agileboot.domain.business.material.command.AddMaterialCommand;
 import com.agileboot.domain.business.material.command.UpdateMaterialCommand;
 import com.agileboot.domain.business.material.db.BizMaterialEntity;
@@ -11,10 +15,12 @@ import com.agileboot.domain.business.material.dto.MaterialDTO;
 import com.agileboot.domain.business.material.model.MaterialModel;
 import com.agileboot.domain.business.material.model.MaterialModelFactory;
 import com.agileboot.domain.business.material.query.MaterialQuery;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Codex
@@ -27,6 +33,8 @@ public class MaterialApplicationService {
 
     private final BizMaterialService materialService;
 
+    private final BizFormulaItemService formulaItemService;
+
     private final AuditUserEnricher auditUserEnricher;
 
     public PageDTO<MaterialDTO> getMaterialList(MaterialQuery query) {
@@ -36,6 +44,7 @@ public class MaterialApplicationService {
         return new PageDTO<>(records, page.getTotal());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void addMaterial(AddMaterialCommand addCommand) {
         MaterialModel materialModel = materialModelFactory.create();
         materialModel.loadFromAddCommand(addCommand);
@@ -43,6 +52,7 @@ public class MaterialApplicationService {
         materialModel.insert();
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void updateMaterial(UpdateMaterialCommand updateCommand) {
         MaterialModel materialModel = materialModelFactory.loadById(updateCommand.getMaterialId());
         materialModel.loadFromUpdateCommand(updateCommand);
@@ -50,10 +60,18 @@ public class MaterialApplicationService {
         materialModel.updateById();
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void deleteMaterial(BulkOperationCommand<Long> deleteCommand) {
+        boolean referenced = formulaItemService.exists(
+            new LambdaQueryWrapper<BizFormulaItemEntity>()
+                .in(BizFormulaItemEntity::getMaterialId, deleteCommand.getIds()));
+        if (referenced) {
+            throw new ApiException(Business.MATERIAL_ALREADY_ASSIGNED_TO_FORMULA_CAN_NOT_BE_DELETED);
+        }
         materialService.removeBatchByIds(deleteCommand.getIds());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void importMaterial(List<AddMaterialCommand> commands) {
         for (AddMaterialCommand command : commands) {
             addMaterial(command);

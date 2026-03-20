@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Codex
@@ -50,6 +51,7 @@ public class WorkOrderApplicationService {
         return dto;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void addWorkOrder(AddWorkOrderCommand addCommand) {
         WorkOrderModel workOrderModel = workOrderModelFactory.create();
         workOrderModel.loadFromAddCommand(addCommand);
@@ -57,6 +59,7 @@ public class WorkOrderApplicationService {
         workOrderModel.insert();
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void updateWorkOrder(UpdateWorkOrderCommand updateCommand) {
         WorkOrderModel workOrderModel = workOrderModelFactory.loadById(updateCommand.getWorkOrderId());
         workOrderModel.loadFromUpdateCommand(updateCommand);
@@ -64,6 +67,7 @@ public class WorkOrderApplicationService {
         workOrderModel.updateById();
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void deleteWorkOrder(BulkOperationCommand<Long> deleteCommand) {
         workOrderService.removeBatchByIds(deleteCommand.getIds());
     }
