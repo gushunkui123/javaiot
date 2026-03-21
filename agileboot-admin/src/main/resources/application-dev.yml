@@ -105,3 +105,19 @@ agileboot:
     demo-enabled: false
     # 配方导入时，自动创建不存在的原料
     formula-import-auto-create-material: true
+    # 外部设备连接配置
+    machines:
+        main-scale:
+            enabled: true
+            ip: 192.168.99.202
+            api-url: http://${agileboot.machines.main-scale.ip}:8000/mws/api
+            api-write-url: http://${agileboot.machines.main-scale.ip}:8000/mws/api/wr
+        micro-scale:
+            enabled: true
+            ip: 192.168.99.202
+            api-url: http://${agileboot.machines.micro-scale.ip}:8000/aws/api
+            api-write-url: http://${agileboot.machines.micro-scale.ip}:8000/aws/api/wr
+        labeling-machine:
+            enabled: true
+            host: 192.168.99.202
+            port: 9100
