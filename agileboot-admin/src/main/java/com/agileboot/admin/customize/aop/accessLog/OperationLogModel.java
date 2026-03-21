@@ -31,7 +31,7 @@ public class OperationLogModel extends SysOperationLogEntity {
 
     public static final int MAX_DATA_LENGTH = 512;
 
-    HttpServletRequest request = ServletHolderUtil.getRequest();
+    final HttpServletRequest request = ServletHolderUtil.getRequest();
 
     public void fillOperatorInfo() {
         // 获取当前的用户

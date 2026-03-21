@@ -18,7 +18,7 @@ class DeptTreeDataPermissionCheckerTest {
 
     private final SysDeptService deptService = mock(SysDeptService.class);
 
-    public SystemLoginUser loginUser = mock(SystemLoginUser.class);
+    public final SystemLoginUser loginUser = mock(SystemLoginUser.class);
 
     @BeforeEach
     public void mockBefore() {
