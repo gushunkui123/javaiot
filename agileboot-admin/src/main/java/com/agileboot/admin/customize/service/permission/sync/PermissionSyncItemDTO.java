@@ -1,17 +1,14 @@
 package com.agileboot.admin.customize.service.permission.sync;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 单条权限同步结果。
+ * 单条权限同步明细。
  */
 @Data
 @Builder
@@ -19,31 +16,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PermissionSyncItemDTO {
 
-    public static final Comparator<PermissionSyncItemDTO> DEFAULT_COMPARATOR = Comparator
-        .comparing((PermissionSyncItemDTO i) -> StrUtil.blankToDefault(i.getPermission(), ""))
-        .thenComparing(i -> StrUtil.blankToDefault(i.getMenuName(), ""))
-        .thenComparing(i -> StrUtil.blankToDefault(i.getParentPermission(), ""))
-        .thenComparing(i -> CollUtil.isEmpty(i.getHandlers()) ? "" : CollUtil.getFirst(i.getHandlers()));
+    public static final Comparator<PermissionSyncItemDTO> DEFAULT_COMPARATOR =
+        Comparator.comparing((PermissionSyncItemDTO i) -> StrUtil.blankToDefault(i.getPermission(), ""))
+            .thenComparing(i -> StrUtil.blankToDefault(i.getMenuName(), ""));
 
-    private Long menuId;
-
-    private Long parentMenuId;
-
+    /** 权限标识 */
     private String permission;
 
-    private String parentPermission;
-
+    /** 菜单名称 */
     private String menuName;
 
-    @Builder.Default
-    private List<String> requestMethods = new ArrayList<>();
+    /** 父权限标识 */
+    private String parentPermission;
 
-    @Builder.Default
-    private List<String> requestPaths = new ArrayList<>();
-
-    @Builder.Default
-    private List<String> handlers = new ArrayList<>();
-
+    /** 说明 */
     private String details;
 
 }

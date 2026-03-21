@@ -1,18 +1,11 @@
 package com.agileboot.admin.customize.service.permission.sync;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.utils.jackson.JacksonUtil;
 import com.agileboot.domain.system.menu.db.SysMenuEntity;
 import com.agileboot.domain.system.menu.db.SysMenuService;
 import com.agileboot.domain.system.menu.dto.MetaDTO;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -20,216 +13,122 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 权限点预览与同步服务。
+ * 权限标识同步服务：扫描代码注解 → 比对数据库 → 补齐缺失的按钮权限。
  */
 @Service
 @RequiredArgsConstructor
 public class PermissionSyncService {
 
-    static final String AUTO_SYNC_REMARK_PREFIX = "AUTO_SYNC:";
-
     private final PermissionEndpointScanner permissionEndpointScanner;
-
     private final SysMenuService menuService;
 
+    /**
+     * 预览：只比对，不写入。
+     */
     public PermissionSyncResultDTO preview() {
-        PermissionSyncPlan plan = buildPlan();
-        plan.result().setDryRun(true);
-        plan.result().setApplied(false);
-        return plan.result();
+        return doBuildResult(false);
     }
 
+    /**
+     * 同步：比对并写入缺失的权限。
+     */
     @Transactional(rollbackFor = Exception.class)
     public PermissionSyncResultDTO sync() {
-        PermissionSyncPlan plan = buildPlan();
-        PermissionSyncResultDTO result = plan.result();
-        result.setDryRun(false);
-        if (result.isHasBlockingIssues()) {
-            result.setApplied(false);
-            return result;
-        }
-
-        for (SysMenuEntity entity : plan.menusToCreate()) {
-            menuService.save(entity);
-        }
-        for (SysMenuEntity entity : plan.menusToUpdate()) {
-            menuService.updateById(entity);
-        }
-        result.setApplied(true);
-        return result;
+        return doBuildResult(true);
     }
 
-    private PermissionSyncPlan buildPlan() {
-        PermissionEndpointScanner.ScanSnapshot snapshot = permissionEndpointScanner.scan();
+    private PermissionSyncResultDTO doBuildResult(boolean apply) {
+        // 1. 扫描代码中的权限标识 (permission -> menuName)
+        Map<String, String> scannedPermissions = permissionEndpointScanner.scan();
+
+        // 2. 查询数据库中已有的权限标识
+        Set<String> existingPermissions = menuService.list().stream()
+            .map(SysMenuEntity::getPermission)
+            .filter(StrUtil::isNotBlank)
+            .collect(Collectors.toSet());
+
+        // 3. 构建以权限标识为 key 的菜单索引（用于查找父节点）
+        Map<String, SysMenuEntity> menuByPermission = menuService.list().stream()
+            .filter(m -> StrUtil.isNotBlank(m.getPermission()))
+            .collect(Collectors.toMap(SysMenuEntity::getPermission, m -> m, (a, b) -> a));
+
         PermissionSyncResultDTO result = new PermissionSyncResultDTO();
-        result.setScannedEndpointCount(snapshot.scannedEndpointCount());
-        result.setConflicts(new ArrayList<>(snapshot.conflicts()));
-        result.setUnprotected(new ArrayList<>(snapshot.unprotected()));
+        result.setScannedCount(scannedPermissions.size());
+        result.setExistingCount(existingPermissions.size());
 
-        List<SysMenuEntity> menusWithPermission = menuService.list().stream()
-            .filter(menu -> StrUtil.isNotBlank(menu.getPermission()))
-            .toList();
-        Map<String, List<SysMenuEntity>> menusByPermission = menusWithPermission.stream()
-            .collect(Collectors.groupingBy(SysMenuEntity::getPermission, LinkedHashMap::new, Collectors.toList()));
+        // 4. 找出缺失的权限标识，逐个处理
+        for (Map.Entry<String, String> entry : scannedPermissions.entrySet()) {
+            String permission = entry.getKey();
+            String menuName = entry.getValue();
 
-        Map<String, SysMenuEntity> uniqueMenuMap = new LinkedHashMap<>();
-        for (Map.Entry<String, List<SysMenuEntity>> entry : menusByPermission.entrySet()) {
-            List<SysMenuEntity> samePermissionMenus = entry.getValue();
-            if (samePermissionMenus.size() > 1) {
-                result.getConflicts().add(PermissionSyncItemDTO.builder()
-                    .permission(entry.getKey())
-                    .menuId(samePermissionMenus.get(0).getMenuId())
-                    .handlers(List.of())
-                    .details("数据库中存在重复权限码记录，无法自动同步")
+            if (existingPermissions.contains(permission)) {
+                continue;
+            }
+
+            String parentPermission = deriveParentPermission(permission);
+            SysMenuEntity parentMenu = menuByPermission.get(parentPermission);
+
+            // 父节点不存在或父节点是按钮 → 无法挂载
+            if (parentMenu == null || Boolean.TRUE.equals(parentMenu.getIsButton())) {
+                result.getSkipped().add(PermissionSyncItemDTO.builder()
+                    .permission(permission)
+                    .menuName(menuName)
+                    .parentPermission(parentPermission)
+                    .details("未找到父节点")
                     .build());
                 continue;
             }
-            uniqueMenuMap.put(entry.getKey(), samePermissionMenus.get(0));
-        }
 
-        List<SysMenuEntity> menusToCreate = new ArrayList<>();
-        List<SysMenuEntity> menusToUpdate = new ArrayList<>();
+            // 创建按钮权限菜单
+            PermissionSyncItemDTO item = PermissionSyncItemDTO.builder()
+                .permission(permission)
+                .menuName(menuName)
+                .parentPermission(parentPermission)
+                .details("新增按钮权限")
+                .build();
 
-        for (PermissionEndpointScanner.ScannedPermissionEndpoint endpoint : snapshot.permissionEndpoints()) {
-            result.setProtectedPermissionCount(result.getProtectedPermissionCount() + 1);
-            String permission = endpoint.getPermission();
-            if (isListPermission(permission)) {
-                handleListPermission(endpoint, uniqueMenuMap, result);
-                continue;
+            if (apply) {
+                SysMenuEntity menu = buildButtonMenu(permission, menuName, parentMenu.getMenuId());
+                menuService.save(menu);
             }
-            handleActionPermission(endpoint, uniqueMenuMap, result, menusToCreate, menusToUpdate);
+
+            result.getAdded().add(item);
         }
 
-        Set<String> scannedPermissions = snapshot.permissionEndpoints().stream()
-            .map(PermissionEndpointScanner.ScannedPermissionEndpoint::getPermission)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-        collectStaleAutoGeneratedMenus(uniqueMenuMap.values(), scannedPermissions, result);
+        result.setApplied(apply);
 
-        sortResult(result);
-        result.setHasBlockingIssues(CollUtil.isNotEmpty(result.getConflicts())
-            || CollUtil.isNotEmpty(result.getUnresolved()));
-        return new PermissionSyncPlan(result, menusToCreate, menusToUpdate);
+        // 5. 排序
+        result.setAdded(result.getAdded().stream()
+            .sorted(PermissionSyncItemDTO.DEFAULT_COMPARATOR).toList());
+        result.setSkipped(result.getSkipped().stream()
+            .sorted(PermissionSyncItemDTO.DEFAULT_COMPARATOR).toList());
+
+        return result;
     }
 
-    private void handleListPermission(PermissionEndpointScanner.ScannedPermissionEndpoint endpoint,
-        Map<String, SysMenuEntity> uniqueMenuMap, PermissionSyncResultDTO result) {
-        SysMenuEntity menu = uniqueMenuMap.get(endpoint.getPermission());
-        if (menu == null) {
-            result.getUnresolved().add(toItem(endpoint, null, endpoint.getPermission(),
-                "列表权限缺少页面菜单，请先手工创建页面菜单"));
-            return;
+    /**
+     * 根据命名约定推导父权限标识。
+     * 例如 system:menu:add → system:menu:list
+     */
+    private String deriveParentPermission(String permission) {
+        int lastColon = permission.lastIndexOf(':');
+        if (lastColon < 0) {
+            return permission;
         }
-        if (Boolean.TRUE.equals(menu.getIsButton())) {
-            result.getConflicts().add(toItem(endpoint, menu, endpoint.getPermission(),
-                "列表权限已绑定到按钮菜单，预期应为页面菜单"));
-            return;
-        }
-        result.getSkipped().add(toItem(endpoint, menu, null, "页面菜单已存在，保持人工维护"));
+        return permission.substring(0, lastColon) + ":list";
     }
 
-    private void handleActionPermission(PermissionEndpointScanner.ScannedPermissionEndpoint endpoint,
-        Map<String, SysMenuEntity> uniqueMenuMap, PermissionSyncResultDTO result, List<SysMenuEntity> menusToCreate,
-        List<SysMenuEntity> menusToUpdate) {
-        String parentPermission = toListPermission(endpoint.getPermission());
-        SysMenuEntity parentMenu = uniqueMenuMap.get(parentPermission);
-        if (parentMenu == null || Boolean.TRUE.equals(parentMenu.getIsButton())) {
-            result.getUnresolved().add(toItem(endpoint, parentMenu, parentPermission,
-                "未找到对应的页面菜单父节点，无法自动挂载按钮权限"));
-            return;
-        }
-
-        SysMenuEntity existingMenu = uniqueMenuMap.get(endpoint.getPermission());
-        if (existingMenu == null) {
-            SysMenuEntity newMenu = buildAutoGeneratedMenu(endpoint, parentMenu);
-            menusToCreate.add(newMenu);
-            result.getCreated().add(toItem(endpoint, newMenu, parentPermission, "将自动创建按钮权限"));
-            return;
-        }
-
-        if (!Boolean.TRUE.equals(existingMenu.getIsButton())) {
-            result.getConflicts().add(toItem(endpoint, existingMenu, parentPermission,
-                "权限码已被非按钮菜单占用，无法自动同步"));
-            return;
-        }
-
-        if (!isAutoGenerated(existingMenu)) {
-            result.getSkipped().add(toItem(endpoint, existingMenu, parentPermission,
-                "已存在人工维护的按钮权限，跳过自动修改"));
-            return;
-        }
-
-        if (!needsUpdate(existingMenu, endpoint, parentMenu)) {
-            result.getSkipped().add(toItem(endpoint, existingMenu, parentPermission, "自动生成记录已是最新"));
-            return;
-        }
-
-        SysMenuEntity updateMenu = buildAutoGeneratedMenu(endpoint, parentMenu);
-        updateMenu.setMenuId(existingMenu.getMenuId());
-        menusToUpdate.add(updateMenu);
-        result.getUpdated().add(toItem(endpoint, updateMenu, parentPermission, "将更新自动生成的按钮权限"));
-    }
-
-    private void collectStaleAutoGeneratedMenus(Collection<SysMenuEntity> menus, Set<String> scannedPermissions,
-        PermissionSyncResultDTO result) {
-        for (SysMenuEntity menu : menus) {
-            if (!isAutoGenerated(menu)) {
-                continue;
-            }
-            if (scannedPermissions.contains(menu.getPermission())) {
-                continue;
-            }
-            result.getStale().add(PermissionSyncItemDTO.builder()
-                .menuId(menu.getMenuId())
-                .parentMenuId(menu.getParentId())
-                .permission(menu.getPermission())
-                .menuName(menu.getMenuName())
-                .details("自动生成的权限码已不再出现在代码注解中，建议人工确认后再清理")
-                .build());
-        }
-    }
-
-    private boolean needsUpdate(SysMenuEntity existingMenu, PermissionEndpointScanner.ScannedPermissionEndpoint endpoint,
-        SysMenuEntity parentMenu) {
-        if (!Objects.equals(existingMenu.getParentId(), parentMenu.getMenuId())) {
-            return true;
-        }
-        if (!StrUtil.equals(existingMenu.getMenuName(), endpoint.getMenuName())) {
-            return true;
-        }
-        if (StrUtil.isNotBlank(existingMenu.getPath())) {
-            return true;
-        }
-        if (!" ".equals(existingMenu.getRouterName())) {
-            return true;
-        }
-        if (!Objects.equals(existingMenu.getMenuType(), 0)) {
-            return true;
-        }
-        if (!Boolean.TRUE.equals(existingMenu.getIsButton())) {
-            return true;
-        }
-        if (!Objects.equals(existingMenu.getStatus(), 1)) {
-            return true;
-        }
-        if (!StrUtil.equals(extractMetaTitle(existingMenu.getMetaInfo()), endpoint.getMenuName())) {
-            return true;
-        }
-        return !StrUtil.equals(existingMenu.getRemark(), buildAutoSyncRemark(endpoint.getPermission()));
-    }
-
-    private SysMenuEntity buildAutoGeneratedMenu(PermissionEndpointScanner.ScannedPermissionEndpoint endpoint,
-        SysMenuEntity parentMenu) {
+    private SysMenuEntity buildButtonMenu(String permission, String menuName, Long parentId) {
         SysMenuEntity menu = new SysMenuEntity();
-        menu.setParentId(parentMenu.getMenuId());
-        menu.setMenuName(endpoint.getMenuName());
+        menu.setParentId(parentId);
+        menu.setMenuName(menuName);
         menu.setMenuType(0);
         menu.setRouterName(" ");
         menu.setPath("");
         menu.setIsButton(true);
-        menu.setPermission(endpoint.getPermission());
+        menu.setPermission(permission);
         menu.setStatus(1);
-        menu.setMetaInfo(buildMetaInfo(endpoint.getMenuName()));
-        menu.setRemark(buildAutoSyncRemark(endpoint.getPermission()));
+        menu.setMetaInfo(buildMetaInfo(menuName));
         return menu;
     }
 
@@ -237,66 +136,6 @@ public class PermissionSyncService {
         MetaDTO metaDTO = new MetaDTO();
         metaDTO.setTitle(menuName);
         return JacksonUtil.to(metaDTO);
-    }
-
-    private String extractMetaTitle(String metaInfo) {
-        if (StrUtil.isBlank(metaInfo) || !JacksonUtil.isJson(metaInfo)) {
-            return null;
-        }
-        return JacksonUtil.getAsString(metaInfo, "title");
-    }
-
-    private String buildAutoSyncRemark(String permission) {
-        return AUTO_SYNC_REMARK_PREFIX + permission;
-    }
-
-    private boolean isAutoGenerated(SysMenuEntity menu) {
-        return menu != null && StrUtil.startWith(StrUtil.blankToDefault(menu.getRemark(), ""), AUTO_SYNC_REMARK_PREFIX);
-    }
-
-    private boolean isListPermission(String permission) {
-        return StrUtil.endWith(permission, ":list");
-    }
-
-    private String toListPermission(String permission) {
-        int lastSeparatorIndex = permission.lastIndexOf(':');
-        if (lastSeparatorIndex < 0) {
-            return permission;
-        }
-        return permission.substring(0, lastSeparatorIndex) + ":list";
-    }
-
-    private PermissionSyncItemDTO toItem(PermissionEndpointScanner.ScannedPermissionEndpoint endpoint, SysMenuEntity menu,
-        String parentPermission, String details) {
-        return PermissionSyncItemDTO.builder()
-            .menuId(menu != null ? menu.getMenuId() : null)
-            .parentMenuId(menu != null ? menu.getParentId() : null)
-            .permission(endpoint.getPermission())
-            .parentPermission(parentPermission)
-            .menuName(endpoint.getMenuName())
-            .requestMethods(new ArrayList<>(endpoint.getRequestMethods()))
-            .requestPaths(new ArrayList<>(endpoint.getRequestPaths()))
-            .handlers(new ArrayList<>(endpoint.getHandlers()))
-            .details(details)
-            .build();
-    }
-
-    private void sortResult(PermissionSyncResultDTO result) {
-        result.setCreated(sortItems(result.getCreated()));
-        result.setUpdated(sortItems(result.getUpdated()));
-        result.setSkipped(sortItems(result.getSkipped()));
-        result.setUnresolved(sortItems(result.getUnresolved()));
-        result.setConflicts(sortItems(result.getConflicts()));
-        result.setUnprotected(sortItems(result.getUnprotected()));
-        result.setStale(sortItems(result.getStale()));
-    }
-
-    private List<PermissionSyncItemDTO> sortItems(List<PermissionSyncItemDTO> items) {
-        return items.stream().sorted(PermissionSyncItemDTO.DEFAULT_COMPARATOR).collect(Collectors.toList());
-    }
-
-    private record PermissionSyncPlan(PermissionSyncResultDTO result, List<SysMenuEntity> menusToCreate,
-        List<SysMenuEntity> menusToUpdate) {
     }
 
 }

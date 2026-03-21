@@ -1,13 +1,13 @@
 package com.agileboot.admin.controller.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agileboot.admin.customize.service.permission.sync.PermissionEndpointScanner;
-import com.agileboot.admin.customize.service.permission.sync.PermissionSyncItemDTO;
+import com.agileboot.admin.testsupport.ExternalControllerStub;
 import io.swagger.v3.oas.annotations.Operation;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -26,7 +26,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 class PermissionEndpointScannerTest {
 
     @Test
-    void testScanShouldGroupPermissionEndpointsAndAuditUnsupportedEndpoints() throws NoSuchMethodException {
+    void testScanShouldReturnUniquePermissionsWithMenuName() throws NoSuchMethodException {
         RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
         PermissionEndpointScanner scanner = new PermissionEndpointScanner(handlerMapping);
 
@@ -42,34 +42,59 @@ class PermissionEndpointScannerTest {
             buildHandlerMethod(controller, "open"));
         when(handlerMapping.getHandlerMethods()).thenReturn(handlerMethods);
 
-        PermissionEndpointScanner.ScanSnapshot snapshot = scanner.scan();
+        Map<String, String> result = scanner.scan();
 
-        assertEquals(4, snapshot.scannedEndpointCount());
-        assertEquals(1, snapshot.permissionEndpoints().size());
-        PermissionEndpointScanner.ScannedPermissionEndpoint endpoint =
-            snapshot.permissionEndpoints().get(0);
-        assertEquals("system:role:edit", endpoint.getPermission());
-        assertEquals("修改角色", endpoint.getMenuName());
-        assertIterableEquals(
-            java.util.List.of("POST", "PUT"),
-            endpoint.getRequestMethods().stream().toList());
-        assertIterableEquals(
-            java.util.List.of("/system/role", "/system/role/{roleId}/status"),
-            endpoint.getRequestPaths().stream().toList());
-        assertIterableEquals(
-            java.util.List.of("DemoSystemController#changeStatus", "DemoSystemController#edit"),
-            endpoint.getHandlers().stream().toList());
+        // 只有 system:role:edit 能被提取（edit 和 changeStatus 共享同一权限码）
+        // unsupported 使用 hasAuthority 表达式 → 不支持，跳过
+        // open 没有 @PreAuthorize → 跳过
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey("system:role:edit"));
+        assertEquals("修改角色", result.get("system:role:edit"));
+    }
 
-        assertEquals(1, snapshot.conflicts().size());
-        PermissionSyncItemDTO unsupported = snapshot.conflicts().get(0);
-        assertEquals("unsupported", unsupported.getMenuName());
-        assertEquals("DemoSystemController#unsupported", unsupported.getHandlers().get(0));
+    @Test
+    void testScanShouldSkipMultiplePermissionCodes() throws NoSuchMethodException {
+        RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
+        PermissionEndpointScanner scanner = new PermissionEndpointScanner(handlerMapping);
 
-        assertEquals(1, snapshot.unprotected().size());
-        PermissionSyncItemDTO unprotected = snapshot.unprotected().get(0);
-        assertEquals("open", unprotected.getMenuName());
-        assertEquals("DemoSystemController#open", unprotected.getHandlers().get(0));
-        assertNotNull(unprotected.getDetails());
+        DemoSystemController controller = new DemoSystemController();
+        Map<RequestMappingInfo, HandlerMethod> handlerMethods = new LinkedHashMap<>();
+        handlerMethods.put(buildRequestMappingInfo("/system/role/authority", RequestMethod.GET),
+            buildHandlerMethod(controller, "unsupported"));
+        when(handlerMapping.getHandlerMethods()).thenReturn(handlerMethods);
+
+        Map<String, String> result = scanner.scan();
+
+        // hasAuthority 表达式无法提取权限码
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testScanShouldReturnEmptyForNoControllers() {
+        RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
+        PermissionEndpointScanner scanner = new PermissionEndpointScanner(handlerMapping);
+        when(handlerMapping.getHandlerMethods()).thenReturn(Map.of());
+
+        Map<String, String> result = scanner.scan();
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testScanShouldIgnoreNonControllerPackage() throws NoSuchMethodException {
+        RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
+        PermissionEndpointScanner scanner = new PermissionEndpointScanner(handlerMapping);
+
+        ExternalControllerStub externalController = new ExternalControllerStub();
+        Map<RequestMappingInfo, HandlerMethod> handlerMethods = new LinkedHashMap<>();
+        handlerMethods.put(buildRequestMappingInfo("/external/test", RequestMethod.GET),
+            buildHandlerMethod(externalController, "test"));
+        when(handlerMapping.getHandlerMethods()).thenReturn(handlerMethods);
+
+        Map<String, String> result = scanner.scan();
+
+        // ExternalController 不在 com.agileboot.admin.controller 包下 → 跳过
+        assertFalse(result.containsKey("external:test:list"));
     }
 
     private RequestMappingInfo buildRequestMappingInfo(String path, RequestMethod method) {
@@ -82,6 +107,10 @@ class PermissionEndpointScannerTest {
         return new HandlerMethod(bean, method);
     }
 
+    /**
+     * 模拟 com.agileboot.admin.controller 包下的控制器。
+     * 当前测试类所在包是 com.agileboot.admin.controller.system，满足扫描前缀，因此内部类会被扫描。
+     */
     private static class DemoSystemController {
 
         @Operation(summary = "修改角色")
@@ -108,5 +137,4 @@ class PermissionEndpointScannerTest {
         }
 
     }
-
 }

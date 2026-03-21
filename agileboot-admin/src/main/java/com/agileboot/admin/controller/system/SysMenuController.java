@@ -19,8 +19,6 @@ import com.agileboot.common.enums.common.BusinessTypeEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -105,13 +103,6 @@ public class SysMenuController extends BaseController {
     @PostMapping("/permissions/sync")
     public ResponseDTO<PermissionSyncResultDTO> syncPermissions() {
         PermissionSyncResultDTO result = permissionSyncService.sync();
-        if (result.isApplied()) {
-            List<Long> updatedMenuIds = result.getUpdated().stream()
-                .map(item -> item.getMenuId())
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-            onlineLoginUserRefreshService.refreshByMenuIds(updatedMenuIds);
-        }
         return ResponseDTO.ok(result);
     }
 
