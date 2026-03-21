@@ -13,6 +13,9 @@ import com.agileboot.domain.business.material.command.AddMaterialCommand;
 import com.agileboot.domain.business.material.command.UpdateMaterialCommand;
 import com.agileboot.domain.business.material.dto.MaterialDTO;
 import com.agileboot.domain.business.material.query.MaterialQuery;
+import com.agileboot.domain.business.machine.ScaleSyncService;
+import com.agileboot.domain.business.machine.ScaleSyncService.OperationType;
+import com.agileboot.domain.business.machine.dto.SyncResultDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -46,6 +50,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class BizMaterialController extends BaseController {
 
     private final MaterialApplicationService materialApplicationService;
+
+    private final ScaleSyncService scaleSyncService;
 
     @Operation(summary = "原料列表")
     @PreAuthorize("@permission.has('business:material:list')")
@@ -109,6 +115,16 @@ public class BizMaterialController extends BaseController {
     public ResponseDTO<Void> remove(@RequestParam @NotNull @NotEmpty List<Long> ids) {
         materialApplicationService.deleteMaterial(new BulkOperationCommand<>(ids));
         return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "下发原料到设备")
+    @PreAuthorize("@permission.has('business:material:sync')")
+    @AccessLog(title = "原料管理", businessType = BusinessTypeEnum.MODIFY)
+    @PostMapping("/{materialId}/sync")
+    public ResponseDTO<SyncResultDTO> syncMaterial(@PathVariable Long materialId,
+            @RequestParam(defaultValue = "ADD") OperationType operationType) {
+        SyncResultDTO result = scaleSyncService.syncMaterial(materialId, operationType);
+        return ResponseDTO.ok(result);
     }
 
 }

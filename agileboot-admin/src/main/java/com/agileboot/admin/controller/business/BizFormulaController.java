@@ -11,6 +11,9 @@ import com.agileboot.domain.business.formula.command.AddFormulaCommand;
 import com.agileboot.domain.business.formula.command.UpdateFormulaCommand;
 import com.agileboot.domain.business.formula.dto.FormulaDTO;
 import com.agileboot.domain.business.formula.query.FormulaQuery;
+import com.agileboot.domain.business.machine.ScaleSyncService;
+import com.agileboot.domain.business.machine.ScaleSyncService.OperationType;
+import com.agileboot.domain.business.machine.dto.SyncResultDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotEmpty;
@@ -46,6 +49,8 @@ public class BizFormulaController extends BaseController {
 
     private final FormulaApplicationService formulaApplicationService;
 
+    private final ScaleSyncService scaleSyncService;
+
     @Operation(summary = "配方列表")
     @PreAuthorize("@permission.has('business:formula:list')")
     @GetMapping("/list")
@@ -63,7 +68,7 @@ public class BizFormulaController extends BaseController {
     }
 
     @Operation(summary = "配方Excel导入")
-    @PreAuthorize("@permission.has('business:formula:add')")
+    @PreAuthorize("@permission.has('business:formula:import')")
     @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.IMPORT)
     @PostMapping(value = "/excel", consumes = "multipart/form-data")
     public ResponseDTO<Void> importByExcel(@RequestPart("file") MultipartFile file) throws IOException {
@@ -96,6 +101,16 @@ public class BizFormulaController extends BaseController {
     public ResponseDTO<Void> remove(@RequestParam @NotNull @NotEmpty List<Long> ids) {
         formulaApplicationService.deleteFormula(new BulkOperationCommand<>(ids));
         return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "下发配方到设备")
+    @PreAuthorize("@permission.has('business:formula:sync')")
+    @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.MODIFY)
+    @PostMapping("/{formulaId}/sync")
+    public ResponseDTO<SyncResultDTO> syncFormula(@PathVariable Long formulaId,
+            @RequestParam(defaultValue = "ADD") OperationType operationType) {
+        SyncResultDTO result = scaleSyncService.syncFormula(formulaId, operationType);
+        return ResponseDTO.ok(result);
     }
 
 }

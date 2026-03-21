@@ -259,7 +259,15 @@ public enum ErrorCode implements ErrorCodeInterface {
         /**
          * 支付宝调用失败
          */
-        FAIL_TO_PAY_ON_ALIPAY(1001, "支付宝调用失败", "External.FAIL_TO_PAY_ON_ALIPAY");
+        FAIL_TO_PAY_ON_ALIPAY(1001, "支付宝调用失败", "External.FAIL_TO_PAY_ON_ALIPAY"),
+
+        SCALE_DEVICE_UNREACHABLE(1101, "磅秤设备不可达：{}", "External.SCALE_DEVICE_UNREACHABLE"),
+
+        SCALE_SYNC_FAILED(1102, "下发到磅秤设备失败：{}", "External.SCALE_SYNC_FAILED"),
+
+        SCALE_QUERY_FAILED(1103, "查询磅秤设备数据失败：{}", "External.SCALE_QUERY_FAILED"),
+
+        SCALE_DEVICE_NOT_ENABLED(1104, "磅秤设备未启用：{}", "External.SCALE_DEVICE_NOT_ENABLED");
 
 
         private final int code;

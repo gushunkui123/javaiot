@@ -12,6 +12,9 @@ import com.agileboot.domain.business.workorder.command.AddWorkOrderCommand;
 import com.agileboot.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.agileboot.domain.business.workorder.dto.WorkOrderDTO;
 import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
+import com.agileboot.domain.business.machine.ScaleSyncService;
+import com.agileboot.domain.business.machine.ScaleSyncService.OperationType;
+import com.agileboot.domain.business.machine.dto.SyncResultDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,6 +47,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizWorkOrderController extends BaseController {
 
     private final WorkOrderApplicationService workOrderApplicationService;
+
+    private final ScaleSyncService scaleSyncService;
 
     @Operation(summary = "工单列表")
     @PreAuthorize("@permission.has('business:workOrder:list')")
@@ -97,6 +102,16 @@ public class BizWorkOrderController extends BaseController {
     public ResponseDTO<Void> remove(@RequestParam @NotNull @NotEmpty List<Long> ids) {
         workOrderApplicationService.deleteWorkOrder(new BulkOperationCommand<>(ids));
         return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "下发工单到设备")
+    @PreAuthorize("@permission.has('business:workOrder:sync')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PostMapping("/{workOrderId}/sync")
+    public ResponseDTO<SyncResultDTO> syncWorkOrder(@PathVariable Long workOrderId,
+            @RequestParam(defaultValue = "ADD") OperationType operationType) {
+        SyncResultDTO result = scaleSyncService.syncWorkOrder(workOrderId, operationType);
+        return ResponseDTO.ok(result);
     }
 
 }

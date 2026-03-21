@@ -109,12 +109,16 @@ agileboot:
     machines:
         main-scale:
             enabled: true
-            ip: 192.168.99.202
+            machine-id: 1
+            plant: "A1"
+            ip: 10.0.97.41
             api-url: http://${agileboot.machines.main-scale.ip}:8000/mws/api
             api-write-url: http://${agileboot.machines.main-scale.ip}:8000/mws/api/wr
         micro-scale:
             enabled: true
-            ip: 192.168.99.202
+            machine-id: 1
+            plant: "A1"
+            ip: 10.0.97.40
             api-url: http://${agileboot.machines.micro-scale.ip}:8000/aws/api
             api-write-url: http://${agileboot.machines.micro-scale.ip}:8000/aws/api/wr
         labeling-machine:

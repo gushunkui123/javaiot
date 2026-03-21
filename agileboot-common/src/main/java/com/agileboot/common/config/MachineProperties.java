@@ -39,6 +39,11 @@ public class MachineProperties {
         private boolean enabled = true;
 
         /**
+         * 设备编号（对应磅秤系统的 machineId 参数）
+         */
+        private Integer machineId = 1;
+
+        /**
          * 设备IP地址，如 192.168.99.202
          */
         private String ip;
@@ -52,6 +57,11 @@ public class MachineProperties {
          * 写入接口地址
          */
         private String apiWriteUrl;
+
+        /**
+         * 工厂编号（对应磅秤系统的 plant 参数）
+         */
+        private String plant = "";
     }
 
     /**
