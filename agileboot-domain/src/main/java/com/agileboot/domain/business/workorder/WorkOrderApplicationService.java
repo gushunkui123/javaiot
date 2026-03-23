@@ -4,6 +4,7 @@ import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.business.workorder.command.AddWorkOrderCommand;
+import com.agileboot.domain.business.workorder.command.AssignFormulaCommand;
 import com.agileboot.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.agileboot.domain.business.workorder.db.BizWorkOrderEntity;
 import com.agileboot.domain.business.workorder.db.BizWorkOrderService;
@@ -11,6 +12,7 @@ import com.agileboot.domain.business.workorder.dto.WorkOrderDTO;
 import com.agileboot.domain.business.workorder.model.WorkOrderModel;
 import com.agileboot.domain.business.workorder.model.WorkOrderModelFactory;
 import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +72,24 @@ public class WorkOrderApplicationService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteWorkOrder(BulkOperationCommand<Long> deleteCommand) {
         workOrderService.removeBatchByIds(deleteCommand.getIds());
+    }
+
+    public List<WorkOrderDTO> getPendingWorkOrders() {
+        QueryWrapper<BizWorkOrderEntity> wrapper = new QueryWrapper<BizWorkOrderEntity>()
+            .eq("process_status", 1)
+            .eq("deleted", 0)
+            .orderByDesc("create_time");
+        List<BizWorkOrderEntity> list = workOrderService.list(wrapper);
+        List<WorkOrderDTO> records = list.stream().map(WorkOrderDTO::new).toList();
+        auditUserEnricher.enrich(records);
+        return records;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void assignFormula(AssignFormulaCommand command) {
+        WorkOrderModel model = workOrderModelFactory.loadById(command.getWorkOrderId());
+        model.assignFormula(command);
+        model.updateById();
     }
 
 }

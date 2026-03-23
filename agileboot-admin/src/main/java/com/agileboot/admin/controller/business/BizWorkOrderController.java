@@ -9,6 +9,7 @@ import com.agileboot.common.utils.poi.CustomExcelUtil;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.agileboot.domain.business.workorder.WorkOrderApplicationService;
 import com.agileboot.domain.business.workorder.command.AddWorkOrderCommand;
+import com.agileboot.domain.business.workorder.command.AssignFormulaCommand;
 import com.agileboot.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.agileboot.domain.business.workorder.dto.WorkOrderDTO;
 import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
@@ -112,6 +113,23 @@ public class BizWorkOrderController extends BaseController {
             @RequestParam(defaultValue = "ADD") OperationType operationType) {
         SyncResultDTO result = scaleSyncService.syncWorkOrder(workOrderId, operationType);
         return ResponseDTO.ok(result);
+    }
+
+    @Operation(summary = "查询待派工工单", description = "查询未删除且流程状态为1(未派工)的工单列表")
+    @PreAuthorize("@permission.has('business:workOrder:list')")
+    @GetMapping("/pending")
+    public ResponseDTO<List<WorkOrderDTO>> pendingList() {
+        List<WorkOrderDTO> list = workOrderApplicationService.getPendingWorkOrders();
+        return ResponseDTO.ok(list);
+    }
+
+    @Operation(summary = "分配配方", description = "为工单分配配方ID和配方编号，流程状态变为2(已派工)")
+    @PreAuthorize("@permission.has('business:workOrder:edit')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PutMapping("/assignFormula")
+    public ResponseDTO<Void> assignFormula(@Validated @RequestBody AssignFormulaCommand command) {
+        workOrderApplicationService.assignFormula(command);
+        return ResponseDTO.ok();
     }
 
 }
