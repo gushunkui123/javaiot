@@ -27,7 +27,11 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
     private static final int PROCESS_STATUS_PRODUCING = 3;
 
+    private static final int PROCESS_STATUS_CANCELLED = 4;
+
     private static final int ORDER_STATE_PRODUCING = 2;
+
+    private static final int ORDER_STATE_CANCELLED = 4;
 
     private BizWorkOrderService workOrderService;
 
@@ -83,6 +87,32 @@ public class WorkOrderModel extends BizWorkOrderEntity {
         if (workOrderService.isWorkOrderNoDuplicated(getWorkOrderId(), getWorkOrderNo())) {
             throw new ApiException(Business.WORK_ORDER_NO_IS_NOT_UNIQUE, getWorkOrderNo());
         }
+    }
+
+    public void cancelFromPending() {
+        checkProcessStatus(PROCESS_STATUS_NOT_DISPATCHED);
+        applyCancel();
+    }
+
+    public void cancelFromDispatched() {
+        checkProcessStatus(PROCESS_STATUS_FORMULA_ASSIGNED);
+        applyCancel();
+    }
+
+    public void cancelFromProducing() {
+        checkProcessStatus(PROCESS_STATUS_PRODUCING);
+        applyCancel();
+    }
+
+    private void checkProcessStatus(int expectedStatus) {
+        if (getProcessStatus() == null || getProcessStatus() != expectedStatus) {
+            throw new ApiException(Business.WORK_ORDER_CANCEL_INVALID_STATUS);
+        }
+    }
+
+    private void applyCancel() {
+        setOrderState(ORDER_STATE_CANCELLED);
+        setProcessStatus(PROCESS_STATUS_CANCELLED);
     }
 
 }

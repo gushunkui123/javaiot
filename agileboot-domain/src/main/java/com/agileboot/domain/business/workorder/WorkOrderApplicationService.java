@@ -126,4 +126,25 @@ public class WorkOrderApplicationService {
         return syncResult;
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelFromPending(Long workOrderId) {
+        WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
+        model.cancelFromPending();
+        model.updateById();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelFromDispatched(Long workOrderId) {
+        WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
+        model.cancelFromDispatched();
+        model.updateById();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelFromProducing(Long workOrderId) {
+        WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
+        model.cancelFromProducing();
+        model.updateById();
+    }
+
 }

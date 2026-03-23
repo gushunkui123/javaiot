@@ -149,4 +149,31 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok(result);
     }
 
+    @Operation(summary = "取消未派工工单", description = "取消流程状态为1(未派工)的工单")
+    @PreAuthorize("@permission.has('business:workOrder:cancelPending')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PutMapping("/{workOrderId}/cancelPending")
+    public ResponseDTO<Void> cancelPending(@PathVariable Long workOrderId) {
+        workOrderApplicationService.cancelFromPending(workOrderId);
+        return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "取消已派工工单", description = "取消流程状态为2(已派工)的工单")
+    @PreAuthorize("@permission.has('business:workOrder:cancelDispatched')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PutMapping("/{workOrderId}/cancelDispatched")
+    public ResponseDTO<Void> cancelDispatched(@PathVariable Long workOrderId) {
+        workOrderApplicationService.cancelFromDispatched(workOrderId);
+        return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "取消生产中工单", description = "取消流程状态为3(生产中)的工单")
+    @PreAuthorize("@permission.has('business:workOrder:cancelProducing')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PutMapping("/{workOrderId}/cancelProducing")
+    public ResponseDTO<Void> cancelProducing(@PathVariable Long workOrderId) {
+        workOrderApplicationService.cancelFromProducing(workOrderId);
+        return ResponseDTO.ok();
+    }
+
 }

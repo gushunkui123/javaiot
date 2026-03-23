@@ -180,6 +180,8 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         WORK_ORDER_NO_IS_NOT_UNIQUE(11301, "工单编号:{} 已存在", "Business.WORK_ORDER_NO_IS_NOT_UNIQUE"),
 
+        WORK_ORDER_CANCEL_INVALID_STATUS(11302, "工单当前流程状态不允许此取消操作", "Business.WORK_ORDER_CANCEL_INVALID_STATUS"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),
