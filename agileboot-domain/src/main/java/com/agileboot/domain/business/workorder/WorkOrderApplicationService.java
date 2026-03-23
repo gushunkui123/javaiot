@@ -12,10 +12,14 @@ import com.agileboot.domain.business.workorder.dto.WorkOrderDTO;
 import com.agileboot.domain.business.workorder.model.WorkOrderModel;
 import com.agileboot.domain.business.workorder.model.WorkOrderModelFactory;
 import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
+import com.agileboot.domain.business.machine.ScaleSyncService;
+import com.agileboot.domain.business.machine.ScaleSyncService.OperationType;
+import com.agileboot.domain.business.machine.dto.SyncResultDTO;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Codex
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class WorkOrderApplicationService {
 
@@ -31,6 +36,8 @@ public class WorkOrderApplicationService {
     private final BizWorkOrderService workOrderService;
 
     private final AuditUserEnricher auditUserEnricher;
+
+    private final ScaleSyncService scaleSyncService;
 
     public PageDTO<WorkOrderDTO> getWorkOrderList(WorkOrderQuery query) {
         Page<BizWorkOrderEntity> page = workOrderService.page(query.toPage(), query.toQueryWrapper());
@@ -90,6 +97,33 @@ public class WorkOrderApplicationService {
         WorkOrderModel model = workOrderModelFactory.loadById(command.getWorkOrderId());
         model.assignFormula(command);
         model.updateById();
+    }
+
+    public List<WorkOrderDTO> getDispatchedWorkOrders() {
+        QueryWrapper<BizWorkOrderEntity> wrapper = new QueryWrapper<BizWorkOrderEntity>()
+            .eq("process_status", 2)
+            .eq("deleted", 0)
+            .orderByDesc("create_time");
+        List<BizWorkOrderEntity> list = workOrderService.list(wrapper);
+        List<WorkOrderDTO> records = list.stream().map(WorkOrderDTO::new).toList();
+        auditUserEnricher.enrich(records);
+        return records;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public SyncResultDTO startProduction(Long workOrderId) {
+        WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
+        model.startProduction();
+        model.updateById();
+
+        // TODO 工单下发接口目前不可用，预留调用逻辑，后续修改
+        SyncResultDTO syncResult = null;
+        try {
+            syncResult = scaleSyncService.syncWorkOrder(workOrderId, OperationType.ADD);
+        } catch (Exception e) {
+            log.warn("工单下发失败，工单ID={}，后续需重试: {}", workOrderId, e.getMessage());
+        }
+        return syncResult;
     }
 
 }

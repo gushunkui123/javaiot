@@ -10,6 +10,7 @@ import com.agileboot.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.agileboot.domain.business.workorder.db.BizWorkOrderEntity;
 import com.agileboot.domain.business.workorder.db.BizWorkOrderService;
 import java.math.BigDecimal;
+import java.util.Date;
 import lombok.NoArgsConstructor;
 
 /**
@@ -23,6 +24,10 @@ public class WorkOrderModel extends BizWorkOrderEntity {
     private static final int PROCESS_STATUS_NOT_DISPATCHED = 1;
 
     private static final int PROCESS_STATUS_FORMULA_ASSIGNED = 2;
+
+    private static final int PROCESS_STATUS_PRODUCING = 3;
+
+    private static final int ORDER_STATE_PRODUCING = 2;
 
     private BizWorkOrderService workOrderService;
 
@@ -66,6 +71,12 @@ public class WorkOrderModel extends BizWorkOrderEntity {
             setFormulaCode(StrUtil.trim(command.getFormulaCode()));
             setProcessStatus(PROCESS_STATUS_FORMULA_ASSIGNED);
         }
+    }
+
+    public void startProduction() {
+        setOrderState(ORDER_STATE_PRODUCING);
+        setProcessStatus(PROCESS_STATUS_PRODUCING);
+        setStartTime(new Date());
     }
 
     public void checkWorkOrderNoUnique() {

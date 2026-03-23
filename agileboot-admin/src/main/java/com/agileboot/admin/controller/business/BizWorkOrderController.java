@@ -132,4 +132,21 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok();
     }
 
+    @Operation(summary = "查询已派工工单", description = "查询未删除且流程状态为2(已派工)的工单列表")
+    @PreAuthorize("@permission.has('business:workOrder:list')")
+    @GetMapping("/dispatched")
+    public ResponseDTO<List<WorkOrderDTO>> dispatchedList() {
+        List<WorkOrderDTO> list = workOrderApplicationService.getDispatchedWorkOrders();
+        return ResponseDTO.ok(list);
+    }
+
+    @Operation(summary = "开始生产", description = "工单状态改为生产中，流程状态改为3，同时下发工单信息到设备")
+    @PreAuthorize("@permission.has('business:workOrder:edit')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PostMapping("/{workOrderId}/startProduction")
+    public ResponseDTO<SyncResultDTO> startProduction(@PathVariable Long workOrderId) {
+        SyncResultDTO result = workOrderApplicationService.startProduction(workOrderId);
+        return ResponseDTO.ok(result);
+    }
+
 }
