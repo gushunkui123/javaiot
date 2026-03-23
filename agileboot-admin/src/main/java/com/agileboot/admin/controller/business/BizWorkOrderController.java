@@ -116,7 +116,7 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "查询待派工工单", description = "查询未删除且流程状态为1(未派工)的工单列表")
-    @PreAuthorize("@permission.has('business:workOrder:list')")
+    @PreAuthorize("@permission.has('business:workOrder:pending')")
     @GetMapping("/pending")
     public ResponseDTO<List<WorkOrderDTO>> pendingList() {
         List<WorkOrderDTO> list = workOrderApplicationService.getPendingWorkOrders();
@@ -124,7 +124,7 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "分配配方", description = "为工单分配配方ID和配方编号，流程状态变为2(已派工)")
-    @PreAuthorize("@permission.has('business:workOrder:edit')")
+    @PreAuthorize("@permission.has('business:workOrder:assignFormula')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
     @PutMapping("/assignFormula")
     public ResponseDTO<Void> assignFormula(@Validated @RequestBody AssignFormulaCommand command) {
@@ -133,7 +133,7 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "查询已派工工单", description = "查询未删除且流程状态为2(已派工)的工单列表")
-    @PreAuthorize("@permission.has('business:workOrder:list')")
+    @PreAuthorize("@permission.has('business:workOrder:dispatched')")
     @GetMapping("/dispatched")
     public ResponseDTO<List<WorkOrderDTO>> dispatchedList() {
         List<WorkOrderDTO> list = workOrderApplicationService.getDispatchedWorkOrders();
@@ -141,7 +141,7 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "开始生产", description = "工单状态改为生产中，流程状态改为3，同时下发工单信息到设备")
-    @PreAuthorize("@permission.has('business:workOrder:edit')")
+    @PreAuthorize("@permission.has('business:workOrder:startProduction')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
     @PostMapping("/{workOrderId}/startProduction")
     public ResponseDTO<SyncResultDTO> startProduction(@PathVariable Long workOrderId) {

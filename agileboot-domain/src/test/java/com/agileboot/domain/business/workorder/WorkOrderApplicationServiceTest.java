@@ -16,6 +16,7 @@ import com.agileboot.domain.business.workorder.dto.WorkOrderDTO;
 import com.agileboot.domain.business.workorder.model.WorkOrderModel;
 import com.agileboot.domain.business.workorder.model.WorkOrderModelFactory;
 import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
+import com.agileboot.domain.business.machine.ScaleSyncService;
 import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -30,8 +31,14 @@ class WorkOrderApplicationServiceTest {
     private final WorkOrderModelFactory workOrderModelFactory = mock(WorkOrderModelFactory.class);
     private final BizWorkOrderService workOrderService = mock(BizWorkOrderService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
+    private final ScaleSyncService scaleSyncService = mock(ScaleSyncService.class);
     private final WorkOrderApplicationService applicationService =
-        new WorkOrderApplicationService(workOrderModelFactory, workOrderService, auditUserEnricher);
+        new WorkOrderApplicationService(
+            workOrderModelFactory,
+            workOrderService,
+            auditUserEnricher,
+            scaleSyncService
+        );
 
     @Test
     void getWorkOrderListShouldEnrichAuditUsers() {
