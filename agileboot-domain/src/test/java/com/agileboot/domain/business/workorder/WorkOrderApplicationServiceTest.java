@@ -19,7 +19,6 @@ import com.agileboot.domain.business.workorder.query.WorkOrderQuery;
 import com.agileboot.domain.common.audit.AuditUserEnricher;
 import com.agileboot.domain.common.command.BulkOperationCommand;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -88,7 +87,6 @@ class WorkOrderApplicationServiceTest {
         command.setOrderDate(new Date());
         command.setMachineId(1);
         command.setOrderBatchNum(10);
-        command.setOrderWeight(BigDecimal.valueOf(100));
 
         WorkOrderModel model = mock(WorkOrderModel.class);
         when(workOrderModelFactory.create()).thenReturn(model);

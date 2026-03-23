@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -35,6 +36,7 @@ public class BizWorkOrderEntity extends BaseEntity<BizWorkOrderEntity> {
 
     @Schema(description = "工单日期")
     @TableField("order_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private Date orderDate;
 
     @Schema(description = "工厂别")
@@ -52,6 +54,22 @@ public class BizWorkOrderEntity extends BaseEntity<BizWorkOrderEntity> {
     @Schema(description = "配方编号")
     @TableField("formula_code")
     private String formulaCode;
+
+    @Schema(description = "模具代号")
+    @TableField("mold_code")
+    private String moldCode;
+
+    @Schema(description = "型体颜色")
+    @TableField("model_color")
+    private String modelColor;
+
+    @Schema(description = "单批次重量(kg)")
+    @TableField("batch_weight")
+    private BigDecimal batchWeight;
+
+    @Schema(description = "配方ID")
+    @TableField("formula_id")
+    private Long formulaId;
 
     @Schema(description = "计划批次数")
     @TableField("order_batch_num")
@@ -80,6 +98,14 @@ public class BizWorkOrderEntity extends BaseEntity<BizWorkOrderEntity> {
     @Schema(description = "工单状态(1:未生产 2:生产中 3:已完工)")
     @TableField("order_state")
     private Integer orderState;
+
+    @Schema(description = "流程状态(1:未派工)")
+    @TableField("process_status")
+    private Integer processStatus;
+
+    @Schema(description = "备注")
+    @TableField("remark")
+    private String remark;
 
     @Override
     public Serializable pkVal() {

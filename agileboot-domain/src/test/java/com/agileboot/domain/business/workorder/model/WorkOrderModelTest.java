@@ -27,7 +27,6 @@ class WorkOrderModelTest {
         command.setOrderDate(new Date());
         command.setMachineId(1);
         command.setOrderBatchNum(10);
-        command.setOrderWeight(BigDecimal.valueOf(100));
         WorkOrderModel model = workOrderModelFactory.create();
 
         model.loadFromAddCommand(command);
@@ -56,7 +55,7 @@ class WorkOrderModelTest {
         command.setLineNo("A");
         command.setOrderBatchNum(5);
         command.setOrderDate(new Date());
-        command.setOrderWeight(BigDecimal.valueOf(200));
+        command.setBatchWeight(BigDecimal.valueOf(40));
         WorkOrderModel model = workOrderModelFactory.create();
 
         model.loadFromAddCommand(command);
@@ -67,6 +66,8 @@ class WorkOrderModelTest {
         assertEquals(3, model.getMachineId());
         assertEquals("A", model.getLineNo());
         assertEquals(5, model.getOrderBatchNum());
+        assertEquals(BigDecimal.valueOf(40), model.getBatchWeight());
+        assertEquals(BigDecimal.valueOf(200), model.getOrderWeight());
     }
 
     @Test

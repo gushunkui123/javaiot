@@ -45,6 +45,18 @@ public class WorkOrderDTO implements AuditableDTO {
     @ExcelColumn(name = "配方编号")
     private String formulaCode;
 
+    @ExcelColumn(name = "模具代号")
+    private String moldCode;
+
+    @ExcelColumn(name = "型体颜色")
+    private String modelColor;
+
+    @ExcelColumn(name = "单批次重量")
+    private BigDecimal batchWeight;
+
+    @ExcelColumn(name = "配方ID")
+    private Long formulaId;
+
     @ExcelColumn(name = "计划批次数")
     private Integer orderBatchNum;
 
@@ -65,6 +77,12 @@ public class WorkOrderDTO implements AuditableDTO {
 
     @ExcelColumn(name = "工单状态")
     private Integer orderState;
+
+    @ExcelColumn(name = "流程状态")
+    private Integer processStatus;
+
+    @ExcelColumn(name = "备注")
+    private String remark;
 
     private Long creatorId;
 

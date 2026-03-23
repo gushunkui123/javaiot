@@ -81,7 +81,7 @@ public class BizWorkOrderController extends BaseController {
     @PreAuthorize("@permission.has('business:workOrder:add')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.ADD)
     @PostMapping
-    public ResponseDTO<Void> add(@RequestBody AddWorkOrderCommand addCommand) {
+    public ResponseDTO<Void> add(@Validated @RequestBody AddWorkOrderCommand addCommand) {
         workOrderApplicationService.addWorkOrder(addCommand);
         return ResponseDTO.ok();
     }
@@ -90,7 +90,7 @@ public class BizWorkOrderController extends BaseController {
     @PreAuthorize("@permission.has('business:workOrder:edit')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
     @PutMapping
-    public ResponseDTO<Void> edit(@RequestBody UpdateWorkOrderCommand updateCommand) {
+    public ResponseDTO<Void> edit(@Validated @RequestBody UpdateWorkOrderCommand updateCommand) {
         workOrderApplicationService.updateWorkOrder(updateCommand);
         return ResponseDTO.ok();
     }
