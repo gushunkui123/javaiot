@@ -86,7 +86,7 @@ token:
     # 令牌密钥 TODO 记得更换（至少32字节以满足HMAC-SHA256要求）
     secret: sdhfkjshBN6rr32df38AgileBootSecretKeyPadding2024!
     # 自动刷新token的时间
-    autoRefreshTime: 20
+    autoRefreshTime: 10080
 
 # MyBatis配置
 mybatis-plus:
