@@ -21,13 +21,17 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
     private static final BigDecimal DEFAULT_BATCH_WEIGHT = new BigDecimal("75");
 
-    private static final int PROCESS_STATUS_NOT_DISPATCHED = 1;
+    private static final int PROCESS_STATUS_CREATED = 1;
 
-    private static final int PROCESS_STATUS_FORMULA_ASSIGNED = 2;
+    private static final int PROCESS_STATUS_CONFIRMED = 2;
 
-    private static final int PROCESS_STATUS_PRODUCING = 3;
+    private static final int PROCESS_STATUS_FORMULA_ASSIGNED = 3;
 
-    private static final int PROCESS_STATUS_CANCELLED = 4;
+    private static final int PROCESS_STATUS_PRODUCING = 4;
+
+    private static final int PROCESS_STATUS_COMPLETED = 5;
+
+    private static final int PROCESS_STATUS_CANCELLED = 6;
 
     private static final int ORDER_STATE_PRODUCING = 2;
 
@@ -58,7 +62,7 @@ public class WorkOrderModel extends BizWorkOrderEntity {
             setOrderWeight(getBatchWeight().multiply(new BigDecimal(getOrderBatchNum())));
 
             if (getProcessStatus() == null) {
-                setProcessStatus(PROCESS_STATUS_NOT_DISPATCHED);
+                setProcessStatus(PROCESS_STATUS_CREATED);
             }
         }
     }
@@ -71,13 +75,20 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
     public void assignFormula(AssignFormulaCommand command) {
         if (command != null) {
+            checkProcessStatus(PROCESS_STATUS_CONFIRMED);
             setFormulaId(command.getFormulaId());
             setFormulaCode(StrUtil.trim(command.getFormulaCode()));
             setProcessStatus(PROCESS_STATUS_FORMULA_ASSIGNED);
         }
     }
 
+    public void confirm() {
+        checkProcessStatus(PROCESS_STATUS_CREATED);
+        setProcessStatus(PROCESS_STATUS_CONFIRMED);
+    }
+
     public void startProduction() {
+        checkProcessStatus(PROCESS_STATUS_FORMULA_ASSIGNED);
         setOrderState(ORDER_STATE_PRODUCING);
         setProcessStatus(PROCESS_STATUS_PRODUCING);
         setStartTime(new Date());
@@ -89,24 +100,17 @@ public class WorkOrderModel extends BizWorkOrderEntity {
         }
     }
 
-    public void cancelFromPending() {
-        checkProcessStatus(PROCESS_STATUS_NOT_DISPATCHED);
-        applyCancel();
-    }
-
-    public void cancelFromDispatched() {
-        checkProcessStatus(PROCESS_STATUS_FORMULA_ASSIGNED);
-        applyCancel();
-    }
-
-    public void cancelFromProducing() {
-        checkProcessStatus(PROCESS_STATUS_PRODUCING);
+    public void cancel() {
+        int status = getProcessStatus() != null ? getProcessStatus() : -1;
+        if (status < PROCESS_STATUS_CREATED || status >= PROCESS_STATUS_COMPLETED) {
+            throw new ApiException(Business.WORK_ORDER_CANCEL_INVALID_STATUS);
+        }
         applyCancel();
     }
 
     private void checkProcessStatus(int expectedStatus) {
         if (getProcessStatus() == null || getProcessStatus() != expectedStatus) {
-            throw new ApiException(Business.WORK_ORDER_CANCEL_INVALID_STATUS);
+            throw new ApiException(Business.WORK_ORDER_PROCESS_STATUS_INVALID);
         }
     }
 

@@ -95,11 +95,11 @@ public class BizWorkOrderEntity extends BaseEntity<BizWorkOrderEntity> {
     @TableField("finish_time")
     private Date finishTime;
 
-    @Schema(description = "工单状态(1:未生产 2:生产中 3:已完工)")
+    @Schema(description = "工单状态: 1-未生产, 2-生产中, 3-已完工, 4-已取消")
     @TableField("order_state")
     private Integer orderState;
 
-    @Schema(description = "流程状态(1:未派工)")
+    @Schema(description = "流程状态: 1-已创建, 2-已确认, 3-已添加配方, 4-生产中, 5-已完成, 6-已取消")
     @TableField("process_status")
     private Integer processStatus;
 

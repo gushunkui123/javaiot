@@ -61,7 +61,7 @@ class RedisCacheTemplateTest {
 
         template.setByKey("login_tokens:token-1", "login-user");
 
-        verify(redisUtil).setCacheObject("login_tokens:token-1", "login-user", 30, TimeUnit.MINUTES);
+        verify(redisUtil).setCacheObject("login_tokens:token-1", "login-user", 14, TimeUnit.DAYS);
     }
 
     @Test
