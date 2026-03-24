@@ -102,6 +102,10 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
     public void cancel() {
         int status = getProcessStatus() != null ? getProcessStatus() : -1;
+        if (status == PROCESS_STATUS_CANCELLED
+                || (getOrderState() != null && getOrderState() == ORDER_STATE_CANCELLED)) {
+            throw new ApiException(Business.WORK_ORDER_ALREADY_CANCELLED);
+        }
         if (status < PROCESS_STATUS_CREATED || status >= PROCESS_STATUS_COMPLETED) {
             throw new ApiException(Business.WORK_ORDER_CANCEL_INVALID_STATUS);
         }

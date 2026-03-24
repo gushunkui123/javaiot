@@ -182,6 +182,8 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         WORK_ORDER_CANCEL_INVALID_STATUS(11302, "工单当前流程状态不允许此取消操作", "Business.WORK_ORDER_CANCEL_INVALID_STATUS"),
 
+        WORK_ORDER_ALREADY_CANCELLED(11304, "此工单已经被取消，请勿重复取消", "Business.WORK_ORDER_ALREADY_CANCELLED"),
+
         WORK_ORDER_PROCESS_STATUS_INVALID(11303, "工单当前流程状态不允许此操作", "Business.WORK_ORDER_PROCESS_STATUS_INVALID"),
 
         // ---------------------------------- USER -----------------------------------------------
