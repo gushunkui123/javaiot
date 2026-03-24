@@ -94,7 +94,7 @@ public class BizMaterialController extends BaseController {
     @PreAuthorize("@permission.has('business:material:add')")
     @AccessLog(title = "原料管理", businessType = BusinessTypeEnum.ADD)
     @PostMapping
-    public ResponseDTO<Void> add(@RequestBody AddMaterialCommand addCommand) {
+    public ResponseDTO<Void> add(@Validated @RequestBody AddMaterialCommand addCommand) {
         materialApplicationService.addMaterial(addCommand);
         return ResponseDTO.ok();
     }
@@ -103,7 +103,7 @@ public class BizMaterialController extends BaseController {
     @PreAuthorize("@permission.has('business:material:edit')")
     @AccessLog(title = "原料管理", businessType = BusinessTypeEnum.MODIFY)
     @PutMapping
-    public ResponseDTO<Void> edit(@RequestBody UpdateMaterialCommand updateCommand) {
+    public ResponseDTO<Void> edit(@Validated @RequestBody UpdateMaterialCommand updateCommand) {
         materialApplicationService.updateMaterial(updateCommand);
         return ResponseDTO.ok();
     }
