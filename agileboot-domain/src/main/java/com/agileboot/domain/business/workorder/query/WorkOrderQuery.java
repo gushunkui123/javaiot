@@ -27,7 +27,7 @@ public class WorkOrderQuery extends AbstractPageQuery<BizWorkOrderEntity> {
     @Schema(description = "设备编号")
     private Integer machineId;
 
-    @Schema(description = "工单状态(1:未生产 2:生产中 3:已完工)")
+    @Schema(description = "工单状态: 1-未生产, 2-生产中, 3-已完工, 4-已取消")
     private Integer orderState;
 
     @Override
