@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.agileboot</groupId>
-    <artifactId>agileboot</artifactId>
+    <groupId>com.factorylink</groupId>
+    <artifactId>factorylink</artifactId>
     <!--  放弃使用 revision字段 子module会安装失败-->
     <!--  https://stackoverflow.com/questions/52173260/how-to-resolve-parent-pom-dependency-issue-failed-to-read-artifact-descriptor -->
     <version>1.0.0</version>
 
-    <name>agileboot</name>
-    <url>http://www.agileboot.vip</url>
+    <name>factorylink</name>
+    <url>http://www.factorylink.vip</url>
     <description>基于 springboot的快速开发系统</description>
 
     <properties>
@@ -180,36 +180,36 @@
 
             <!-- admin管理模块 -->
             <dependency>
-                <groupId>com.agileboot</groupId>
-                <artifactId>agileboot-admin</artifactId>
+                <groupId>com.factorylink</groupId>
+                <artifactId>factorylink-admin</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- app预留接口-->
             <dependency>
-                <groupId>com.agileboot</groupId>
-                <artifactId>agileboot-api</artifactId>
+                <groupId>com.factorylink</groupId>
+                <artifactId>factorylink-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- 核心业务领域-->
             <dependency>
-                <groupId>com.agileboot</groupId>
-                <artifactId>agileboot-domain</artifactId>
+                <groupId>com.factorylink</groupId>
+                <artifactId>factorylink-domain</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- 核心模块-->
             <dependency>
-                <groupId>com.agileboot</groupId>
-                <artifactId>agileboot-infrastructure</artifactId>
+                <groupId>com.factorylink</groupId>
+                <artifactId>factorylink-infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- 通用工具-->
             <dependency>
-                <groupId>com.agileboot</groupId>
-                <artifactId>agileboot-common</artifactId>
+                <groupId>com.factorylink</groupId>
+                <artifactId>factorylink-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -302,11 +302,11 @@
     </dependencyManagement>
 
     <modules>
-        <module>agileboot-admin</module>
-        <module>agileboot-api</module>
-        <module>agileboot-common</module>
-        <module>agileboot-domain</module>
-        <module>agileboot-infrastructure</module>
+        <module>factorylink-admin</module>
+        <module>factorylink-api</module>
+        <module>factorylink-common</module>
+        <module>factorylink-domain</module>
+        <module>factorylink-infrastructure</module>
     </modules>
     <packaging>pom</packaging>
 

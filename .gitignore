@@ -46,8 +46,9 @@ nbdist/
 !*/build/*.html
 !*/build/*.xml
 
-/agileboot-admin/src/main/resources/application-prod.yml
+/factorylink-admin/src/main/resources/application-prod.yml
 
 .claude
 配方.xlsx
 AGENTS.md
+nov_*.java

@@ -55,15 +55,15 @@ flush privileges;
 ```
 
 
-### 创建数据库agileboot
+### 创建数据库factorylink
 
 ```
-drop database if exists `agileboot`;
-create database `agileboot` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+drop database if exists `factorylink`;
+create database `factorylink` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 ```
 
 
 ### 导入sql文件
 
-navicat直接导入 本项目sql文件夹下的数据库脚本 agileboot_xxxxxx.sql文件  
-或者mysql命令打开agileboot库，复制脚本文件内容直接执行即可。
+navicat直接导入 本项目sql文件夹下的数据库脚本 factorylink_xxxxxx.sql文件  
+或者mysql命令打开factorylink库，复制脚本文件内容直接执行即可。
