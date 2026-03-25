@@ -12,7 +12,5 @@ public class SseUserConnection {
 
     private String username;
 
-    private String roleKey;
-
     private SseEmitter emitter;
 }

@@ -16,11 +16,11 @@ public class SseConnectionManager {
 
     private final Map<Long, SseUserConnection> connections = new ConcurrentHashMap<>();
 
-    public SseEmitter createConnection(Long userId, String username, String roleKey) {
+    public SseEmitter createConnection(Long userId, String username) {
         removeConnection(userId);
 
         SseEmitter emitter = new SseEmitter(TIMEOUT);
-        SseUserConnection connection = new SseUserConnection(userId, username, roleKey, emitter);
+        SseUserConnection connection = new SseUserConnection(userId, username, emitter);
         connections.put(userId, connection);
 
         emitter.onCompletion(() -> connections.remove(userId));
@@ -34,7 +34,7 @@ public class SseConnectionManager {
             connections.remove(userId);
         }
 
-        log.info("SSE连接已建立, userId={}, username={}, roleKey={}", userId, username, roleKey);
+        log.info("SSE连接已建立, userId={}, username={}", userId, username);
         return emitter;
     }
 
@@ -53,10 +53,8 @@ public class SseConnectionManager {
         }
     }
 
-    public void sendToRole(String roleKey, SseMessage message) {
-        connections.values().stream()
-                .filter(c -> roleKey.equals(c.getRoleKey()))
-                .forEach(c -> doSend(c, message));
+    public void broadcast(SseMessage message) {
+        connections.values().forEach(c -> doSend(c, message));
     }
 
     @Scheduled(fixedRate = 30000)

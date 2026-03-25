@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SseNotificationService {
 
-    private static final String FIELD_OPERATOR_ROLE_KEY = "field_operator";
-
     private final SseConnectionManager sseConnectionManager;
 
     public void notifyFormulaModified(Long workOrderId, Long formulaId, SseMessageLevel level) {
@@ -28,7 +26,7 @@ public class SseNotificationService {
                 .content(content)
                 .build();
 
-        sseConnectionManager.sendToRole(FIELD_OPERATOR_ROLE_KEY, message);
+        sseConnectionManager.broadcast(message);
         log.info("配方修改通知已推送, workOrderId={}, formulaId={}, level={}", workOrderId, formulaId, level);
     }
 }

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,14 +26,15 @@ public class BizSseController extends BaseController {
 
     @Operation(summary = "建立SSE连接", description = "建立SSE长连接，用于接收服务端实时推送消息。"
             + " 单用户单连接，新连接会替换旧连接。连接超时时间30分钟")
+    @PreAuthorize("@permission.has('business:sse:connect')")
     @GetMapping(value = "/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect() {
         SystemLoginUser loginUser = AuthenticationUtils.getSystemLoginUser();
-        String roleKey = loginUser.getRoleInfo() != null ? loginUser.getRoleInfo().getRoleKey() : "";
-        return sseConnectionManager.createConnection(loginUser.getUserId(), loginUser.getUsername(), roleKey);
+        return sseConnectionManager.createConnection(loginUser.getUserId(), loginUser.getUsername());
     }
 
     @Operation(summary = "断开SSE连接", description = "主动断开当前用户的SSE连接")
+    @PreAuthorize("@permission.has('business:sse:connect')")
     @DeleteMapping("/disconnect")
     public ResponseDTO<Void> disconnect() {
         Long userId = AuthenticationUtils.getUserId();
