@@ -63,17 +63,7 @@ FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) me
 WHERE @work_order_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'business:workOrder:query');
 
--- 7. 按钮：工单确认
-INSERT INTO `sys_menu`
-(`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
- `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)
-SELECT `next_menu_id`, '工单确认', 0, ' ', @work_order_menu_id, '', 1, 'business:workOrder:confirm', '{"title":"工单确认"}',
-       1, '', 1, NOW(), NULL, NULL, 0
-FROM (SELECT IFNULL(MAX(`menu_id`), 0) + 1 AS `next_menu_id` FROM `sys_menu`) menu_seq
-WHERE @work_order_menu_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM `sys_menu` WHERE `permission` = 'business:workOrder:confirm');
-
--- 8. 按钮：待分配配方工单查询
+-- 7. 按钮：待分配配方工单查询
 INSERT INTO `sys_menu`
 (`menu_id`, `menu_name`, `menu_type`, `router_name`, `parent_id`, `path`, `is_button`, `permission`, `meta_info`,
  `status`, `remark`, `creator_id`, `create_time`, `updater_id`, `update_time`, `deleted`)

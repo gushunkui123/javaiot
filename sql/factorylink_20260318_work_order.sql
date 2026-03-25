@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `biz_work_order`
     `start_time`      datetime                DEFAULT NULL COMMENT '生产开始时间',
     `finish_time`     datetime                DEFAULT NULL COMMENT '生产结束时间',
     `order_state`     tinyint        NOT NULL DEFAULT 1 COMMENT '工单状态(1:未生产 2:生产中 3:已完工)',
-    `process_status`  tinyint                 DEFAULT NULL COMMENT '流程状态(1:未派工)',
+    `process_status`  tinyint                 DEFAULT NULL COMMENT '流程状态(1:已创建 2:已添加配方 3:生产中 4:已完成 5:已取消)',
     `remark`          varchar(500)            DEFAULT NULL COMMENT '备注',
     `creator_id`      bigint                  DEFAULT NULL COMMENT '创建者ID',
     `create_time`     datetime                DEFAULT NULL COMMENT '创建时间',

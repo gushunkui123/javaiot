@@ -99,7 +99,7 @@ public class BizWorkOrderEntity extends BaseEntity<BizWorkOrderEntity> {
     @TableField("order_state")
     private Integer orderState;
 
-    @Schema(description = "流程状态: 1-已创建, 2-已确认, 3-已添加配方, 4-生产中, 5-已完成, 6-已取消")
+    @Schema(description = "流程状态: 1-已创建, 2-已添加配方, 3-生产中, 4-已完成, 5-已取消")
     @TableField("process_status")
     private Integer processStatus;
 

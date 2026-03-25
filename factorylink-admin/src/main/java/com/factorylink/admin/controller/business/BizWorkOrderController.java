@@ -42,8 +42,8 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * @author Codex
  */
-@Tag(name = "工单API", description = "工单全生命周期管理，包括创建、确认、分配配方、开始生产、取消等流程操作。"
-        + " 流程状态流转：已创建(1) → 已确认(2) → 已添加配方(3) → 生产中(4) → 已完成(5)，任意阶段均可取消(6)")
+@Tag(name = "工单API", description = "工单全生命周期管理，包括创建、分配配方、开始生产、取消等流程操作。"
+        + " 流程状态流转：已创建(1) → 已添加配方(2) → 生产中(3) → 已完成(4)，任意阶段均可取消(5)")
 @RestController
 @RequestMapping("/business/workOrder")
 @Validated
@@ -123,18 +123,7 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok(result);
     }
 
-    @Operation(summary = "确认工单", description = "确认工单，流程状态从1(已创建)变为2(已确认)。"
-            + " 仅流程状态为1的工单可执行此操作")
-    @PreAuthorize("@permission.has('business:workOrder:confirm')")
-    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
-    @PutMapping("/{workOrderId}/confirm")
-    public ResponseDTO<Void> confirm(
-            @Parameter(description = "工单ID", required = true) @PathVariable Long workOrderId) {
-        workOrderApplicationService.confirmWorkOrder(workOrderId);
-        return ResponseDTO.ok();
-    }
-
-    @Operation(summary = "查询待分配配方工单", description = "查询流程状态为2(已确认)的工单列表，"
+    @Operation(summary = "查询待分配配方工单", description = "查询流程状态为1(已创建)的工单列表，"
             + "用于配方管理员选择工单并分配配方。按创建时间倒序排列")
     @PreAuthorize("@permission.has('business:workOrder:pending')")
     @GetMapping("/pending")
@@ -143,8 +132,8 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok(list);
     }
 
-    @Operation(summary = "分配配方", description = "为工单分配配方ID和配方编号，流程状态从2(已确认)变为3(已添加配方)。"
-            + " 仅流程状态为2的工单可执行此操作")
+    @Operation(summary = "分配配方", description = "为工单分配配方ID和配方编号，流程状态从1(已创建)变为2(已添加配方)。"
+            + " 仅流程状态为1的工单可执行此操作")
     @PreAuthorize("@permission.has('business:workOrder:assignFormula')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
     @PutMapping("/assignFormula")
@@ -153,7 +142,7 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok();
     }
 
-    @Operation(summary = "查询已添加配方工单", description = "查询流程状态为3(已添加配方)的工单列表，"
+    @Operation(summary = "查询已添加配方工单", description = "查询流程状态为2(已添加配方)的工单列表，"
             + "用于生产调度员选择工单并开始生产。按创建时间倒序排列")
     @PreAuthorize("@permission.has('business:workOrder:dispatched')")
     @GetMapping("/dispatched")
@@ -162,7 +151,7 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok(list);
     }
 
-    @Operation(summary = "开始生产", description = "将工单状态改为生产中，流程状态从3(已添加配方)变为4(生产中)，"
+    @Operation(summary = "开始生产", description = "将工单状态改为生产中，流程状态从2(已添加配方)变为3(生产中)，"
             + "记录生产开始时间，并自动将工单信息下发到磅秤设备。若下发失败不影响状态变更，后续可手动重试下发")
     @PreAuthorize("@permission.has('business:workOrder:startProduction')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
@@ -174,7 +163,7 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "修改工单配方", description = "修改工单关联配方的明细内容。"
-            + " 流程状态为3(已添加配方)时可直接修改；流程状态为4(生产中)时需传confirmed=true确认后才能修改，"
+            + " 流程状态为2(已添加配方)时可直接修改；流程状态为3(生产中)时需传confirmed=true确认后才能修改，"
             + "修改后会通过SSE向现场人员推送告警消息")
     @PreAuthorize("@permission.has('business:workOrder:modifyFormula')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
@@ -187,8 +176,8 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok();
     }
 
-    @Operation(summary = "取消工单", description = "取消工单，流程状态变为6(已取消)，工单状态变为4(已取消)。"
-            + " 仅流程状态为1(已创建)、2(已确认)、3(已添加配方)、4(生产中)的工单可取消，"
+    @Operation(summary = "取消工单", description = "取消工单，流程状态变为5(已取消)，工单状态变为4(已取消)。"
+            + " 仅流程状态为1(已创建)、2(已添加配方)、3(生产中)的工单可取消，"
             + "已完成或已取消的工单不可重复操作")
     @PreAuthorize("@permission.has('business:workOrder:cancel')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
