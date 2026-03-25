@@ -16,9 +16,11 @@ import com.factorylink.domain.business.workorder.dto.WorkOrderDTO;
 import com.factorylink.domain.business.workorder.model.WorkOrderModel;
 import com.factorylink.domain.business.workorder.model.WorkOrderModelFactory;
 import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
+import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.common.command.BulkOperationCommand;
+import org.springframework.context.ApplicationEventPublisher;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.Collection;
 import java.util.Date;
@@ -32,12 +34,16 @@ class WorkOrderApplicationServiceTest {
     private final BizWorkOrderService workOrderService = mock(BizWorkOrderService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
     private final ScaleSyncService scaleSyncService = mock(ScaleSyncService.class);
+    private final FormulaModelFactory formulaModelFactory = mock(FormulaModelFactory.class);
+    private final ApplicationEventPublisher applicationEventPublisher = mock(ApplicationEventPublisher.class);
     private final WorkOrderApplicationService applicationService =
         new WorkOrderApplicationService(
             workOrderModelFactory,
             workOrderService,
             auditUserEnricher,
-            scaleSyncService
+            scaleSyncService,
+            formulaModelFactory,
+            applicationEventPublisher
         );
 
     @Test

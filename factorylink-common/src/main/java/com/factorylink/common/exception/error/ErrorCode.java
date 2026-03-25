@@ -186,6 +186,12 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         WORK_ORDER_PROCESS_STATUS_INVALID(11303, "工单当前流程状态不允许此操作", "Business.WORK_ORDER_PROCESS_STATUS_INVALID"),
 
+        WORK_ORDER_FORMULA_MODIFY_NOT_ALLOWED(11305, "工单当前流程状态不允许修改配方", "Business.WORK_ORDER_FORMULA_MODIFY_NOT_ALLOWED"),
+
+        WORK_ORDER_FORMULA_MODIFY_NEED_CONFIRM(11306, "生产中工单修改配方需要确认(confirmed=true)", "Business.WORK_ORDER_FORMULA_MODIFY_NEED_CONFIRM"),
+
+        WORK_ORDER_NO_FORMULA_ASSIGNED(11307, "工单尚未分配配方，无法修改", "Business.WORK_ORDER_NO_FORMULA_ASSIGNED"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),
