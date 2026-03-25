@@ -95,20 +95,13 @@ public class WorkOrderApplicationService {
 
     public List<WorkOrderDTO> getPendingWorkOrders() {
         QueryWrapper<BizWorkOrderEntity> wrapper = new QueryWrapper<BizWorkOrderEntity>()
-            .eq("process_status", 2)
+            .eq("process_status", 1)
             .eq("deleted", 0)
             .orderByDesc("create_time");
         List<BizWorkOrderEntity> list = workOrderService.list(wrapper);
         List<WorkOrderDTO> records = list.stream().map(WorkOrderDTO::new).toList();
         auditUserEnricher.enrich(records);
         return records;
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public void confirmWorkOrder(Long workOrderId) {
-        WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
-        model.confirm();
-        model.updateById();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -120,7 +113,7 @@ public class WorkOrderApplicationService {
 
     public List<WorkOrderDTO> getDispatchedWorkOrders() {
         QueryWrapper<BizWorkOrderEntity> wrapper = new QueryWrapper<BizWorkOrderEntity>()
-            .eq("process_status", 3)
+            .eq("process_status", 2)
             .eq("deleted", 0)
             .orderByDesc("create_time");
         List<BizWorkOrderEntity> list = workOrderService.list(wrapper);

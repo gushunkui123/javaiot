@@ -23,15 +23,13 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
     private static final int PROCESS_STATUS_CREATED = 1;
 
-    private static final int PROCESS_STATUS_CONFIRMED = 2;
+    private static final int PROCESS_STATUS_FORMULA_ASSIGNED = 2;
 
-    private static final int PROCESS_STATUS_FORMULA_ASSIGNED = 3;
+    private static final int PROCESS_STATUS_PRODUCING = 3;
 
-    private static final int PROCESS_STATUS_PRODUCING = 4;
+    private static final int PROCESS_STATUS_COMPLETED = 4;
 
-    private static final int PROCESS_STATUS_COMPLETED = 5;
-
-    private static final int PROCESS_STATUS_CANCELLED = 6;
+    private static final int PROCESS_STATUS_CANCELLED = 5;
 
     private static final int ORDER_STATE_PRODUCING = 2;
 
@@ -75,16 +73,11 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
     public void assignFormula(AssignFormulaCommand command) {
         if (command != null) {
-            checkProcessStatus(PROCESS_STATUS_CONFIRMED);
+            checkProcessStatus(PROCESS_STATUS_CREATED);
             setFormulaId(command.getFormulaId());
             setFormulaCode(StrUtil.trim(command.getFormulaCode()));
             setProcessStatus(PROCESS_STATUS_FORMULA_ASSIGNED);
         }
-    }
-
-    public void confirm() {
-        checkProcessStatus(PROCESS_STATUS_CREATED);
-        setProcessStatus(PROCESS_STATUS_CONFIRMED);
     }
 
     public void startProduction() {
