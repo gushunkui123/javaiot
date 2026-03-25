@@ -41,7 +41,6 @@ public class AddWorkOrderCommand {
     protected String lineNo;
 
     @Schema(description = "配方编号")
-    @NotBlank(message = "配方编号不能为空")
     @Size(max = 50, message = "配方编号长度不能超过50个字符")
     protected String formulaCode;
 

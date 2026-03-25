@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `biz_work_order`
     `plant`           varchar(50)             DEFAULT NULL COMMENT '工厂别',
     `machine_id`      int            NOT NULL COMMENT '设备编号',
     `line_no`         varchar(10)             DEFAULT NULL COMMENT '产线编号(A/B)',
-    `formula_code`    varchar(50)    NOT NULL COMMENT '配方编号',
+    `formula_code`    varchar(50)             DEFAULT NULL COMMENT '配方编号',
     `order_batch_num` int            NOT NULL COMMENT '计划批次数',
     `mold_code`       varchar(50)    NOT NULL COMMENT '模具代号',
     `model_color`     varchar(50)    NOT NULL COMMENT '型体颜色',

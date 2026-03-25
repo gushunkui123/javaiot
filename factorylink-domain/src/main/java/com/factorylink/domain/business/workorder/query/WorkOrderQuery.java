@@ -30,13 +30,17 @@ public class WorkOrderQuery extends AbstractPageQuery<BizWorkOrderEntity> {
     @Schema(description = "工单状态: 1-未生产, 2-生产中, 3-已完工, 4-已取消")
     private Integer orderState;
 
+    @Schema(description = "流程状态: 1-已创建, 2-已添加配方, 3-生产中, 4-已完成, 5-已取消")
+    private Integer processStatus;
+
     @Override
     public QueryWrapper<BizWorkOrderEntity> addQueryCondition() {
         QueryWrapper<BizWorkOrderEntity> queryWrapper = new QueryWrapper<BizWorkOrderEntity>()
             .like(StrUtil.isNotEmpty(workOrderNo), "work_order_no", workOrderNo)
             .eq(StrUtil.isNotEmpty(formulaCode), "formula_code", formulaCode)
             .eq(machineId != null, "machine_id", machineId)
-            .eq(orderState != null, "order_state", orderState);
+            .eq(orderState != null, "order_state", orderState)
+            .eq(processStatus != null, "process_status", processStatus);
 
         if (StrUtil.isEmpty(this.getOrderColumn())) {
             this.setOrderColumn("createTime");
