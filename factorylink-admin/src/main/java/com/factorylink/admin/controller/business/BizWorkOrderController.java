@@ -10,6 +10,7 @@ import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.domain.business.workorder.WorkOrderApplicationService;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
 import com.factorylink.domain.business.workorder.command.AssignFormulaCommand;
+import com.factorylink.domain.business.workorder.command.ModifyWorkOrderFormulaCommand;
 import com.factorylink.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.factorylink.domain.business.workorder.dto.WorkOrderDTO;
 import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
@@ -170,6 +171,20 @@ public class BizWorkOrderController extends BaseController {
             @Parameter(description = "工单ID", required = true) @PathVariable Long workOrderId) {
         SyncResultDTO result = workOrderApplicationService.startProduction(workOrderId);
         return ResponseDTO.ok(result);
+    }
+
+    @Operation(summary = "修改工单配方", description = "修改工单关联配方的明细内容。"
+            + " 流程状态为3(已添加配方)时可直接修改；流程状态为4(生产中)时需传confirmed=true确认后才能修改，"
+            + "修改后会通过SSE向现场人员推送告警消息")
+    @PreAuthorize("@permission.has('business:workOrder:modifyFormula')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
+    @PutMapping("/{workOrderId}/formula")
+    public ResponseDTO<Void> modifyFormula(
+            @Parameter(description = "工单ID", required = true) @PathVariable Long workOrderId,
+            @Validated @RequestBody ModifyWorkOrderFormulaCommand command) {
+        command.setWorkOrderId(workOrderId);
+        workOrderApplicationService.modifyWorkOrderFormula(command);
+        return ResponseDTO.ok();
     }
 
     @Operation(summary = "取消工单", description = "取消工单，流程状态变为6(已取消)，工单状态变为4(已取消)。"

@@ -112,6 +112,25 @@ public class WorkOrderModel extends BizWorkOrderEntity {
         applyCancel();
     }
 
+    /**
+     * 校验工单是否允许修改配方。
+     * @param confirmed 生产中工单修改确认标识
+     * @return true 表示生产中修改（需告警），false 表示普通修改
+     */
+    public boolean checkCanModifyFormula(Boolean confirmed) {
+        int status = getProcessStatus() != null ? getProcessStatus() : -1;
+        if (status == PROCESS_STATUS_FORMULA_ASSIGNED) {
+            return false;
+        }
+        if (status == PROCESS_STATUS_PRODUCING) {
+            if (!Boolean.TRUE.equals(confirmed)) {
+                throw new ApiException(Business.WORK_ORDER_FORMULA_MODIFY_NEED_CONFIRM);
+            }
+            return true;
+        }
+        throw new ApiException(Business.WORK_ORDER_FORMULA_MODIFY_NOT_ALLOWED);
+    }
+
     private void checkProcessStatus(int expectedStatus) {
         if (getProcessStatus() == null || getProcessStatus() != expectedStatus) {
             throw new ApiException(Business.WORK_ORDER_PROCESS_STATUS_INVALID);

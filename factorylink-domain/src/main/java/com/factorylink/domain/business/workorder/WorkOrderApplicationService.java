@@ -1,10 +1,13 @@
 package com.factorylink.domain.business.workorder;
 
 import com.factorylink.common.core.page.PageDTO;
+import com.factorylink.common.exception.ApiException;
+import com.factorylink.common.exception.error.ErrorCode.Business;
 import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
 import com.factorylink.domain.business.workorder.command.AssignFormulaCommand;
+import com.factorylink.domain.business.workorder.command.ModifyWorkOrderFormulaCommand;
 import com.factorylink.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.factorylink.domain.business.workorder.db.BizWorkOrderEntity;
 import com.factorylink.domain.business.workorder.db.BizWorkOrderService;
@@ -12,14 +15,19 @@ import com.factorylink.domain.business.workorder.dto.WorkOrderDTO;
 import com.factorylink.domain.business.workorder.model.WorkOrderModel;
 import com.factorylink.domain.business.workorder.model.WorkOrderModelFactory;
 import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
+import com.factorylink.domain.business.formula.model.FormulaModel;
+import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
 import com.factorylink.domain.business.machine.dto.SyncResultDTO;
+import com.factorylink.domain.business.notification.event.FormulaModifiedEvent;
+import com.factorylink.infrastructure.sse.SseMessageLevel;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +46,10 @@ public class WorkOrderApplicationService {
     private final AuditUserEnricher auditUserEnricher;
 
     private final ScaleSyncService scaleSyncService;
+
+    private final FormulaModelFactory formulaModelFactory;
+
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public PageDTO<WorkOrderDTO> getWorkOrderList(WorkOrderQuery query) {
         Page<BizWorkOrderEntity> page = workOrderService.page(query.toPage(), query.toQueryWrapper());
@@ -138,6 +150,31 @@ public class WorkOrderApplicationService {
         WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
         model.cancel();
         model.updateById();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void modifyWorkOrderFormula(ModifyWorkOrderFormulaCommand command) {
+        WorkOrderModel workOrder = workOrderModelFactory.loadById(command.getWorkOrderId());
+        boolean isProducing = workOrder.checkCanModifyFormula(command.getConfirmed());
+
+        Long formulaId = workOrder.getFormulaId();
+        if (formulaId == null) {
+            throw new ApiException(Business.WORK_ORDER_NO_FORMULA_ASSIGNED);
+        }
+
+        FormulaModel formula = formulaModelFactory.loadById(formulaId);
+        formula.setItems(command.getItems());
+        formula.updateById();
+
+        try {
+            scaleSyncService.syncFormula(formulaId, OperationType.UPDATE);
+        } catch (Exception e) {
+            log.warn("配方下发失败，formulaId={}，后续需重试: {}", formulaId, e.getMessage());
+        }
+
+        SseMessageLevel level = isProducing ? SseMessageLevel.ALERT : SseMessageLevel.NOTIFICATION;
+        applicationEventPublisher.publishEvent(
+                new FormulaModifiedEvent(this, command.getWorkOrderId(), formulaId, level));
     }
 
 }
