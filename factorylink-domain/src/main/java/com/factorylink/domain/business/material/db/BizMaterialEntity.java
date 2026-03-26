@@ -37,6 +37,10 @@ public class BizMaterialEntity extends BaseEntity<BizMaterialEntity> {
     @TableField("material_name")
     private String materialName;
 
+    @Schema(description = "称重方式（0-自动 1-手动）")
+    @TableField("weighing_method")
+    private Integer weighingMethod;
+
     @Override
     public Serializable pkVal() {
         return this.materialId;

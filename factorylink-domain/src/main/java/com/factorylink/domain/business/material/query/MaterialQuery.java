@@ -24,11 +24,15 @@ public class MaterialQuery extends AbstractPageQuery<BizMaterialEntity> {
     @Schema(description = "原料名称")
     private String materialName;
 
+    @Schema(description = "称重方式（0-自动 1-手动）")
+    private Integer weighingMethod;
+
     @Override
     public QueryWrapper<BizMaterialEntity> addQueryCondition() {
         QueryWrapper<BizMaterialEntity> queryWrapper = new QueryWrapper<BizMaterialEntity>()
             .eq(StrUtil.isNotEmpty(materialType), "material_type", materialType)
-            .like(StrUtil.isNotEmpty(materialName), "material_name", materialName);
+            .like(StrUtil.isNotEmpty(materialName), "material_name", materialName)
+            .eq(weighingMethod != null, "weighing_method", weighingMethod);
 
         if (StrUtil.isEmpty(this.getOrderColumn())) {
             this.setOrderColumn("createTime");
