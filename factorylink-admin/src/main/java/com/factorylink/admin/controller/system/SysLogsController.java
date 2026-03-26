@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -71,7 +72,7 @@ public class SysLogsController extends BaseController {
     @Operation(summary = "操作日志列表")
     @PreAuthorize("@permission.has('monitor:operlog:list')")
     @GetMapping("/operationLogs")
-    public ResponseDTO<PageDTO<OperationLogDTO>> operationLogs(OperationLogQuery query) {
+    public ResponseDTO<PageDTO<OperationLogDTO>> operationLogs(@ParameterObject OperationLogQuery query) {
         PageDTO<OperationLogDTO> pageDTO = logApplicationService.getOperationLogList(query);
         return ResponseDTO.ok(pageDTO);
     }
@@ -102,7 +103,7 @@ public class SysLogsController extends BaseController {
     @AccessLog(title = "操作日志", businessType = BusinessTypeEnum.EXPORT)
     @PreAuthorize("@permission.has('monitor:operlog:export')")
     @GetMapping("/operationLogs/excel")
-    public void operationLogsExcel(HttpServletResponse response, OperationLogQuery query) {
+    public void operationLogsExcel(HttpServletResponse response, @ParameterObject OperationLogQuery query) {
         PageDTO<OperationLogDTO> pageDTO = logApplicationService.getOperationLogList(query);
         CustomExcelUtil.writeToResponse(pageDTO.getRows(), OperationLogDTO.class, response);
     }
