@@ -54,6 +54,10 @@ public class WorkOrderModel extends BizWorkOrderEntity {
             setWorkOrderNo(StrUtil.trim(getWorkOrderNo()));
             setFormulaCode(StrUtil.trim(getFormulaCode()));
 
+            if (getOrderDate() == null) {
+                setOrderDate(new Date());
+            }
+
             if (getBatchWeight() == null) {
                 setBatchWeight(DEFAULT_BATCH_WEIGHT);
             }
@@ -88,6 +92,9 @@ public class WorkOrderModel extends BizWorkOrderEntity {
     }
 
     public void checkWorkOrderNoUnique() {
+        if (StrUtil.isBlank(getWorkOrderNo())) {
+            return;
+        }
         if (workOrderService.isWorkOrderNoDuplicated(getWorkOrderId(), getWorkOrderNo())) {
             throw new ApiException(Business.WORK_ORDER_NO_IS_NOT_UNIQUE, getWorkOrderNo());
         }
