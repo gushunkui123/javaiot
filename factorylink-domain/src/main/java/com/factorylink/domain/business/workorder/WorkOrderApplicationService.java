@@ -3,7 +3,6 @@ package com.factorylink.domain.business.workorder;
 import com.factorylink.common.core.page.PageDTO;
 import com.factorylink.common.exception.ApiException;
 import com.factorylink.common.exception.error.ErrorCode.Business;
-import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
 import com.factorylink.domain.business.workorder.command.AssignFormulaCommand;
@@ -86,22 +85,6 @@ public class WorkOrderApplicationService {
         workOrderModel.loadFromUpdateCommand(updateCommand);
         workOrderModel.checkWorkOrderNoUnique();
         workOrderModel.updateById();
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteWorkOrder(BulkOperationCommand<Long> deleteCommand) {
-        workOrderService.removeBatchByIds(deleteCommand.getIds());
-    }
-
-    public List<WorkOrderDTO> getPendingWorkOrders() {
-        QueryWrapper<BizWorkOrderEntity> wrapper = new QueryWrapper<BizWorkOrderEntity>()
-            .eq("process_status", 1)
-            .eq("deleted", 0)
-            .orderByDesc("create_time");
-        List<BizWorkOrderEntity> list = workOrderService.list(wrapper);
-        List<WorkOrderDTO> records = list.stream().map(WorkOrderDTO::new).toList();
-        auditUserEnricher.enrich(records);
-        return records;
     }
 
     @Transactional(rollbackFor = Exception.class)

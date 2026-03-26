@@ -6,7 +6,6 @@ import com.factorylink.common.core.dto.ResponseDTO;
 import com.factorylink.common.core.page.PageDTO;
 import com.factorylink.common.enums.common.BusinessTypeEnum;
 import com.factorylink.common.utils.poi.CustomExcelUtil;
-import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.domain.business.workorder.WorkOrderApplicationService;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
 import com.factorylink.domain.business.workorder.command.AssignFormulaCommand;
@@ -21,13 +20,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -105,16 +101,6 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok();
     }
 
-    @Operation(summary = "删除工单", description = "批量删除工单，支持同时传入多个工单ID")
-    @PreAuthorize("@permission.has('business:workOrder:remove')")
-    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.DELETE)
-    @DeleteMapping
-    public ResponseDTO<Void> remove(
-            @Parameter(description = "工单ID列表", required = true) @RequestParam @NotNull @NotEmpty List<Long> ids) {
-        workOrderApplicationService.deleteWorkOrder(new BulkOperationCommand<>(ids));
-        return ResponseDTO.ok();
-    }
-
     @Operation(summary = "下发工单到设备", description = "将工单信息下发至主磅/微量磅秤设备。"
             + " 操作类型：ADD-新增下发，UPDATE-更新下发，DELETE-删除下发")
     @PreAuthorize("@permission.has('business:workOrder:sync')")
@@ -125,15 +111,6 @@ public class BizWorkOrderController extends BaseController {
             @Parameter(description = "操作类型：ADD-新增, UPDATE-更新, DELETE-删除") @RequestParam(defaultValue = "ADD") OperationType operationType) {
         SyncResultDTO result = scaleSyncService.syncWorkOrder(workOrderId, operationType);
         return ResponseDTO.ok(result);
-    }
-
-    @Operation(summary = "查询待分配配方工单", description = "查询流程状态为1(已创建)的工单列表，"
-            + "用于配方管理员选择工单并分配配方。按创建时间倒序排列")
-    @PreAuthorize("@permission.has('business:workOrder:pending')")
-    @GetMapping("/pending")
-    public ResponseDTO<List<WorkOrderDTO>> pendingList() {
-        List<WorkOrderDTO> list = workOrderApplicationService.getPendingWorkOrders();
-        return ResponseDTO.ok(list);
     }
 
     @Operation(summary = "分配配方", description = "为工单分配配方ID和配方编号，流程状态从1(已创建)变为2(已添加配方)。"
