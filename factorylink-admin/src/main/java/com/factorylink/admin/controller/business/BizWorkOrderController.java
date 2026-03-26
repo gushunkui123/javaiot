@@ -83,7 +83,11 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "添加工单", description = "创建新工单，初始流程状态为1(已创建)。"
-            + " 若未指定单批次重量则默认为75kg，计划重量 = 单批次重量 × 计划批次数")
+            + " 必填字段：产线编号(lineNo)、模具代号(moldCode)、型体颜色(modelColor)、计划批次数(orderBatchNum)。"
+            + " 选填字段：工单编号(workOrderNo，不传则由系统自动生成)、工单日期(orderDate，不传则自动取当天日期)、"
+            + "设备编号(machineId)、工厂别(plant)、配方编号(formulaCode)、配方ID(formulaId)、"
+            + "单批次重量(batchWeight，默认75kg)、备注(remark)。"
+            + " 计划重量 = 单批次重量 × 计划批次数")
     @PreAuthorize("@permission.has('business:workOrder:add')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.ADD)
     @PostMapping

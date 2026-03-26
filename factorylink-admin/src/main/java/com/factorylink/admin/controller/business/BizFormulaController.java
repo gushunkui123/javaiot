@@ -53,6 +53,7 @@ public class BizFormulaController extends BaseController {
 
     @Operation(summary = "配方列表")
     @PreAuthorize("@permission.has('business:formula:list')")
+    @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.QUERY)
     @GetMapping("/list")
     public ResponseDTO<PageDTO<FormulaDTO>> list(FormulaQuery query) {
         PageDTO<FormulaDTO> pageDTO = formulaApplicationService.getFormulaList(query);
@@ -61,6 +62,7 @@ public class BizFormulaController extends BaseController {
 
     @Operation(summary = "配方详情")
     @PreAuthorize("@permission.has('business:formula:list')")
+    @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.QUERY)
     @GetMapping("/{formulaId}")
     public ResponseDTO<FormulaDTO> getInfo(@PathVariable Long formulaId) {
         FormulaDTO formulaDTO = formulaApplicationService.getFormulaInfo(formulaId);
