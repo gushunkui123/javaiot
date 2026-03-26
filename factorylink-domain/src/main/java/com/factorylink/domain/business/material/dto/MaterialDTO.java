@@ -26,6 +26,8 @@ public class MaterialDTO implements AuditableDTO {
 
     private String materialName;
 
+    private Integer weighingMethod;
+
     private Long creatorId;
 
     private String creatorName;

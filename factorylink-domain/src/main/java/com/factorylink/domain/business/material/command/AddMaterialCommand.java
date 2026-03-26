@@ -3,6 +3,7 @@ package com.factorylink.domain.business.material.command;
 import com.factorylink.common.annotation.ExcelColumn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -24,5 +25,10 @@ public class AddMaterialCommand {
     @NotBlank(message = "原料名称不能为空")
     @Size(max = 128, message = "原料名称长度不能超过128个字符")
     protected String materialName;
+
+    @ExcelColumn(name = "称重方式")
+    @Schema(description = "称重方式（1-手动 2-自动）")
+    @NotNull(message = "称重方式不能为空")
+    protected Integer weighingMethod;
 
 }
