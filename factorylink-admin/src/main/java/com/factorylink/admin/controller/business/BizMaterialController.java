@@ -42,7 +42,7 @@ import org.springframework.web.multipart.MultipartFile;
  *
  * @author Codex
  */
-@Tag(name = "原料API", description = "原料相关的增删查改")
+@Tag(name = "原料API", description = "原料相关的增删查改。称重方式：0=自动，1=手动")
 @RestController
 @RequestMapping("/business/material")
 @Validated

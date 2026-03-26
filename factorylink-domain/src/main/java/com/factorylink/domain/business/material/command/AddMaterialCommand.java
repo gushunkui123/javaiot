@@ -27,7 +27,7 @@ public class AddMaterialCommand {
     protected String materialName;
 
     @ExcelColumn(name = "称重方式")
-    @Schema(description = "称重方式（1-手动 2-自动）")
+    @Schema(description = "称重方式（0-自动 1-手动）")
     @NotNull(message = "称重方式不能为空")
     protected Integer weighingMethod;
 

@@ -24,7 +24,7 @@ public class MaterialQuery extends AbstractPageQuery<BizMaterialEntity> {
     @Schema(description = "原料名称")
     private String materialName;
 
-    @Schema(description = "称重方式（1-手动 2-自动）")
+    @Schema(description = "称重方式（0-自动 1-手动）")
     private Integer weighingMethod;
 
     @Override
