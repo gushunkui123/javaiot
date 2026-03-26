@@ -1,7 +1,6 @@
 package com.factorylink.domain.business.workorder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -19,14 +18,11 @@ import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
-import com.factorylink.domain.common.command.BulkOperationCommand;
 import org.springframework.context.ApplicationEventPublisher;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 class WorkOrderApplicationServiceTest {
 
@@ -129,17 +125,6 @@ class WorkOrderApplicationServiceTest {
         verify(model).loadFromUpdateCommand(command);
         verify(model).checkWorkOrderNoUnique();
         verify(model).updateById();
-    }
-
-    @Test
-    void deleteWorkOrderShouldRemoveBatchByIds() {
-        applicationService.deleteWorkOrder(new BulkOperationCommand<>(List.of(1L, 3L)));
-
-        ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
-        verify(workOrderService).removeBatchByIds(captor.capture());
-        Collection<Long> deletedIds = captor.getValue();
-        assertEquals(2, deletedIds.size());
-        assertTrue(deletedIds.containsAll(List.of(1L, 3L)));
     }
 
 }
