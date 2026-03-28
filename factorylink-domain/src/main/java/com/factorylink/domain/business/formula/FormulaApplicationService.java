@@ -83,6 +83,7 @@ public class FormulaApplicationService {
         FormulaModel formulaModel = formulaModelFactory.create();
         formulaModel.loadFromAddCommand(addCommand);
         formulaModel.checkFormulaCodeUnique();
+        formulaModel.checkMaterialsExist();
         formulaModel.insert();
     }
 
@@ -91,6 +92,7 @@ public class FormulaApplicationService {
         FormulaModel formulaModel = formulaModelFactory.loadById(updateCommand.getFormulaId());
         formulaModel.loadFromUpdateCommand(updateCommand);
         formulaModel.checkFormulaCodeUnique();
+        formulaModel.checkMaterialsExist();
         formulaModel.updateById();
     }
 

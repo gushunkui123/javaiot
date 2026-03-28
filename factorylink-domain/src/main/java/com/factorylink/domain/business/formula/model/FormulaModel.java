@@ -11,9 +11,12 @@ import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -30,18 +33,23 @@ public class FormulaModel extends BizFormulaEntity {
 
     private BizFormulaService formulaService;
     private BizFormulaItemService formulaItemService;
+    private BizMaterialService materialService;
 
-    public FormulaModel(BizFormulaService formulaService, BizFormulaItemService formulaItemService) {
+    public FormulaModel(BizFormulaService formulaService, BizFormulaItemService formulaItemService,
+            BizMaterialService materialService) {
         this.formulaService = formulaService;
         this.formulaItemService = formulaItemService;
+        this.materialService = materialService;
     }
 
-    public FormulaModel(BizFormulaEntity entity, BizFormulaService formulaService, BizFormulaItemService formulaItemService) {
+    public FormulaModel(BizFormulaEntity entity, BizFormulaService formulaService,
+            BizFormulaItemService formulaItemService, BizMaterialService materialService) {
         if (entity != null) {
             BeanUtil.copyProperties(entity, this);
         }
         this.formulaService = formulaService;
         this.formulaItemService = formulaItemService;
+        this.materialService = materialService;
     }
 
     public void loadFromAddCommand(AddFormulaCommand addCommand) {
@@ -62,6 +70,23 @@ public class FormulaModel extends BizFormulaEntity {
     public void checkFormulaCodeUnique() {
         if (formulaService.isFormulaCodeDuplicated(getFormulaId(), getFormulaCode())) {
             throw new ApiException(Business.FORMULA_CODE_IS_NOT_UNIQUE, getFormulaCode());
+        }
+    }
+
+    public void checkMaterialsExist() {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        Set<Long> materialIds = items.stream()
+            .map(FormulaItemCommand::getMaterialId)
+            .collect(Collectors.toSet());
+        Set<Long> existingIds = materialService.listByIds(materialIds).stream()
+            .map(m -> m.getMaterialId())
+            .collect(Collectors.toSet());
+        for (Long materialId : materialIds) {
+            if (!existingIds.contains(materialId)) {
+                throw new ApiException(Business.FORMULA_MATERIAL_NOT_FOUND, materialId);
+            }
         }
     }
 
