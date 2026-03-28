@@ -1,6 +1,7 @@
 package com.factorylink.domain.business.workorder.model;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.factorylink.common.exception.ApiException;
 import com.factorylink.common.exception.error.ErrorCode.Business;
@@ -56,6 +57,11 @@ public class WorkOrderModel extends BizWorkOrderEntity {
 
             if (getOrderDate() == null) {
                 setOrderDate(new Date());
+            }
+
+            if (StrUtil.isBlank(getWorkOrderNo())) {
+                String dateStr = DateUtil.format(getOrderDate(), "yyyyMMdd");
+                setWorkOrderNo("LZ" + dateStr);
             }
 
             if (getBatchWeight() == null) {
