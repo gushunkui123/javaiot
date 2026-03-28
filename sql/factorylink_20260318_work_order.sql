@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS `biz_work_order`
     `work_order_no`   varchar(50)    NOT NULL COMMENT '工单编号',
     `order_date`      date           NOT NULL COMMENT '工单日期',
     `plant`           varchar(50)             DEFAULT NULL COMMENT '工厂别',
-    `machine_id`      int            NOT NULL COMMENT '设备编号',
+    `machine_id`      int                     DEFAULT NULL COMMENT '设备编号',
     `line_no`         varchar(10)             DEFAULT NULL COMMENT '产线编号(A/B)',
     `formula_code`    varchar(50)             DEFAULT NULL COMMENT '配方编号',
     `order_batch_num` int            NOT NULL COMMENT '计划批次数',
