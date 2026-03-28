@@ -111,14 +111,14 @@ factorylink:
             enabled: true
             machine-id: 1
             plant: "A1"
-            ip: 10.1.97.41
+            ip: 10.0.97.41
             api-url: http://${factorylink.machines.main-scale.ip}:8000/mws/api
             api-write-url: http://${factorylink.machines.main-scale.ip}:8000/mws/api/wr
         micro-scale:
             enabled: true
             machine-id: 1
             plant: "A1"
-            ip: 10.1.97.40
+            ip: 10.0.97.40
             api-url: http://${factorylink.machines.micro-scale.ip}:8000/aws/api
             api-write-url: http://${factorylink.machines.micro-scale.ip}:8000/aws/api/wr
         labeling-machine:
