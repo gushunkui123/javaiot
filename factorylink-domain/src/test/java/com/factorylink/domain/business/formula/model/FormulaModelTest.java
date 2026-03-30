@@ -16,6 +16,7 @@ import com.factorylink.domain.business.formula.command.FormulaItemCommand;
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.material.db.BizMaterialService;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,8 @@ class FormulaModelTest {
 
     private final BizFormulaService formulaService = mock(BizFormulaService.class);
     private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
-    private final FormulaModelFactory formulaModelFactory = new FormulaModelFactory(formulaService, formulaItemService);
+    private final BizMaterialService materialService = mock(BizMaterialService.class);
+    private final FormulaModelFactory formulaModelFactory = new FormulaModelFactory(formulaService, formulaItemService, materialService);
 
     @Test
     void loadFromAddCommandShouldTrimFields() {

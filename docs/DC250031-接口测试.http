@@ -1,0 +1,339 @@
+### ============================================================
+### DC250031 作业流程改进解决方案 - 接口测试
+### 主磅查询 Base URL: {{mws_host}}/mws/api
+### 主磅写入 Base URL: {{mws_host}}/mws/api/wr
+### 微量查询 Base URL: {{aws_host}}/aws/api
+### 微量写入 Base URL: {{aws_host}}/aws/api/wr
+### 环境变量: 复用 docs/http-client.env.json
+### 说明: 小料扫码防错、贴标机 TCP 通讯不属于 IDEA HTTP Client 请求，未在此文件中实现
+### ============================================================
+
+
+### ============================================================
+### 一、原料基本资料（主磅 / 微量）
+### ============================================================
+
+
+### 1.1 查询原料基本资料 - 主磅
+# @name getPartsMws
+# 参数说明:
+#   plant             - 厂别 (可选)
+#   machineId         - 设备编号 (必填)
+#   partNo            - 原料编号 (可选)
+#   partName          - 原料名称 (可选)
+#   partClass         - 原料类别 (可选): 5=原料, 2=胶料
+#   unitBarcodeWeight - 单位条码重量 kg (可选)
+GET {{mws_host}}/mws/api?option=getParts&plant={{plant}}&machineId={{machineId}}&partNo=&partName=&partClass=&unitBarcodeWeight=
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料基本资料 - 主磅 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtnmsg"), "应包含 rtnmsg 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### 1.2 查询原料基本资料 - 微量
+# @name getPartsAws
+GET {{aws_host}}/aws/api?option=getParts&plant={{plant}}&machineId={{machineId}}&partNo=&partName=&partClass=&unitBarcodeWeight=
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料基本资料 - 微量 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtnmsg"), "应包含 rtnmsg 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 二、原料与料桶（主磅 / 微量）
+### ============================================================
+
+
+### 2.1 查询原料与料桶 - 主磅
+# @name getMaterialInBucketsMws
+# 参数说明:
+#   plant      - 厂别 (可选)
+#   machineId  - 设备编号 (必填)
+#   bucketNo   - 料桶编号 (可选)
+#   materialNo - 原料编号 (可选)
+GET {{mws_host}}/mws/api?option=getMaterialInBuckets&plant={{plant}}&machineId={{machineId}}&bucketNo=&materialNo=
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料与料桶 - 主磅 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 2.2 查询原料与料桶 - 微量
+# @name getMaterialInBucketsAws
+GET {{aws_host}}/aws/api?option=getMaterialInBuckets&plant={{plant}}&machineId={{machineId}}&bucketNo=&materialNo=
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料与料桶 - 微量 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+    });
+%}
+
+###
+
+
+### 2.3 更新原料与料桶 - 主磅
+# @name updateMaterialInBucketsMws
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateMaterialInBuckets",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "bucketNo": "NO.01",
+  "materialNo": "M001"
+}
+
+> {%
+    client.log("=== 更新原料与料桶 - 主磅 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### 2.4 更新原料与料桶 - 微量
+# @name updateMaterialInBucketsAws
+POST {{aws_host}}/aws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateMaterialInBuckets",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "bucketNo": "NO.01",
+  "materialNo": "M001"
+}
+
+> {%
+    client.log("=== 更新原料与料桶 - 微量 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 三、原料条码（主磅 / 微量）
+### ============================================================
+
+
+### 3.1 查询原料条码 - 主磅
+# @name getMaterialBarcodeMws
+# 参数说明:
+#   plant             - 厂别 (可选)
+#   machineId         - 设备编号 (必填)
+#   barcode           - 原料条码 (可选)
+#   materialNo        - 原料编号 (可选)
+#   unitBarcodeWeight - 单位条码重量 kg (可选)
+#   expirationDate    - 有效期 yyyy-MM-dd (可选)
+#   lotNo             - 生产批号 (可选)
+GET {{mws_host}}/mws/api?option=getMaterialBarcode&plant={{plant}}&machineId={{machineId}}&barcode=&materialNo=&unitBarcodeWeight=&expirationDate=&lotNo=
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料条码 - 主磅 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### 3.2 查询原料条码 - 微量
+# @name getMaterialBarcodeAws
+GET {{aws_host}}/aws/api?option=getMaterialBarcode&plant={{plant}}&machineId={{machineId}}&barcode=&materialNo=&unitBarcodeWeight=&expirationDate=&lotNo=
+Accept: application/json
+
+> {%
+    client.log("=== 查询原料条码 - 微量 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 四、配方数据（主磅 / 微量）
+### ============================================================
+
+
+### 4.1 查询配方数据 - 主磅
+# @name getFormulaInfoMws
+# 参数说明:
+#   plant       - 厂别 (可选)
+#   machineId   - 设备编号 (必填)
+#   formulaCode - 配方编号 (可选)
+#   formulaName - 配方名称 (可选)
+GET {{mws_host}}/mws/api?option=getFormulaInfo&plant={{plant}}&machineId={{machineId}}&formulaCode=F001&formulaName=
+Accept: application/json
+
+> {%
+    client.log("=== 查询配方数据 - 主磅 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### 4.2 查询配方数据 - 微量
+# @name getFormulaInfoAws
+GET {{aws_host}}/aws/api?option=getFormulaInfo&plant={{plant}}&machineId={{machineId}}&formulaCode=F001&formulaName=
+Accept: application/json
+
+> {%
+    client.log("=== 查询配方数据 - 微量 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtndata"), "应包含 rtndata 字段");
+    });
+%}
+
+###
+
+
+### ============================================================
+### 五、密炼工艺（主磅）
+### ============================================================
+
+
+### 5.1 更新配方工艺
+# @name updateFormulaProcessMws
+# 参数说明:
+#   plant                    - 厂别 (可选)
+#   machineId                - 设备编号 (必填)
+#   formulaCode              - 配方编号 (必填)
+#   FormulaProcessEntryList  - 工艺步骤集合，最后一步必须为 ActionID=9 排料
+POST {{mws_host}}/mws/api/wr
+Content-Type: application/json
+
+{
+  "option": "updateFormulaProcess",
+  "plant": "{{plant}}",
+  "machineId": {{machineId}},
+  "formulaCode": "F001",
+  "formulaName": "配方001",
+  "FormulaProcessEntryList": [
+    {
+      "StepNo": 1,
+      "ActionID": 2,
+      "MixingTime": 0.0,
+      "MixingCurrent": 0.0,
+      "MixingTemp": 0.0,
+      "RotateSpeed": 0.0,
+      "Pressure": 0.0,
+      "ClosingConditionID": 0,
+      "TurningTimes": 0.0,
+      "RisingTime": 0.0,
+      "FallingTime": 0.0
+    },
+    {
+      "StepNo": 2,
+      "ActionID": 9,
+      "MixingTime": 0.0,
+      "MixingCurrent": 0.0,
+      "MixingTemp": 0.0,
+      "RotateSpeed": 0.0,
+      "Pressure": 0.0,
+      "ClosingConditionID": 0,
+      "TurningTimes": 0.0,
+      "RisingTime": 0.0,
+      "FallingTime": 0.0
+    }
+  ]
+}
+
+> {%
+    client.log("=== 更新配方工艺 - 主磅 ===");
+    client.log("Status: " + response.status);
+    client.log("Response: " + JSON.stringify(response.body, null, 2));
+    client.test("请求成功", function() {
+        client.assert(response.status === 200, "HTTP 状态码应为 200");
+    });
+    client.test("返回格式正确", function() {
+        client.assert(response.body.hasOwnProperty("success"), "应包含 success 字段");
+        client.assert(response.body.hasOwnProperty("rtnmsg"), "应包含 rtnmsg 字段");
+    });
+%}
+
+###
