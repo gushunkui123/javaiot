@@ -17,21 +17,14 @@ import lombok.Data;
 @Schema(name = "新增工单命令")
 public class AddWorkOrderCommand {
 
-    @Schema(description = "工单编号（选填，不传则由系统自动生成）")
+    @Schema(description = "工单编号（必填，通过generateWorkOrderNo接口获取前缀后补充序号）")
+    @NotBlank(message = "工单编号不能为空")
     @Size(max = 50, message = "工单编号长度不能超过50个字符")
     protected String workOrderNo;
 
     @Schema(description = "工单日期（选填，不传则自动取当天日期）")
     @JsonFormat(pattern = "yyyy-MM-dd")
     protected Date orderDate;
-
-    @Schema(description = "工厂别（选填）")
-    @Size(max = 50, message = "工厂别长度不能超过50个字符")
-    protected String plant;
-
-    @Schema(description = "设备编号（选填）")
-    @Positive(message = "设备编号必须为正数")
-    protected Integer machineId;
 
     @Schema(description = "产线编号(A/B)（必填）")
     @NotBlank(message = "产线编号不能为空")

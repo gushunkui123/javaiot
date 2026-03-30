@@ -43,18 +43,16 @@ class BizWorkOrderControllerTest {
     }
 
     @Test
-    void addShouldRejectInvalidMachineId() throws Exception {
+    void addShouldRejectInvalidOrderBatchNum() throws Exception {
         String requestBody = """
             {
               "workOrderNo": "WO-TEST-001",
               "orderDate": "2026-03-23 00:00:00",
-              "plant": "A1",
-              "machineId": -1,
               "lineNo": "A",
               "formulaCode": "FORMULA_001",
               "moldCode": "MOLD_001",
               "modelColor": "BLACK",
-              "orderBatchNum": 3,
+              "orderBatchNum": -1,
               "remark": "validation test"
             }
             """;
@@ -64,7 +62,7 @@ class BizWorkOrderControllerTest {
                 .content(requestBody))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value(103))
-            .andExpect(jsonPath("$.msg").value("请求参数异常，设备编号必须为正数"));
+            .andExpect(jsonPath("$.msg").value("请求参数异常，计划批次数必须为正数"));
 
         verify(workOrderApplicationService, never()).addWorkOrder(any());
     }
@@ -75,8 +73,6 @@ class BizWorkOrderControllerTest {
             {
               "workOrderNo": "WO-TEST-001",
               "orderDate": "2026-03-23 00:00:00",
-              "plant": "A1",
-              "machineId": 1,
               "lineNo": "A",
               "formulaCode": "FORMULA_001",
               "moldCode": "MOLD_001",

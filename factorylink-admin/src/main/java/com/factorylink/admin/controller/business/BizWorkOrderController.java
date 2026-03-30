@@ -16,10 +16,12 @@ import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
 import com.factorylink.domain.business.machine.dto.SyncResultDTO;
+import cn.hutool.core.date.DateUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Date;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -76,6 +78,14 @@ public class BizWorkOrderController extends BaseController {
             @Parameter(description = "工单ID", required = true) @PathVariable Long workOrderId) {
         WorkOrderDTO workOrderDTO = workOrderApplicationService.getWorkOrderInfo(workOrderId);
         return ResponseDTO.ok(workOrderDTO);
+    }
+
+    @Operation(summary = "生成工单编号", description = "返回自动生成的工单编号前缀（LZ+当天日期），用户在此基础上补充序号")
+    @PreAuthorize("@permission.has('business:workOrder:add')")
+    @GetMapping("/generateWorkOrderNo")
+    public ResponseDTO<String> generateWorkOrderNo() {
+        String workOrderNo = "LZ" + DateUtil.format(new Date(), "yyyyMMdd");
+        return ResponseDTO.ok(workOrderNo);
     }
 
     @Operation(summary = "添加工单", description = "创建新工单，初始流程状态为1(已创建)。"

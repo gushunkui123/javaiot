@@ -25,7 +25,6 @@ class WorkOrderModelTest {
         command.setWorkOrderNo("  WO001  ");
         command.setFormulaCode("  F001  ");
         command.setOrderDate(new Date());
-        command.setMachineId(1);
         command.setOrderBatchNum(10);
         WorkOrderModel model = workOrderModelFactory.create();
 
@@ -50,8 +49,6 @@ class WorkOrderModelTest {
         AddWorkOrderCommand command = new AddWorkOrderCommand();
         command.setWorkOrderNo("WO100");
         command.setFormulaCode("F100");
-        command.setPlant("工厂A");
-        command.setMachineId(3);
         command.setLineNo("A");
         command.setOrderBatchNum(5);
         command.setOrderDate(new Date());
@@ -62,8 +59,6 @@ class WorkOrderModelTest {
 
         assertEquals("WO100", model.getWorkOrderNo());
         assertEquals("F100", model.getFormulaCode());
-        assertEquals("工厂A", model.getPlant());
-        assertEquals(3, model.getMachineId());
         assertEquals("A", model.getLineNo());
         assertEquals(5, model.getOrderBatchNum());
         assertEquals(BigDecimal.valueOf(40), model.getBatchWeight());

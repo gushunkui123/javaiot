@@ -94,7 +94,6 @@ class WorkOrderApplicationServiceTest {
         command.setWorkOrderNo("WO010");
         command.setFormulaCode("F001");
         command.setOrderDate(new Date());
-        command.setMachineId(1);
         command.setOrderBatchNum(10);
 
         WorkOrderModel model = mock(WorkOrderModel.class);
@@ -114,7 +113,6 @@ class WorkOrderApplicationServiceTest {
         command.setWorkOrderNo("WO005");
         command.setFormulaCode("F005");
         command.setOrderDate(new Date());
-        command.setMachineId(2);
         command.setOrderBatchNum(20);
 
         WorkOrderModel model = mock(WorkOrderModel.class);
