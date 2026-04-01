@@ -29,6 +29,10 @@ public class BizMaterialEntity extends BaseEntity<BizMaterialEntity> {
     @TableId(value = "material_id", type = IdType.AUTO)
     private Long materialId;
 
+    @Schema(description = "原料编号")
+    @TableField("material_code")
+    private String materialCode;
+
     @Schema(description = "原料类型")
     @TableField("material_type")
     private String materialType;

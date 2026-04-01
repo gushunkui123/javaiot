@@ -111,10 +111,11 @@ public class FormulaApplicationService {
             throw new ApiException(Business.COMMON_UNSUPPORTED_OPERATION);
         }
 
-        // 构建原料名称 -> ID 映射（所有 sheet 共用）
+        // 构建原料编号 -> ID 映射（所有 sheet 共用）
         List<BizMaterialEntity> allMaterials = materialService.list();
-        Map<String, Long> materialNameToId = allMaterials.stream()
-            .collect(Collectors.toMap(BizMaterialEntity::getMaterialName, BizMaterialEntity::getMaterialId, (a, b) -> a));
+        Map<String, Long> materialCodeToId = allMaterials.stream()
+            .filter(m -> StrUtil.isNotBlank(m.getMaterialCode()))
+            .collect(Collectors.toMap(BizMaterialEntity::getMaterialCode, BizMaterialEntity::getMaterialId, (a, b) -> a));
 
         for (FormulaExcelDTO excelDTO : excelDTOs) {
             // 跳过配方编号为空的 sheet
@@ -126,12 +127,12 @@ public class FormulaApplicationService {
                 continue;
             }
 
-            AddFormulaCommand addCommand = buildAddCommand(excelDTO, materialNameToId);
+            AddFormulaCommand addCommand = buildAddCommand(excelDTO, materialCodeToId);
             addFormula(addCommand);
         }
     }
 
-    private AddFormulaCommand buildAddCommand(FormulaExcelDTO excelDTO, Map<String, Long> materialNameToId) {
+    private AddFormulaCommand buildAddCommand(FormulaExcelDTO excelDTO, Map<String, Long> materialCodeToId) {
         AddFormulaCommand addCommand = new AddFormulaCommand();
         addCommand.setFormulaCode(excelDTO.getFormulaCode());
         addCommand.setFormulaName(excelDTO.getSpecification());
@@ -143,15 +144,16 @@ public class FormulaApplicationService {
 
         List<FormulaItemCommand> items = new ArrayList<>();
         for (FormulaExcelDTO.Item excelItem : excelDTO.getItems()) {
-            Long materialId = materialNameToId.get(excelItem.getCode());
+            Long materialId = materialCodeToId.get(excelItem.getCode());
             if (materialId == null) {
                 if (FactoryLinkConfig.isFormulaImportAutoCreateMaterial()) {
                     BizMaterialEntity newMaterial = new BizMaterialEntity();
+                    newMaterial.setMaterialCode(excelItem.getCode());
                     newMaterial.setMaterialName(excelItem.getCode());
                     newMaterial.setMaterialType(convertMaterialType(excelItem.getCategory()));
                     materialService.save(newMaterial);
                     materialId = newMaterial.getMaterialId();
-                    materialNameToId.put(excelItem.getCode(), materialId);
+                    materialCodeToId.put(excelItem.getCode(), materialId);
                 } else {
                     throw new ApiException(Business.FORMULA_IMPORT_MATERIAL_NOT_FOUND,
                         excelItem.getCode());

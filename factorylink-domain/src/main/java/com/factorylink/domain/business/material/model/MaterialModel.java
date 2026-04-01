@@ -32,6 +32,7 @@ public class MaterialModel extends BizMaterialEntity {
     public void loadFromAddCommand(AddMaterialCommand addCommand) {
         if (addCommand != null) {
             BeanUtil.copyProperties(addCommand, this, "materialId");
+            setMaterialCode(StrUtil.trim(getMaterialCode()));
             setMaterialType(StrUtil.trim(getMaterialType()));
             setMaterialName(StrUtil.trim(getMaterialName()));
         }
@@ -44,6 +45,9 @@ public class MaterialModel extends BizMaterialEntity {
     }
 
     public void checkMaterialUnique() {
+        if (materialService.isMaterialCodeDuplicated(getMaterialId(), getMaterialCode())) {
+            throw new ApiException(Business.MATERIAL_CODE_IS_NOT_UNIQUE, getMaterialCode());
+        }
         if (materialService.isMaterialDuplicated(getMaterialId(), getMaterialType(), getMaterialName())) {
             throw new ApiException(Business.MATERIAL_TYPE_AND_NAME_IS_NOT_UNIQUE, getMaterialType(), getMaterialName());
         }

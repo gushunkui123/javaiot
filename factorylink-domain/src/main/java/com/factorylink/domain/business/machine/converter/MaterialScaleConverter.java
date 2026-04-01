@@ -13,7 +13,7 @@ public class MaterialScaleConverter {
     public ScalePartsRequest toRequest(BizMaterialEntity material) {
         ScalePartsRequest request = new ScalePartsRequest();
         request.setPlant("");
-        request.setPartNo(material.getMaterialName());
+        request.setPartNo(material.getMaterialCode());
         request.setPartName(material.getMaterialName());
         request.setPartClass(convertPartClass(material.getMaterialType()));
         return request;
@@ -22,7 +22,7 @@ public class MaterialScaleConverter {
     public ScalePartsRequest toDeleteRequest(BizMaterialEntity material) {
         ScalePartsRequest request = new ScalePartsRequest();
         request.setPlant("");
-        request.setPartNo(material.getMaterialName());
+        request.setPartNo(material.getMaterialCode());
         return request;
     }
 

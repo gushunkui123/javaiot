@@ -18,6 +18,9 @@ import lombok.NoArgsConstructor;
 @Schema(name = "原料查询参数")
 public class MaterialQuery extends AbstractPageQuery<BizMaterialEntity> {
 
+    @Schema(description = "原料编号")
+    private String materialCode;
+
     @Schema(description = "原料类型")
     private String materialType;
 
@@ -30,6 +33,7 @@ public class MaterialQuery extends AbstractPageQuery<BizMaterialEntity> {
     @Override
     public QueryWrapper<BizMaterialEntity> addQueryCondition() {
         QueryWrapper<BizMaterialEntity> queryWrapper = new QueryWrapper<BizMaterialEntity>()
+            .like(StrUtil.isNotEmpty(materialCode), "material_code", materialCode)
             .eq(StrUtil.isNotEmpty(materialType), "material_type", materialType)
             .like(StrUtil.isNotEmpty(materialName), "material_name", materialName)
             .eq(weighingMethod != null, "weighing_method", weighingMethod);

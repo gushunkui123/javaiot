@@ -170,6 +170,8 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         MATERIAL_ALREADY_ASSIGNED_TO_FORMULA_CAN_NOT_BE_DELETED(11102, "原料已被配方使用，请先移除配方中的引用再删除", "Business.MATERIAL_ALREADY_ASSIGNED_TO_FORMULA_CAN_NOT_BE_DELETED"),
 
+        MATERIAL_CODE_IS_NOT_UNIQUE(11103, "原料编号:{} 已存在", "Business.MATERIAL_CODE_IS_NOT_UNIQUE"),
+
         // -------------------------------- FORMULA -------------------------------------------------
 
         FORMULA_CODE_IS_NOT_UNIQUE(11201, "配方编号:{} 已存在", "Business.FORMULA_CODE_IS_NOT_UNIQUE"),

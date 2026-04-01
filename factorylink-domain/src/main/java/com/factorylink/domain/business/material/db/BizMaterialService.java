@@ -12,6 +12,15 @@ import com.baomidou.mybatisplus.extension.service.IService;
 public interface BizMaterialService extends IService<BizMaterialEntity> {
 
     /**
+     * 校验原料编号是否重复
+     *
+     * @param materialId 原料ID
+     * @param materialCode 原料编号
+     * @return 是否重复
+     */
+    boolean isMaterialCodeDuplicated(Long materialId, String materialCode);
+
+    /**
      * 校验原料类型和原料名称是否重复
      *
      * @param materialId 原料ID

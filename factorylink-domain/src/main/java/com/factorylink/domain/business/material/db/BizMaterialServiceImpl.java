@@ -15,6 +15,14 @@ import org.springframework.stereotype.Service;
 public class BizMaterialServiceImpl extends ServiceImpl<BizMaterialMapper, BizMaterialEntity> implements BizMaterialService {
 
     @Override
+    public boolean isMaterialCodeDuplicated(Long materialId, String materialCode) {
+        QueryWrapper<BizMaterialEntity> queryWrapper = new QueryWrapper<>();
+        queryWrapper.ne(materialId != null, "material_id", materialId)
+            .eq("material_code", materialCode);
+        return baseMapper.exists(queryWrapper);
+    }
+
+    @Override
     public boolean isMaterialDuplicated(Long materialId, String materialType, String materialName) {
         QueryWrapper<BizMaterialEntity> queryWrapper = new QueryWrapper<>();
         queryWrapper.ne(materialId != null, "material_id", materialId)

@@ -43,7 +43,7 @@ public class FormulaScaleConverter {
             })
             .map(item -> {
                 FormulaEntry entry = new FormulaEntry();
-                entry.setMaterialNo(materialMap.get(item.getMaterialId()).getMaterialName());
+                entry.setMaterialNo(materialMap.get(item.getMaterialId()).getMaterialCode());
                 entry.setMaterialWeight(item.getMaterialWeight());
                 entry.setStepNo(item.getStepNo() != null ? item.getStepNo() : 1);
                 return entry;

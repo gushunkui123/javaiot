@@ -14,6 +14,12 @@ import lombok.Data;
 @Schema(name = "新增原料命令")
 public class AddMaterialCommand {
 
+    @ExcelColumn(name = "原料编号")
+    @Schema(description = "原料编号")
+    @NotBlank(message = "原料编号不能为空")
+    @Size(max = 64, message = "原料编号长度不能超过64个字符")
+    protected String materialCode;
+
     @ExcelColumn(name = "原料类型")
     @Schema(description = "原料类型")
     @NotBlank(message = "原料类型不能为空")
