@@ -35,18 +35,21 @@ public class MainScaleClient {
 
     public ScaleApiResponse<Void> addParts(ScalePartsRequest request) {
         request.setOption("addParts");
+        request.setMachineId(config().getMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> updateParts(ScalePartsRequest request) {
         request.setOption("updateParts");
+        request.setMachineId(config().getMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> deleteParts(ScalePartsRequest request) {
         request.setOption("deleteParts");
+        request.setMachineId(config().getMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }

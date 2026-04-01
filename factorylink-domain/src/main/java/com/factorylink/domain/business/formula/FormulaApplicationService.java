@@ -106,14 +106,32 @@ public class FormulaApplicationService {
 
     @Transactional(rollbackFor = Exception.class)
     public void importFormula(InputStream inputStream) {
-        FormulaExcelDTO excelDTO = FormulaExcelParser.parse(inputStream);
+        List<FormulaExcelDTO> excelDTOs = FormulaExcelParser.parseAll(inputStream);
+        if (excelDTOs.isEmpty()) {
+            throw new ApiException(Business.COMMON_UNSUPPORTED_OPERATION);
+        }
 
-        // 构建原料名称 -> ID 映射
+        // 构建原料名称 -> ID 映射（所有 sheet 共用）
         List<BizMaterialEntity> allMaterials = materialService.list();
         Map<String, Long> materialNameToId = allMaterials.stream()
             .collect(Collectors.toMap(BizMaterialEntity::getMaterialName, BizMaterialEntity::getMaterialId, (a, b) -> a));
 
-        // 构建 AddFormulaCommand
+        for (FormulaExcelDTO excelDTO : excelDTOs) {
+            // 跳过配方编号为空的 sheet
+            if (StrUtil.isBlank(excelDTO.getFormulaCode())) {
+                continue;
+            }
+            // 跳过已存在的配方编号
+            if (formulaService.isFormulaCodeDuplicated(null, excelDTO.getFormulaCode())) {
+                continue;
+            }
+
+            AddFormulaCommand addCommand = buildAddCommand(excelDTO, materialNameToId);
+            addFormula(addCommand);
+        }
+    }
+
+    private AddFormulaCommand buildAddCommand(FormulaExcelDTO excelDTO, Map<String, Long> materialNameToId) {
         AddFormulaCommand addCommand = new AddFormulaCommand();
         addCommand.setFormulaCode(excelDTO.getFormulaCode());
         addCommand.setFormulaName(excelDTO.getSpecification());
@@ -148,8 +166,7 @@ public class FormulaApplicationService {
             items.add(item);
         }
         addCommand.setItems(items);
-
-        addFormula(addCommand);
+        return addCommand;
     }
 
     private String convertMaterialType(String category) {

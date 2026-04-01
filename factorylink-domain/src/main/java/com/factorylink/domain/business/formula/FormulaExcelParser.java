@@ -30,13 +30,25 @@ public class FormulaExcelParser {
     }
 
     /**
-     * 从 InputStream 解析配方 Excel
+     * 从 InputStream 解析配方 Excel（只取第一个有数据的 sheet）
      */
     public static FormulaExcelDTO parse(InputStream inputStream) {
         ExcelReader reader = ExcelUtil.getReader(inputStream);
         try {
             reader = pickDataSheet(reader);
             return doParse(reader);
+        } finally {
+            reader.close();
+        }
+    }
+
+    /**
+     * 从 InputStream 解析配方 Excel 的所有有数据的 sheet，每个 sheet 对应一个配方
+     */
+    public static List<FormulaExcelDTO> parseAll(InputStream inputStream) {
+        ExcelReader reader = ExcelUtil.getReader(inputStream);
+        try {
+            return doParseAll(reader);
         } finally {
             reader.close();
         }
@@ -53,6 +65,22 @@ public class FormulaExcelParser {
         } finally {
             reader.close();
         }
+    }
+
+    /**
+     * 遍历所有有数据的 sheet，逐个解析
+     */
+    private static List<FormulaExcelDTO> doParseAll(ExcelReader reader) {
+        Workbook workbook = reader.getWorkbook();
+        List<FormulaExcelDTO> results = new ArrayList<>();
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            Sheet sheet = workbook.getSheetAt(i);
+            if (sheet.getPhysicalNumberOfRows() > 1) {
+                reader.setSheet(sheet);
+                results.add(doParse(reader));
+            }
+        }
+        return results;
     }
 
     /**
@@ -77,7 +105,7 @@ public class FormulaExcelParser {
         dto.setSheetName(reader.getSheet().getSheetName());
         dto.setTitle(readCellStr(reader, 0, 3));          // D1
         dto.setDate(readCellStr(reader, 2, 0));            // A3
-        dto.setFormulaCode(readCellStr(reader, 2, 6));     // G3  配方编号
+        dto.setFormulaCode(extractFormulaCode(readCellStr(reader, 2, 6)));  // G3  配方编号
         dto.setCustomer(readCellStr(reader, 3, 1));        // B4
         dto.setSpecification(readCellStr(reader, 3, 3));   // D4
         dto.setModel(readCellStr(reader, 5, 3));           // D6
@@ -151,6 +179,17 @@ public class FormulaExcelParser {
     private static Object readCell(ExcelReader reader, int rowIdx, int colIdx) {
         // Hutool ExcelReader 的 readCellValue 会自动处理合并单元格
         return reader.readCellValue(colIdx, rowIdx);
+    }
+
+    /**
+     * 从 G3 单元格值中提取 P 开头的配方编号，如 "NO. P25040017" → "P25040017"
+     */
+    private static String extractFormulaCode(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        int idx = raw.indexOf('P');
+        return idx >= 0 ? raw.substring(idx).trim() : raw;
     }
 
     private static BigDecimal toBigDecimal(Object val) {
