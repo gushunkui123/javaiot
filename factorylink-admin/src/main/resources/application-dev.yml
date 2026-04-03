@@ -105,6 +105,10 @@ factorylink:
     demo-enabled: false
     # 配方导入时，自动创建不存在的原料
     formula-import-auto-create-material: true
+    # 轮询配置
+    polling:
+        # 工单生产状态轮询间隔（毫秒），默认30秒
+        work-order-interval: 30000
     # 外部设备连接配置
     machines:
         main-scale:
