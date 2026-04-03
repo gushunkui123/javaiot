@@ -2,7 +2,6 @@ package com.factorylink.domain.business.formula;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
-import com.factorylink.common.config.FactoryLinkConfig;
 import com.factorylink.common.core.page.PageDTO;
 import com.factorylink.common.exception.ApiException;
 import com.factorylink.common.exception.error.ErrorCode.Business;
@@ -18,6 +17,7 @@ import com.factorylink.domain.business.formula.db.BizFormulaService;
 import com.factorylink.domain.business.formula.dto.FormulaDTO;
 import com.factorylink.domain.business.formula.dto.FormulaExcelDTO;
 import com.factorylink.domain.business.formula.dto.FormulaItemDTO;
+import com.factorylink.domain.business.formula.dto.MissingMaterialDTO;
 import com.factorylink.domain.business.formula.model.FormulaModel;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
@@ -27,6 +27,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -105,7 +107,7 @@ public class FormulaApplicationService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void importFormula(InputStream inputStream) {
+    public void importFormula(InputStream inputStream, Boolean confirmed) {
         List<FormulaExcelDTO> excelDTOs = FormulaExcelParser.parseAll(inputStream);
         if (excelDTOs.isEmpty()) {
             throw new ApiException(Business.COMMON_UNSUPPORTED_OPERATION);
@@ -116,6 +118,22 @@ public class FormulaApplicationService {
         Map<String, Long> materialCodeToId = allMaterials.stream()
             .filter(m -> StrUtil.isNotBlank(m.getMaterialCode()))
             .collect(Collectors.toMap(BizMaterialEntity::getMaterialCode, BizMaterialEntity::getMaterialId, (a, b) -> a));
+
+        // 收集所有缺失原料（跨所有 sheet 去重）
+        List<MissingMaterialDTO> missingMaterials = collectMissingMaterials(excelDTOs, materialCodeToId);
+
+        if (!missingMaterials.isEmpty()) {
+            if (!Boolean.TRUE.equals(confirmed)) {
+                // 未确认 → 返回缺失原料列表让前端提示
+                ApiException ex = new ApiException(Business.FORMULA_IMPORT_MISSING_MATERIALS, missingMaterials.size());
+                HashMap<String, Object> payload = new HashMap<>();
+                payload.put("missingMaterials", missingMaterials);
+                ex.setPayload(payload);
+                throw ex;
+            }
+            // 已确认 → 批量创建缺失原料
+            createMissingMaterials(missingMaterials, materialCodeToId);
+        }
 
         for (FormulaExcelDTO excelDTO : excelDTOs) {
             // 跳过配方编号为空的 sheet
@@ -146,18 +164,8 @@ public class FormulaApplicationService {
         for (FormulaExcelDTO.Item excelItem : excelDTO.getItems()) {
             Long materialId = materialCodeToId.get(excelItem.getCode());
             if (materialId == null) {
-                if (FactoryLinkConfig.isFormulaImportAutoCreateMaterial()) {
-                    BizMaterialEntity newMaterial = new BizMaterialEntity();
-                    newMaterial.setMaterialCode(excelItem.getCode());
-                    newMaterial.setMaterialName(excelItem.getCode());
-                    newMaterial.setMaterialType(convertMaterialType(excelItem.getCategory()));
-                    materialService.save(newMaterial);
-                    materialId = newMaterial.getMaterialId();
-                    materialCodeToId.put(excelItem.getCode(), materialId);
-                } else {
-                    throw new ApiException(Business.FORMULA_IMPORT_MATERIAL_NOT_FOUND,
-                        excelItem.getCode());
-                }
+                throw new ApiException(Business.FORMULA_IMPORT_MATERIAL_NOT_FOUND,
+                    excelItem.getCode());
             }
             FormulaItemCommand item = new FormulaItemCommand();
             item.setMaterialId(materialId);
@@ -169,6 +177,40 @@ public class FormulaApplicationService {
         }
         addCommand.setItems(items);
         return addCommand;
+    }
+
+    private List<MissingMaterialDTO> collectMissingMaterials(
+            List<FormulaExcelDTO> excelDTOs, Map<String, Long> materialCodeToId) {
+        Map<String, MissingMaterialDTO> missing = new LinkedHashMap<>();
+        for (FormulaExcelDTO dto : excelDTOs) {
+            if (StrUtil.isBlank(dto.getFormulaCode())) {
+                continue;
+            }
+            for (FormulaExcelDTO.Item item : dto.getItems()) {
+                String code = item.getCode();
+                if (StrUtil.isNotBlank(code) && !materialCodeToId.containsKey(code)
+                        && !missing.containsKey(code)) {
+                    MissingMaterialDTO m = new MissingMaterialDTO();
+                    m.setMaterialCode(code);
+                    m.setMaterialType(convertMaterialType(item.getCategory()));
+                    m.setCategory(item.getCategory());
+                    missing.put(code, m);
+                }
+            }
+        }
+        return new ArrayList<>(missing.values());
+    }
+
+    private void createMissingMaterials(List<MissingMaterialDTO> missingMaterials,
+            Map<String, Long> materialCodeToId) {
+        for (MissingMaterialDTO m : missingMaterials) {
+            BizMaterialEntity entity = new BizMaterialEntity();
+            entity.setMaterialCode(m.getMaterialCode());
+            entity.setMaterialName(m.getMaterialCode());
+            entity.setMaterialType(m.getMaterialType());
+            materialService.save(entity);
+            materialCodeToId.put(m.getMaterialCode(), entity.getMaterialId());
+        }
     }
 
     private String convertMaterialType(String category) {
