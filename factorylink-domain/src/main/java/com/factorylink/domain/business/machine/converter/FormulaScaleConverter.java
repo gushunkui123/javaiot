@@ -72,7 +72,7 @@ public class FormulaScaleConverter {
             .map(item -> {
                 FormulaEntry entry = new FormulaEntry();
                 entry.setMaterialNo(materialMap.containsKey(item.getMaterialId())
-                    ? materialMap.get(item.getMaterialId()).getMaterialName()
+                    ? materialMap.get(item.getMaterialId()).getMaterialCode()
                     : String.valueOf(item.getMaterialId()));
                 entry.setMaterialWeight(item.getMaterialWeight());
                 // 微量配方不需要 StepNo，不设置
