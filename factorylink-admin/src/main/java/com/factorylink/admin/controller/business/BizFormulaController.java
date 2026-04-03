@@ -75,8 +75,10 @@ public class BizFormulaController extends BaseController {
     @PreAuthorize("@permission.has('business:formula:import')")
     @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.IMPORT)
     @PostMapping(value = "/excel", consumes = "multipart/form-data")
-    public ResponseDTO<Void> importByExcel(@RequestPart("file") MultipartFile file) throws IOException {
-        formulaApplicationService.importFormula(file.getInputStream());
+    public ResponseDTO<Void> importByExcel(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(required = false, defaultValue = "false") Boolean confirmed) throws IOException {
+        formulaApplicationService.importFormula(file.getInputStream(), confirmed);
         return ResponseDTO.ok();
     }
 

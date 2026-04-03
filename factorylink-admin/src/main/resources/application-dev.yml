@@ -85,7 +85,7 @@ spring:
 
 logging:
     file:
-        path: D:/logs/factorylink-dev
+        path: /logs/factorylink-dev
 
 
 springdoc:
@@ -108,21 +108,21 @@ factorylink:
     # 轮询配置
     polling:
         # 工单生产状态轮询间隔（毫秒），默认30秒
-        work-order-interval: 30000
+        work-order-interval: 2000
     # 外部设备连接配置
     machines:
         main-scale:
             enabled: true
             machine-id: 1
             plant: "A1"
-            ip: 10.0.99.41
+            ip: 10.0.97.41
             api-url: http://${factorylink.machines.main-scale.ip}:8000/mws/api
             api-write-url: http://${factorylink.machines.main-scale.ip}:8000/mws/api/wr
         micro-scale:
             enabled: true
             machine-id: 1
             plant: "A1"
-            ip: 10.0.99.40
+            ip: 10.0.97.40
             api-url: http://${factorylink.machines.micro-scale.ip}:8000/aws/api
             api-write-url: http://${factorylink.machines.micro-scale.ip}:8000/aws/api/wr
         labeling-machine:
