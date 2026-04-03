@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.factorylink.common.utils.jackson.JacksonUtil;
-import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.workorder.WorkOrderApplicationService;
 import com.factorylink.infrastructure.exception.GlobalExceptionInterceptor;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +24,6 @@ class BizWorkOrderControllerTest {
     private final WorkOrderApplicationService workOrderApplicationService =
         org.mockito.Mockito.mock(WorkOrderApplicationService.class);
 
-    private final ScaleSyncService scaleSyncService = org.mockito.Mockito.mock(ScaleSyncService.class);
 
     private MockMvc mockMvc;
 
@@ -35,7 +33,7 @@ class BizWorkOrderControllerTest {
         validator.afterPropertiesSet();
 
         mockMvc = MockMvcBuilders
-            .standaloneSetup(new BizWorkOrderController(workOrderApplicationService, scaleSyncService))
+            .standaloneSetup(new BizWorkOrderController(workOrderApplicationService))
             .setControllerAdvice(new GlobalExceptionInterceptor())
             .setValidator(validator)
             .setMessageConverters(new MappingJackson2HttpMessageConverter(JacksonUtil.initMapper()))
