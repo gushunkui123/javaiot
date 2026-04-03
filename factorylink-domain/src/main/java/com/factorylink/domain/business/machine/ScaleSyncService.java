@@ -26,6 +26,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -61,18 +62,32 @@ public class ScaleSyncService {
     // ======================== 配方下发 ========================
 
     public SyncResultDTO syncFormula(Long formulaId, OperationType operationType) {
+        return syncFormula(formulaId, operationType, null);
+    }
+
+    public SyncResultDTO syncFormula(Long formulaId, OperationType operationType,
+            Set<DeviceType> deviceTypes) {
         BizFormulaEntity formula = formulaService.getById(formulaId);
         if (formula == null) {
             throw new IllegalArgumentException("配方不存在: " + formulaId);
         }
 
+        boolean all = deviceTypes == null || deviceTypes.isEmpty();
         SyncResultDTO result = new SyncResultDTO();
 
         // 主磅
-        result.setMainScale(syncFormulaToDevice("MAIN_SCALE", formula, operationType));
+        if (all || deviceTypes.contains(DeviceType.MAIN_SCALE)) {
+            result.setMainScale(syncFormulaToDevice("MAIN_SCALE", formula, operationType));
+        } else {
+            result.setMainScale(DeviceResult.skipped("未选择该设备"));
+        }
 
         // 微量
-        result.setMicroScale(syncFormulaToDevice("MICRO_SCALE", formula, operationType));
+        if (all || deviceTypes.contains(DeviceType.MICRO_SCALE)) {
+            result.setMicroScale(syncFormulaToDevice("MICRO_SCALE", formula, operationType));
+        } else {
+            result.setMicroScale(DeviceResult.skipped("未选择该设备"));
+        }
 
         return result;
     }
@@ -292,5 +307,15 @@ public class ScaleSyncService {
      */
     public enum OperationType {
         ADD, UPDATE, DELETE
+    }
+
+    /**
+     * 设备类型枚举
+     */
+    public enum DeviceType {
+        /** 主磅 */
+        MAIN_SCALE,
+        /** 微量 */
+        MICRO_SCALE
     }
 }
