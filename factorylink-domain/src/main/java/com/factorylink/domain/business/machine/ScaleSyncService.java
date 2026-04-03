@@ -115,18 +115,19 @@ public class ScaleSyncService {
                 };
             }
 
+            String op = operationType.name() + "_FORMULA";
             if (response.isSuccess()) {
+                saveSyncLog(deviceType, op, formula.getFormulaId(), requestBody, null, 0, 1);
                 return DeviceResult.success();
             }
 
-            saveSyncLog(deviceType, operationType.name() + "_FORMULA",
-                formula.getFormulaId(), requestBody, response.getRtnmsg(), 0);
+            saveSyncLog(deviceType, op, formula.getFormulaId(), requestBody, response.getRtnmsg(), 0, 0);
             return DeviceResult.fail(response.getRtnmsg());
 
         } catch (Exception e) {
             log.error("配方下发到{}失败", deviceType, e);
             saveSyncLog(deviceType, operationType.name() + "_FORMULA",
-                formula.getFormulaId(), null, e.getMessage(), 3);
+                formula.getFormulaId(), null, e.getMessage(), 3, 0);
             return DeviceResult.fail(e.getMessage());
         }
     }
@@ -175,18 +176,19 @@ public class ScaleSyncService {
                 };
             }
 
+            String op = operationType.name() + "_MATERIAL";
             if (response.isSuccess()) {
+                saveSyncLog(deviceType, op, material.getMaterialId(), requestBody, null, 0, 1);
                 return DeviceResult.success();
             }
 
-            saveSyncLog(deviceType, operationType.name() + "_MATERIAL",
-                material.getMaterialId(), requestBody, response.getRtnmsg(), 0);
+            saveSyncLog(deviceType, op, material.getMaterialId(), requestBody, response.getRtnmsg(), 0, 0);
             return DeviceResult.fail(response.getRtnmsg());
 
         } catch (Exception e) {
             log.error("原料下发到{}失败", deviceType, e);
             saveSyncLog(deviceType, operationType.name() + "_MATERIAL",
-                material.getMaterialId(), null, e.getMessage(), 3);
+                material.getMaterialId(), null, e.getMessage(), 3, 0);
             return DeviceResult.fail(e.getMessage());
         }
     }
@@ -235,18 +237,19 @@ public class ScaleSyncService {
                 };
             }
 
+            String op = operationType.name() + "_WORK_ORDER";
             if (response.isSuccess()) {
+                saveSyncLog(deviceType, op, workOrder.getWorkOrderId(), requestBody, null, 0, 1);
                 return DeviceResult.success();
             }
 
-            saveSyncLog(deviceType, operationType.name() + "_WORK_ORDER",
-                workOrder.getWorkOrderId(), requestBody, response.getRtnmsg(), 0);
+            saveSyncLog(deviceType, op, workOrder.getWorkOrderId(), requestBody, response.getRtnmsg(), 0, 0);
             return DeviceResult.fail(response.getRtnmsg());
 
         } catch (Exception e) {
             log.error("工单下发到{}失败", deviceType, e);
             saveSyncLog(deviceType, operationType.name() + "_WORK_ORDER",
-                workOrder.getWorkOrderId(), null, e.getMessage(), 3);
+                workOrder.getWorkOrderId(), null, e.getMessage(), 3, 0);
             return DeviceResult.fail(e.getMessage());
         }
     }
@@ -264,7 +267,7 @@ public class ScaleSyncService {
     }
 
     private void saveSyncLog(String deviceType, String operation, Long targetId,
-            Object requestBody, String errorMsg, int retryCount) {
+            Object requestBody, String errorMsg, int retryCount, int status) {
         try {
             BizSyncLogEntity logEntity = new BizSyncLogEntity();
             logEntity.setDeviceType(deviceType);
@@ -276,7 +279,7 @@ public class ScaleSyncService {
             logEntity.setErrorMsg(errorMsg != null && errorMsg.length() > 500
                 ? errorMsg.substring(0, 500) : errorMsg);
             logEntity.setRetryCount(retryCount);
-            logEntity.setStatus(0);
+            logEntity.setStatus(status);
             logEntity.setCreateTime(new Date());
             syncLogService.save(logEntity);
         } catch (Exception e) {
