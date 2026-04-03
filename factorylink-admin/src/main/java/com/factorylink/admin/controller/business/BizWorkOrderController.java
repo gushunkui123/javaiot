@@ -13,7 +13,6 @@ import com.factorylink.domain.business.workorder.command.ModifyWorkOrderFormulaC
 import com.factorylink.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.factorylink.domain.business.workorder.dto.WorkOrderDTO;
 import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
-import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
 import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import cn.hutool.core.date.DateUtil;
@@ -49,8 +48,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizWorkOrderController extends BaseController {
 
     private final WorkOrderApplicationService workOrderApplicationService;
-
-    private final ScaleSyncService scaleSyncService;
 
     @Operation(summary = "工单列表", description = "分页查询工单列表，支持按工单编号、配方编号、设备编号、工单状态筛选，默认按创建时间倒序排列")
     @PreAuthorize("@permission.has('business:workOrder:list')")
@@ -112,6 +109,7 @@ public class BizWorkOrderController extends BaseController {
     }
 
     @Operation(summary = "下发工单到设备", description = "将工单信息下发至主磅/微量磅秤设备。"
+            + " 下发工单前会自动先下发配方（DELETE操作除外）。"
             + " 操作类型：ADD-新增下发，UPDATE-更新下发，DELETE-删除下发")
     @PreAuthorize("@permission.has('business:workOrder:sync')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.MODIFY)
@@ -119,7 +117,7 @@ public class BizWorkOrderController extends BaseController {
     public ResponseDTO<SyncResultDTO> syncWorkOrder(
             @Parameter(description = "工单ID", required = true) @PathVariable Long workOrderId,
             @Parameter(description = "操作类型：ADD-新增, UPDATE-更新, DELETE-删除") @RequestParam(defaultValue = "ADD") OperationType operationType) {
-        SyncResultDTO result = scaleSyncService.syncWorkOrder(workOrderId, operationType);
+        SyncResultDTO result = workOrderApplicationService.syncWorkOrderWithFormula(workOrderId, operationType);
         return ResponseDTO.ok(result);
     }
 

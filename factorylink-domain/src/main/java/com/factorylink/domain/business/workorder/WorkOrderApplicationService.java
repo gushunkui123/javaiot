@@ -111,7 +111,17 @@ public class WorkOrderApplicationService {
         model.startProduction();
         model.updateById();
 
-        // TODO 工单下发接口目前不可用，预留调用逻辑，后续修改
+        // 先下发配方
+        Long formulaId = model.getFormulaId();
+        if (formulaId != null) {
+            try {
+                scaleSyncService.syncFormula(formulaId, OperationType.ADD);
+            } catch (Exception e) {
+                log.warn("配方下发失败，formulaId={}，后续需重试: {}", formulaId, e.getMessage());
+            }
+        }
+
+        // 再下发工单
         SyncResultDTO syncResult = null;
         try {
             syncResult = scaleSyncService.syncWorkOrder(workOrderId, OperationType.ADD);
@@ -126,6 +136,23 @@ public class WorkOrderApplicationService {
         WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
         model.cancel();
         model.updateById();
+    }
+
+    public SyncResultDTO syncWorkOrderWithFormula(Long workOrderId, OperationType operationType) {
+        BizWorkOrderEntity workOrder = workOrderService.getById(workOrderId);
+
+        // 先下发配方（DELETE操作时不下发配方）
+        Long formulaId = workOrder.getFormulaId();
+        if (formulaId != null && operationType != OperationType.DELETE) {
+            try {
+                scaleSyncService.syncFormula(formulaId, operationType);
+            } catch (Exception e) {
+                log.warn("配方下发失败，formulaId={}，后续需重试: {}", formulaId, e.getMessage());
+            }
+        }
+
+        // 再下发工单
+        return scaleSyncService.syncWorkOrder(workOrderId, operationType);
     }
 
     @Transactional(rollbackFor = Exception.class)
