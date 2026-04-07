@@ -12,6 +12,9 @@ import com.factorylink.domain.business.material.command.UpdateMaterialCommand;
 import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.factorylink.domain.business.material.dto.MaterialDTO;
+import com.factorylink.domain.business.machine.ScaleSyncService;
+import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
+import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import com.factorylink.domain.business.material.model.MaterialModel;
 import com.factorylink.domain.business.material.model.MaterialModelFactory;
 import com.factorylink.domain.business.material.query.MaterialQuery;
@@ -19,6 +22,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Codex
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MaterialApplicationService {
 
@@ -37,6 +42,8 @@ public class MaterialApplicationService {
 
     private final AuditUserEnricher auditUserEnricher;
 
+    private final ScaleSyncService scaleSyncService;
+
     public PageDTO<MaterialDTO> getMaterialList(MaterialQuery query) {
         Page<BizMaterialEntity> page = materialService.page(query.toPage(), query.toQueryWrapper());
         List<MaterialDTO> records = page.getRecords().stream().map(MaterialDTO::new).toList();
@@ -46,10 +53,17 @@ public class MaterialApplicationService {
 
     @Transactional(rollbackFor = Exception.class)
     public void addMaterial(AddMaterialCommand addCommand) {
+        addMaterial(addCommand, true);
+    }
+
+    private void addMaterial(AddMaterialCommand addCommand, boolean autoSync) {
         MaterialModel materialModel = materialModelFactory.create();
         materialModel.loadFromAddCommand(addCommand);
         materialModel.checkMaterialUnique();
         materialModel.insert();
+        if (autoSync) {
+            autoSyncMaterial(materialModel.getMaterialId());
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -74,7 +88,22 @@ public class MaterialApplicationService {
     @Transactional(rollbackFor = Exception.class)
     public void importMaterial(List<AddMaterialCommand> commands) {
         for (AddMaterialCommand command : commands) {
-            addMaterial(command);
+            addMaterial(command, true);
+        }
+    }
+
+    private void autoSyncMaterial(Long materialId) {
+        if (materialId == null) {
+            log.warn("原料新增后自动下发被跳过，materialId为空");
+            return;
+        }
+        try {
+            SyncResultDTO syncResult = scaleSyncService.syncMaterial(materialId, OperationType.ADD);
+            if (syncResult == null || !syncResult.isAllSuccess()) {
+                log.warn("原料新增后自动下发未全部成功，materialId={}，syncResult={}", materialId, syncResult);
+            }
+        } catch (Exception e) {
+            log.warn("原料新增后自动下发失败，materialId={}，后续可手动重试: {}", materialId, e.getMessage());
         }
     }
 
