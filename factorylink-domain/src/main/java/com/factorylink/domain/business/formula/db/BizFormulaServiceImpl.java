@@ -20,4 +20,8 @@ public class BizFormulaServiceImpl extends ServiceImpl<BizFormulaMapper, BizForm
         return baseMapper.exists(queryWrapper);
     }
 
+    @Override
+    public int deleteHistoryByFormulaCode(String formulaCode) {
+        return baseMapper.deleteHistoryByFormulaCode(formulaCode);
+    }
 }

@@ -18,4 +18,11 @@ public interface BizFormulaService extends IService<BizFormulaEntity> {
      */
     boolean isFormulaCodeDuplicated(Long formulaId, String formulaCode);
 
+    /**
+     * 删除同配方编号的历史逻辑删除记录
+     *
+     * @param formulaCode 配方编号
+     * @return 删除条数
+     */
+    int deleteHistoryByFormulaCode(String formulaCode);
 }

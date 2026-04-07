@@ -106,6 +106,7 @@ public class FormulaModel extends BizFormulaEntity {
     @Override
     public boolean deleteById() {
         cleanOldItems();
+        formulaService.deleteHistoryByFormulaCode(getFormulaCode());
         return super.deleteById();
     }
 
