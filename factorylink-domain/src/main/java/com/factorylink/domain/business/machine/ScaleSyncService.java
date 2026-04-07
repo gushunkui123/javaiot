@@ -35,7 +35,8 @@ import org.springframework.stereotype.Service;
  * 设备下发编排服务
  * <p>
  * 负责将本地数据（原料、配方、工单）下发到主磅/微量设备。
- * 下发由用户手动触发，写入失败进行重试（3次/3秒间隔），超过失败次数记录 biz_sync_log。
+ * 下发支持用户手动触发，也支持在部分业务流程中自动触发。
+ * 写入失败进行重试（3次/3秒间隔），超过失败次数记录 biz_sync_log。
  */
 @Slf4j
 @Service
