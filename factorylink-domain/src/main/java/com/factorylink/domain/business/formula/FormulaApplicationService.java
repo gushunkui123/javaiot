@@ -21,6 +21,9 @@ import com.factorylink.domain.business.formula.dto.MissingMaterialDTO;
 import com.factorylink.domain.business.formula.model.FormulaModel;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
+import com.factorylink.domain.business.machine.ScaleSyncService;
+import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
+import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -33,12 +36,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Codex
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FormulaApplicationService {
@@ -52,6 +57,8 @@ public class FormulaApplicationService {
     private final AuditUserEnricher auditUserEnricher;
 
     private final BizMaterialService materialService;
+
+    private final ScaleSyncService scaleSyncService;
 
     public PageDTO<FormulaDTO> getFormulaList(FormulaQuery query) {
         Page<BizFormulaEntity> page = formulaService.page(query.toPage(), query.toQueryWrapper());
@@ -131,8 +138,9 @@ public class FormulaApplicationService {
                 ex.setPayload(payload);
                 throw ex;
             }
-            // 已确认 → 批量创建缺失原料
-            createMissingMaterials(missingMaterials, materialCodeToId);
+            // 已确认 → 批量创建缺失原料并下发到机器
+            List<Long> createdMaterialIds = createMissingMaterials(missingMaterials, materialCodeToId);
+            autoSyncMaterials(createdMaterialIds);
         }
 
         for (FormulaExcelDTO excelDTO : excelDTOs) {
@@ -201,8 +209,9 @@ public class FormulaApplicationService {
         return new ArrayList<>(missing.values());
     }
 
-    private void createMissingMaterials(List<MissingMaterialDTO> missingMaterials,
+    private List<Long> createMissingMaterials(List<MissingMaterialDTO> missingMaterials,
             Map<String, Long> materialCodeToId) {
+        List<Long> createdIds = new ArrayList<>();
         for (MissingMaterialDTO m : missingMaterials) {
             BizMaterialEntity entity = new BizMaterialEntity();
             entity.setMaterialCode(m.getMaterialCode());
@@ -210,6 +219,21 @@ public class FormulaApplicationService {
             entity.setMaterialType(m.getMaterialType());
             materialService.save(entity);
             materialCodeToId.put(m.getMaterialCode(), entity.getMaterialId());
+            createdIds.add(entity.getMaterialId());
+        }
+        return createdIds;
+    }
+
+    private void autoSyncMaterials(List<Long> materialIds) {
+        for (Long materialId : materialIds) {
+            try {
+                SyncResultDTO syncResult = scaleSyncService.syncMaterial(materialId, OperationType.ADD);
+                if (syncResult == null || !syncResult.isAllSuccess()) {
+                    log.warn("配方导入-原料自动下发未全部成功，materialId={}", materialId);
+                }
+            } catch (Exception e) {
+                log.warn("配方导入-原料自动下发失败，materialId={}，后续可手动重试: {}", materialId, e.getMessage());
+            }
         }
     }
 

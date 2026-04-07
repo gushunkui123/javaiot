@@ -2,6 +2,7 @@ package com.factorylink.domain.business.formula;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import com.factorylink.domain.business.formula.dto.FormulaDTO;
 import com.factorylink.domain.business.formula.model.FormulaModel;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
+import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.common.command.BulkOperationCommand;
@@ -34,8 +36,9 @@ class FormulaApplicationServiceTest {
     private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
     private final BizMaterialService materialService = mock(BizMaterialService.class);
+    private final ScaleSyncService scaleSyncService = mock(ScaleSyncService.class);
     private final FormulaApplicationService applicationService =
-        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher, materialService);
+        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher, materialService, scaleSyncService);
 
     @Test
     void getFormulaListShouldEnrichAuditUsers() {
