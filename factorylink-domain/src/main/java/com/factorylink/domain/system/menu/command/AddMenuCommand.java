@@ -2,7 +2,6 @@ package com.factorylink.domain.system.menu.command;
 
 import com.factorylink.domain.system.menu.dto.MetaDTO;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 

@@ -1,7 +1,6 @@
 package com.factorylink.infrastructure.cache.guava;
 
 import cn.hutool.core.util.StrUtil;
-import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
