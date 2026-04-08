@@ -4,6 +4,7 @@ import com.factorylink.common.core.page.PageDTO;
 import com.factorylink.common.exception.ApiException;
 import com.factorylink.common.exception.error.ErrorCode.Business;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
+import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
 import com.factorylink.domain.business.workorder.command.AssignFormulaCommand;
 import com.factorylink.domain.business.workorder.command.ModifyWorkOrderFormulaCommand;
@@ -85,6 +86,15 @@ public class WorkOrderApplicationService {
         workOrderModel.loadFromUpdateCommand(updateCommand);
         workOrderModel.checkWorkOrderNoUnique();
         workOrderModel.updateById();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteWorkOrder(BulkOperationCommand<Long> deleteCommand) {
+        for (Long workOrderId : deleteCommand.getIds()) {
+            WorkOrderModel workOrderModel = workOrderModelFactory.loadById(workOrderId);
+            workOrderModel.checkCanDelete();
+            workOrderModel.deleteById();
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

@@ -200,6 +200,8 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         WORK_ORDER_NO_FORMULA_ASSIGNED(11307, "工单尚未分配配方，无法修改", "Business.WORK_ORDER_NO_FORMULA_ASSIGNED"),
 
+        WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED(11308, "已完成工单不允许删除", "Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),

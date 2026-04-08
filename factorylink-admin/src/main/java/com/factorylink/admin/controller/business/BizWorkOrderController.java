@@ -5,6 +5,7 @@ import com.factorylink.common.core.base.BaseController;
 import com.factorylink.common.core.dto.ResponseDTO;
 import com.factorylink.common.core.page.PageDTO;
 import com.factorylink.common.enums.common.BusinessTypeEnum;
+import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.common.utils.poi.CustomExcelUtil;
 import com.factorylink.domain.business.workorder.WorkOrderApplicationService;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
@@ -25,6 +26,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -105,6 +107,15 @@ public class BizWorkOrderController extends BaseController {
     @PutMapping
     public ResponseDTO<Void> edit(@Validated @RequestBody UpdateWorkOrderCommand updateCommand) {
         workOrderApplicationService.updateWorkOrder(updateCommand);
+        return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "删除工单", description = "按ID批量删除工单，已完成状态的工单不允许删除")
+    @PreAuthorize("@permission.has('business:workOrder:remove')")
+    @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.DELETE)
+    @DeleteMapping
+    public ResponseDTO<Void> remove(@RequestParam @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.NotEmpty List<Long> ids) {
+        workOrderApplicationService.deleteWorkOrder(new BulkOperationCommand<>(ids));
         return ResponseDTO.ok();
     }
 

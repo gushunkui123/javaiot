@@ -131,6 +131,13 @@ public class WorkOrderModel extends BizWorkOrderEntity {
         throw new ApiException(Business.WORK_ORDER_FORMULA_MODIFY_NOT_ALLOWED);
     }
 
+    public void checkCanDelete() {
+        int status = getProcessStatus() != null ? getProcessStatus() : -1;
+        if (status == PROCESS_STATUS_COMPLETED) {
+            throw new ApiException(Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED);
+        }
+    }
+
     private void checkProcessStatus(int expectedStatus) {
         if (getProcessStatus() == null || getProcessStatus() != expectedStatus) {
             throw new ApiException(Business.WORK_ORDER_PROCESS_STATUS_INVALID);

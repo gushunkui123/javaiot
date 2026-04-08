@@ -87,6 +87,23 @@ class WorkOrderModelTest {
     }
 
     @Test
+    void checkCanDeleteShouldThrowWhenCompleted() {
+        WorkOrderModel model = workOrderModelFactory.create();
+        model.setProcessStatus(4);
+
+        ApiException exception = assertThrows(ApiException.class, model::checkCanDelete);
+        assertEquals(Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED, exception.getErrorCode());
+    }
+
+    @Test
+    void checkCanDeleteShouldPassWhenNotCompleted() {
+        WorkOrderModel model = workOrderModelFactory.create();
+        model.setProcessStatus(3);
+
+        assertDoesNotThrow(model::checkCanDelete);
+    }
+
+    @Test
     void factoryLoadByIdShouldThrowWhenNotFound() {
         when(workOrderService.getById(99L)).thenReturn(null);
 
