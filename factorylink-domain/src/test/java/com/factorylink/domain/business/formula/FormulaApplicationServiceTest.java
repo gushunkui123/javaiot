@@ -1,13 +1,17 @@
 package com.factorylink.domain.business.formula;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.factorylink.common.core.page.PageDTO;
+import com.factorylink.common.exception.ApiException;
+import com.factorylink.common.exception.error.ErrorCode.Business;
 import com.factorylink.domain.business.formula.command.AddFormulaCommand;
 import com.factorylink.domain.business.formula.command.FormulaItemCommand;
 import com.factorylink.domain.business.formula.command.UpdateFormulaCommand;
@@ -21,6 +25,8 @@ import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.material.db.BizMaterialService;
+import com.factorylink.domain.business.workorder.db.BizWorkOrderEntity;
+import com.factorylink.domain.business.workorder.db.BizWorkOrderService;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -36,9 +42,11 @@ class FormulaApplicationServiceTest {
     private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
     private final BizMaterialService materialService = mock(BizMaterialService.class);
+    private final BizWorkOrderService workOrderService = mock(BizWorkOrderService.class);
     private final ScaleSyncService scaleSyncService = mock(ScaleSyncService.class);
     private final FormulaApplicationService applicationService =
-        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher, materialService, scaleSyncService);
+        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher,
+            materialService, workOrderService, scaleSyncService);
 
     @Test
     void getFormulaListShouldEnrichAuditUsers() {
@@ -136,6 +144,7 @@ class FormulaApplicationServiceTest {
     void deleteFormulaShouldDeleteEachById() {
         FormulaModel model1 = mock(FormulaModel.class);
         FormulaModel model2 = mock(FormulaModel.class);
+        when(workOrderService.exists(any(LambdaQueryWrapper.class))).thenReturn(false);
         when(formulaModelFactory.loadById(1L)).thenReturn(model1);
         when(formulaModelFactory.loadById(2L)).thenReturn(model2);
 
@@ -143,6 +152,17 @@ class FormulaApplicationServiceTest {
 
         verify(model1).deleteById();
         verify(model2).deleteById();
+    }
+
+    @Test
+    void deleteFormulaShouldRejectWhenReferencedByWorkOrder() {
+        when(workOrderService.exists(any(LambdaQueryWrapper.class))).thenReturn(true);
+
+        ApiException exception = assertThrows(ApiException.class,
+            () -> applicationService.deleteFormula(new BulkOperationCommand<>(List.of(1L, 2L))));
+
+        assertEquals(Business.FORMULA_ALREADY_ASSIGNED_TO_WORK_ORDER_CAN_NOT_BE_DELETED, exception.getErrorCode());
+        verify(formulaModelFactory, never()).loadById(any());
     }
 
 }
