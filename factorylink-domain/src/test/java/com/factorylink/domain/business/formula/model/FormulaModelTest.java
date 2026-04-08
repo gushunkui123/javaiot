@@ -56,7 +56,7 @@ class FormulaModelTest {
         model.loadFromAddCommand(command);
 
         assertEquals(1, model.getItems().size());
-        assertEquals(10L, model.getItems().get(0).getMaterialId());
+        assertEquals(10L, model.getItems().getFirst().getMaterialId());
     }
 
     @Test

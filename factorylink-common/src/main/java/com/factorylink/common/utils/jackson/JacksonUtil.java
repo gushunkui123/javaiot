@@ -598,28 +598,18 @@ public class JacksonUtil {
      * 向json中添加属性
      */
     private static <V> void add(JsonNode jsonNode, String key, V value) {
-        if (value instanceof String) {
-            ((ObjectNode) jsonNode).put(key, (String) value);
-        } else if (value instanceof Short) {
-            ((ObjectNode) jsonNode).put(key, (Short) value);
-        } else if (value instanceof Integer) {
-            ((ObjectNode) jsonNode).put(key, (Integer) value);
-        } else if (value instanceof Long) {
-            ((ObjectNode) jsonNode).put(key, (Long) value);
-        } else if (value instanceof Float) {
-            ((ObjectNode) jsonNode).put(key, (Float) value);
-        } else if (value instanceof Double) {
-            ((ObjectNode) jsonNode).put(key, (Double) value);
-        } else if (value instanceof BigDecimal) {
-            ((ObjectNode) jsonNode).put(key, (BigDecimal) value);
-        } else if (value instanceof BigInteger) {
-            ((ObjectNode) jsonNode).put(key, (BigInteger) value);
-        } else if (value instanceof Boolean) {
-            ((ObjectNode) jsonNode).put(key, (Boolean) value);
-        } else if (value instanceof byte[]) {
-            ((ObjectNode) jsonNode).put(key, (byte[]) value);
-        } else {
-            ((ObjectNode) jsonNode).put(key, to(value));
+        switch (value) {
+            case String s -> ((ObjectNode) jsonNode).put(key, s);
+            case Short i -> ((ObjectNode) jsonNode).put(key, i);
+            case Integer i -> ((ObjectNode) jsonNode).put(key, i);
+            case Long l -> ((ObjectNode) jsonNode).put(key, l);
+            case Float v -> ((ObjectNode) jsonNode).put(key, v);
+            case Double v -> ((ObjectNode) jsonNode).put(key, v);
+            case BigDecimal bigDecimal -> ((ObjectNode) jsonNode).put(key, bigDecimal);
+            case BigInteger bigInteger -> ((ObjectNode) jsonNode).put(key, bigInteger);
+            case Boolean b -> ((ObjectNode) jsonNode).put(key, b);
+            case byte[] bytes -> ((ObjectNode) jsonNode).put(key, bytes);
+            case null, default -> ((ObjectNode) jsonNode).put(key, to(value));
         }
     }
 

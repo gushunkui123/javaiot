@@ -50,8 +50,8 @@ class PermissionSyncServiceTest {
 
         // system:post:query 的父节点 system:post:list 不存在 → 跳过
         assertEquals(1, result.getSkipped().size());
-        assertEquals("system:post:query", result.getSkipped().get(0).getPermission());
-        assertEquals("未找到父节点", result.getSkipped().get(0).getDetails());
+        assertEquals("system:post:query", result.getSkipped().getFirst().getPermission());
+        assertEquals("未找到父节点", result.getSkipped().getFirst().getDetails());
     }
 
     @Test
@@ -83,7 +83,7 @@ class PermissionSyncServiceTest {
 
         assertTrue(result.isApplied());
         assertEquals(1, result.getAdded().size());
-        assertEquals("system:user:add", result.getAdded().get(0).getPermission());
+        assertEquals("system:user:add", result.getAdded().getFirst().getPermission());
         verify(menuService).save(any(SysMenuEntity.class));
     }
 

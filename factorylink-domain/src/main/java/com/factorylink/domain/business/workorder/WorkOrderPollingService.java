@@ -78,7 +78,7 @@ public class WorkOrderPollingService {
         WorkOrderData deviceData = response.getRtndata().stream()
             .filter(d -> localOrder.getWorkOrderNo().equals(d.getWorkOrderNo()))
             .findFirst()
-            .orElse(response.getRtndata().get(0));
+            .orElse(response.getRtndata().getFirst());
 
         updateWorkOrderFromDevice(localOrder, deviceData);
     }

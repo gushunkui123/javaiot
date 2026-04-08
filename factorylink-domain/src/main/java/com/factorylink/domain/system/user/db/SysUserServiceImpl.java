@@ -51,14 +51,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserEntity
     @Override
     public SysRoleEntity getRoleOfUser(Long userId) {
         List<SysRoleEntity> list = baseMapper.getRolesByUserId(userId);
-        return list.isEmpty() ? null : list.get(0);
+        return list.isEmpty() ? null : list.getFirst();
     }
 
 
     @Override
     public SysPostEntity getPostOfUser(Long userId) {
         List<SysPostEntity> list = baseMapper.getPostsByUserId(userId);
-        return list.isEmpty() ? null : list.get(0);
+        return list.isEmpty() ? null : list.getFirst();
     }
 
 

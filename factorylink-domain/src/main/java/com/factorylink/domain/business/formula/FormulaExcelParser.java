@@ -46,11 +46,8 @@ public class FormulaExcelParser {
      * 从 InputStream 解析配方 Excel 的所有有数据的 sheet，每个 sheet 对应一个配方
      */
     public static List<FormulaExcelDTO> parseAll(InputStream inputStream) {
-        ExcelReader reader = ExcelUtil.getReader(inputStream);
-        try {
+        try (ExcelReader reader = ExcelUtil.getReader(inputStream)) {
             return doParseAll(reader);
-        } finally {
-            reader.close();
         }
     }
 
