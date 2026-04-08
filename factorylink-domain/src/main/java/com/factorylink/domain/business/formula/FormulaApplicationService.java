@@ -26,6 +26,8 @@ import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
 import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
+import com.factorylink.domain.business.workorder.db.BizWorkOrderEntity;
+import com.factorylink.domain.business.workorder.db.BizWorkOrderService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.io.InputStream;
@@ -57,6 +59,8 @@ public class FormulaApplicationService {
     private final AuditUserEnricher auditUserEnricher;
 
     private final BizMaterialService materialService;
+
+    private final BizWorkOrderService workOrderService;
 
     private final ScaleSyncService scaleSyncService;
 
@@ -107,6 +111,12 @@ public class FormulaApplicationService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteFormula(BulkOperationCommand<Long> deleteCommand) {
+        boolean referenced = workOrderService.exists(
+            new LambdaQueryWrapper<BizWorkOrderEntity>()
+                .in(BizWorkOrderEntity::getFormulaId, deleteCommand.getIds()));
+        if (referenced) {
+            throw new ApiException(Business.FORMULA_ALREADY_ASSIGNED_TO_WORK_ORDER_CAN_NOT_BE_DELETED);
+        }
         for (Long id : deleteCommand.getIds()) {
             FormulaModel formulaModel = formulaModelFactory.loadById(id);
             formulaModel.deleteById();

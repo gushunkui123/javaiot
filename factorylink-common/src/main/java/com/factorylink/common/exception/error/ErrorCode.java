@@ -182,6 +182,8 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         FORMULA_IMPORT_MISSING_MATERIALS(11204, "导入配方时发现{}种缺失原料，请确认是否自动创建", "Business.FORMULA_IMPORT_MISSING_MATERIALS"),
 
+        FORMULA_ALREADY_ASSIGNED_TO_WORK_ORDER_CAN_NOT_BE_DELETED(11205, "配方已被工单引用，请先解除工单中的引用再删除", "Business.FORMULA_ALREADY_ASSIGNED_TO_WORK_ORDER_CAN_NOT_BE_DELETED"),
+
         // -------------------------------- WORK ORDER -------------------------------------------------
 
         WORK_ORDER_NO_IS_NOT_UNIQUE(11301, "工单编号:{} 已存在", "Business.WORK_ORDER_NO_IS_NOT_UNIQUE"),
