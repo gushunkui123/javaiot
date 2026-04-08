@@ -1,8 +1,5 @@
 package com.factorylink.infrastructure.mybatisplus;
 
-import cn.hutool.core.io.resource.ResourceUtil;
-import cn.hutool.json.JSON;
-import cn.hutool.json.JSONUtil;
 import com.factorylink.common.core.base.BaseController;
 import com.factorylink.common.core.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.FieldFill;
@@ -23,7 +20,6 @@ import com.baomidou.mybatisplus.generator.fill.Property;
 import com.baomidou.mybatisplus.generator.keywords.MySqlKeyWordsHandler;
 import java.util.Collections;
 import lombok.Data;
-import org.yaml.snakeyaml.Yaml;
 
 /**
  * @author valarchie

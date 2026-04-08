@@ -59,9 +59,6 @@ public class LoginService {
             ThreadPoolManager.execute(AsyncTaskFactory.loginInfoTask(loginCommand.getUsername(), LoginStatusEnum.LOGIN_FAIL,
                 MessageUtils.message("Business.LOGIN_WRONG_USER_PASSWORD")));
             throw new ApiException(e, ErrorCode.Business.LOGIN_WRONG_USER_PASSWORD);
-        } catch (AuthenticationException e) {
-            ThreadPoolManager.execute(AsyncTaskFactory.loginInfoTask(loginCommand.getUsername(), LoginStatusEnum.LOGIN_FAIL, e.getMessage()));
-            throw new ApiException(e, ErrorCode.Business.LOGIN_ERROR, e.getMessage());
         } catch (Exception e) {
             ThreadPoolManager.execute(AsyncTaskFactory.loginInfoTask(loginCommand.getUsername(), LoginStatusEnum.LOGIN_FAIL, e.getMessage()));
             throw new ApiException(e, Business.LOGIN_ERROR, e.getMessage());
