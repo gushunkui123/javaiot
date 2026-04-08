@@ -47,6 +47,21 @@ logging:
 
 # Spring配置
 spring:
+  # 邮件配置
+  mail:
+    host: ${MAIL_HOST:smtp.example.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+    # 发件人显示名称
+    from: ${MAIL_FROM:FactoryLink <${spring.mail.username}>}
+
   # 资源信息
   messages:
     # 国际化资源文件路径

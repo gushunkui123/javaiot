@@ -1,6 +1,7 @@
 package com.factorylink.domain.business.workorder.command;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -59,5 +60,10 @@ public class AddWorkOrderCommand {
     @Schema(description = "备注（选填）")
     @Size(max = 500, message = "备注长度不能超过500个字符")
     protected String remark;
+
+    @Schema(description = "通知邮箱（选填，工单创建后发送邮件通知）")
+    @Email(message = "邮箱格式不正确")
+    @Size(max = 100, message = "邮箱长度不能超过100个字符")
+    protected String email;
 
 }

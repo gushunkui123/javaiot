@@ -21,9 +21,11 @@ import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
 import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import com.factorylink.domain.business.notification.event.FormulaModifiedEvent;
+import com.factorylink.domain.business.notification.event.WorkOrderCreatedEvent;
 import com.factorylink.infrastructure.sse.SseMessageLevel;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +80,18 @@ public class WorkOrderApplicationService {
         workOrderModel.loadFromAddCommand(addCommand);
         workOrderModel.checkWorkOrderNoUnique();
         workOrderModel.insert();
+
+        if (StrUtil.isNotBlank(workOrderModel.getEmail())) {
+            applicationEventPublisher.publishEvent(new WorkOrderCreatedEvent(
+                this,
+                workOrderModel.getWorkOrderNo(),
+                workOrderModel.getLineNo(),
+                workOrderModel.getMoldCode(),
+                workOrderModel.getModelColor(),
+                workOrderModel.getOrderBatchNum(),
+                workOrderModel.getEmail()
+            ));
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

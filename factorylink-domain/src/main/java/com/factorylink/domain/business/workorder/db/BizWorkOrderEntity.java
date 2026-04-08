@@ -107,6 +107,10 @@ public class BizWorkOrderEntity extends BaseEntity<BizWorkOrderEntity> {
     @TableField("remark")
     private String remark;
 
+    @Schema(description = "通知邮箱")
+    @TableField("email")
+    private String email;
+
     @Override
     public Serializable pkVal() {
         return this.workOrderId;
