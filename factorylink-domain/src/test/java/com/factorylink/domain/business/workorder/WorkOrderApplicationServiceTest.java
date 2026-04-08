@@ -1,12 +1,16 @@
 package com.factorylink.domain.business.workorder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.factorylink.common.core.page.PageDTO;
+import com.factorylink.common.exception.ApiException;
+import com.factorylink.common.exception.error.ErrorCode.Business;
 import com.factorylink.domain.business.workorder.command.AddWorkOrderCommand;
 import com.factorylink.domain.business.workorder.command.UpdateWorkOrderCommand;
 import com.factorylink.domain.business.workorder.db.BizWorkOrderEntity;
@@ -18,6 +22,7 @@ import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
+import com.factorylink.domain.common.command.BulkOperationCommand;
 import org.springframework.context.ApplicationEventPublisher;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.Date;
@@ -123,6 +128,34 @@ class WorkOrderApplicationServiceTest {
         verify(model).loadFromUpdateCommand(command);
         verify(model).checkWorkOrderNoUnique();
         verify(model).updateById();
+    }
+
+    @Test
+    void deleteWorkOrderShouldDeleteEachById() {
+        WorkOrderModel model1 = mock(WorkOrderModel.class);
+        WorkOrderModel model2 = mock(WorkOrderModel.class);
+        when(workOrderModelFactory.loadById(1L)).thenReturn(model1);
+        when(workOrderModelFactory.loadById(2L)).thenReturn(model2);
+
+        applicationService.deleteWorkOrder(new BulkOperationCommand<>(List.of(1L, 2L)));
+
+        verify(model1).checkCanDelete();
+        verify(model1).deleteById();
+        verify(model2).checkCanDelete();
+        verify(model2).deleteById();
+    }
+
+    @Test
+    void deleteWorkOrderShouldRejectCompletedWorkOrder() {
+        WorkOrderModel model = mock(WorkOrderModel.class);
+        when(workOrderModelFactory.loadById(1L)).thenReturn(model);
+        doThrow(new ApiException(Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED))
+            .when(model).checkCanDelete();
+
+        ApiException exception = assertThrows(ApiException.class,
+            () -> applicationService.deleteWorkOrder(new BulkOperationCommand<>(List.of(1L))));
+
+        assertEquals(Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED, exception.getErrorCode());
     }
 
 }

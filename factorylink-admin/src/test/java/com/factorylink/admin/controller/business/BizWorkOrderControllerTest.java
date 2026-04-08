@@ -3,6 +3,7 @@ package com.factorylink.admin.controller.business;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -88,5 +89,16 @@ class BizWorkOrderControllerTest {
             .andExpect(jsonPath("$.msg").value("请求参数异常，工单ID不能为空"));
 
         verify(workOrderApplicationService, never()).updateWorkOrder(any());
+    }
+
+    @Test
+    void removeShouldRejectEmptyIds() throws Exception {
+        mockMvc.perform(delete("/business/workOrder")
+                .param("ids", ""))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(10003))
+            .andExpect(jsonPath("$.msg").value("批量参数ID列表为空"));
+
+        verify(workOrderApplicationService, never()).deleteWorkOrder(any());
     }
 }
