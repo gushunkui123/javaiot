@@ -15,6 +15,14 @@ public class FormulaItemDTO {
 
     private Long materialId;
 
+    private String materialCode;
+
+    private String materialType;
+
+    private String materialName;
+
+    private Integer weighingMethod;
+
     private BigDecimal materialWeight;
 
     private BigDecimal ratio;

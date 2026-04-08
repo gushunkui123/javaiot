@@ -81,9 +81,27 @@ public class FormulaApplicationService {
             .orderByAsc(BizFormulaItemEntity::getSortOrder);
         List<BizFormulaItemEntity> itemEntities = formulaItemService.list(queryWrapper);
 
+        // 批量查询关联的原料信息
+        List<Long> materialIds = itemEntities.stream()
+            .map(BizFormulaItemEntity::getMaterialId)
+            .filter(id -> id != null)
+            .distinct()
+            .toList();
+        Map<Long, BizMaterialEntity> materialMap = materialIds.isEmpty()
+            ? Map.of()
+            : materialService.listByIds(materialIds).stream()
+                .collect(Collectors.toMap(BizMaterialEntity::getMaterialId, m -> m));
+
         List<FormulaItemDTO> itemDTOs = itemEntities.stream().map(entity -> {
             FormulaItemDTO itemDTO = new FormulaItemDTO();
             BeanUtil.copyProperties(entity, itemDTO);
+            BizMaterialEntity material = materialMap.get(entity.getMaterialId());
+            if (material != null) {
+                itemDTO.setMaterialCode(material.getMaterialCode());
+                itemDTO.setMaterialType(material.getMaterialType());
+                itemDTO.setMaterialName(material.getMaterialName());
+                itemDTO.setWeighingMethod(material.getWeighingMethod());
+            }
             return itemDTO;
         }).toList();
         dto.setItems(itemDTOs);
