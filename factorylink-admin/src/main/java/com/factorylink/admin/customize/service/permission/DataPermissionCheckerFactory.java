@@ -47,20 +47,14 @@ public class DataPermissionCheckerFactory {
         }
 
         DataScopeEnum dataScope = loginUser.getRoleInfo().getDataScope();
-        switch (dataScope) {
-            case ALL:
-                return allChecker;
-            case CUSTOM_DEFINE:
-                return customChecker;
-            case SINGLE_DEPT:
-                return singleDeptChecker;
-            case DEPT_TREE:
-                return deptTreeChecker;
-            case ONLY_SELF:
-                return onlySelfChecker;
-            default:
-                return defaultSelfChecker;
-        }
+        return switch (dataScope) {
+            case ALL -> allChecker;
+            case CUSTOM_DEFINE -> customChecker;
+            case SINGLE_DEPT -> singleDeptChecker;
+            case DEPT_TREE -> deptTreeChecker;
+            case ONLY_SELF -> onlySelfChecker;
+            default -> defaultSelfChecker;
+        };
     }
 
 }

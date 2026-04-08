@@ -116,7 +116,7 @@ class SysUserServiceImplTest {
         Page<SysUserEntity> roleAssignedPage = userService.getUserListByRole(allocatedRoleQuery);
 
         Assertions.assertEquals(1, roleAssignedPage.getTotal());
-        Assertions.assertEquals("admin", roleAssignedPage.getRecords().get(0).getUsername());
+        Assertions.assertEquals("admin", roleAssignedPage.getRecords().getFirst().getUsername());
     }
 
     @Test
@@ -129,7 +129,7 @@ class SysUserServiceImplTest {
         Page<SysUserEntity> roleAssignedPage = userService.getUserListByRole(unallocatedRoleQuery);
 
         Assertions.assertEquals(1, roleAssignedPage.getTotal());
-        Assertions.assertEquals("ag2", roleAssignedPage.getRecords().get(0).getUsername());
+        Assertions.assertEquals("ag2", roleAssignedPage.getRecords().getFirst().getUsername());
     }
 
     @Test
@@ -141,7 +141,7 @@ class SysUserServiceImplTest {
         Page<SearchUserDO> userList = userService.getUserList(searchUserQuery);
 
         Assertions.assertEquals(3, userList.getTotal());
-        Assertions.assertEquals("admin", userList.getRecords().get(0).getUsername());
+        Assertions.assertEquals("admin", userList.getRecords().getFirst().getUsername());
     }
 
 

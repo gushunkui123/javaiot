@@ -11,6 +11,7 @@ import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.util.ArrayList;
@@ -81,7 +82,7 @@ public class FormulaModel extends BizFormulaEntity {
             .map(FormulaItemCommand::getMaterialId)
             .collect(Collectors.toSet());
         Set<Long> existingIds = materialService.listByIds(materialIds).stream()
-            .map(m -> m.getMaterialId())
+            .map(BizMaterialEntity::getMaterialId)
             .collect(Collectors.toSet());
         for (Long materialId : materialIds) {
             if (!existingIds.contains(materialId)) {

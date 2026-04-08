@@ -88,7 +88,7 @@ public class GlobalExceptionInterceptor {
     @ExceptionHandler(BindException.class)
     public ResponseDTO<?> handleBindException(BindException e) {
         log.error(e.getMessage(), e);
-        String message = e.getAllErrors().get(0).getDefaultMessage();
+        String message = e.getAllErrors().getFirst().getDefaultMessage();
         return ResponseDTO.fail(new ApiException(ErrorCode.Client.COMMON_REQUEST_PARAMETERS_INVALID, message));
     }
 
