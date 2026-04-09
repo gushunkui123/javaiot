@@ -106,6 +106,9 @@ public class WorkOrderDTO implements AuditableDTO {
     @ExcelColumn(name = "备注")
     private String remark;
 
+    @Schema(description = "通知邮箱")
+    private String email;
+
     @Schema(description = "创建人ID")
     private Long creatorId;
 
