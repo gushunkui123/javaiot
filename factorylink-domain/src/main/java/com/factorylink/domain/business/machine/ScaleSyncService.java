@@ -1,6 +1,6 @@
 package com.factorylink.domain.business.machine;
 
-import com.factorylink.common.config.MachineProperties;
+import com.factorylink.common.config.MachineConfigProvider;
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
@@ -45,7 +45,7 @@ public class ScaleSyncService {
 
     private final MainScaleClient mainScaleClient;
     private final MicroScaleClient microScaleClient;
-    private final MachineProperties machineProperties;
+    private final MachineConfigProvider machineConfigProvider;
     private final BizSyncLogService syncLogService;
     private final ObjectMapper objectMapper;
 
@@ -273,13 +273,7 @@ public class ScaleSyncService {
     // ======================== 通用方法 ========================
 
     private boolean isDeviceEnabled(String deviceType) {
-        return switch (deviceType) {
-            case "MAIN_SCALE" -> machineProperties.getMainScale() != null
-                && machineProperties.getMainScale().isEnabled();
-            case "MICRO_SCALE" -> machineProperties.getMicroScale() != null
-                && machineProperties.getMicroScale().isEnabled();
-            default -> false;
-        };
+        return machineConfigProvider.isDeviceEnabled(deviceType);
     }
 
     private void saveSyncLog(String deviceType, String operation, Long targetId,

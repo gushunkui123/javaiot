@@ -1,7 +1,7 @@
 package com.factorylink.infrastructure.machine.client;
 
-import com.factorylink.common.config.MachineProperties;
-import com.factorylink.common.config.MachineProperties.ScaleConfig;
+import com.factorylink.common.config.MachineConfigProvider;
+import com.factorylink.common.config.ScaleMachineConfig;
 import com.factorylink.infrastructure.machine.dto.ScaleApiResponse;
 import com.factorylink.infrastructure.machine.dto.request.ScaleBarcodeRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
@@ -25,73 +25,77 @@ import org.springframework.stereotype.Component;
 public class MainScaleClient {
 
     private final ScaleApiClient scaleApiClient;
-    private final MachineProperties machineProperties;
+    private final MachineConfigProvider machineConfigProvider;
 
-    private ScaleConfig config() {
-        return machineProperties.getMainScale();
+    private ScaleMachineConfig config() {
+        ScaleMachineConfig config = machineConfigProvider.getMainScale();
+        if (config == null) {
+            throw new IllegalStateException("主磅设备未配置或已禁用");
+        }
+        return config;
     }
 
     // ======================== 写入操作 ========================
 
     public ScaleApiResponse<Void> addParts(ScalePartsRequest request) {
         request.setOption("addParts");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> updateParts(ScalePartsRequest request) {
         request.setOption("updateParts");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> deleteParts(ScalePartsRequest request) {
         request.setOption("deleteParts");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> addFormula(ScaleFormulaRequest request) {
         request.setOption("addFormula");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> updateFormula(ScaleFormulaRequest request) {
         request.setOption("updateFormula");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> deleteFormula(ScaleFormulaRequest request) {
         request.setOption("deleteFormula");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> addWorkOrder(ScaleWorkOrderRequest request) {
         request.setOption("addWorkOrder");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> updateWorkOrder(ScaleWorkOrderRequest request) {
         request.setOption("updateWorkOrder");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
 
     public ScaleApiResponse<Void> deleteWorkOrder(ScaleWorkOrderRequest request) {
         request.setOption("deleteWorkOrder");
-        request.setMachineId(config().getMachineId());
+        request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
     }
@@ -169,7 +173,7 @@ public class MainScaleClient {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("option", option);
         params.put("plant", config().getPlant());
-        params.put("machineId", String.valueOf(config().getMachineId()));
+        params.put("machineId", String.valueOf(config().getScaleMachineId()));
         return params;
     }
 
