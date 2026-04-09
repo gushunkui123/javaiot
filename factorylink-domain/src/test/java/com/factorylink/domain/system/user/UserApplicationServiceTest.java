@@ -1,5 +1,8 @@
 package com.factorylink.domain.system.user;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -8,10 +11,12 @@ import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.common.cache.CacheCenter;
 import com.factorylink.domain.common.command.BulkOperationCommand;
 import com.factorylink.domain.system.post.db.SysPostService;
+import com.factorylink.domain.system.role.db.SysRoleEntity;
 import com.factorylink.domain.system.role.db.SysRoleService;
 import com.factorylink.domain.system.user.db.SysUserEntity;
 import com.factorylink.domain.system.user.command.UpdateUserCommand;
 import com.factorylink.domain.system.user.db.SysUserService;
+import com.factorylink.domain.system.user.dto.UserAccountSummaryDTO;
 import com.factorylink.domain.system.user.model.UserModel;
 import com.factorylink.domain.system.user.model.UserModelFactory;
 import com.factorylink.infrastructure.cache.redis.RedisCacheTemplate;
@@ -35,22 +40,28 @@ class UserApplicationServiceTest {
     private final RedisCacheTemplate<SysUserEntity> userCache = mock(RedisCacheTemplate.class);
     @SuppressWarnings("unchecked")
     private final RedisCacheTemplate<String> usernameCache = mock(RedisCacheTemplate.class);
+    @SuppressWarnings("unchecked")
+    private final RedisCacheTemplate<SysRoleEntity> roleCache = mock(RedisCacheTemplate.class);
 
     private RedisCacheTemplate<SysUserEntity> originalUserCache;
     private RedisCacheTemplate<String> originalUsernameCache;
+    private RedisCacheTemplate<SysRoleEntity> originalRoleCache;
 
     @BeforeEach
     void setUp() {
         originalUserCache = CacheCenter.userCache;
         originalUsernameCache = CacheCenter.usernameCache;
+        originalRoleCache = CacheCenter.roleCache;
         CacheCenter.userCache = userCache;
         CacheCenter.usernameCache = usernameCache;
+        CacheCenter.roleCache = roleCache;
     }
 
     @AfterEach
     void tearDown() {
         CacheCenter.userCache = originalUserCache;
         CacheCenter.usernameCache = originalUsernameCache;
+        CacheCenter.roleCache = originalRoleCache;
     }
 
     @Test
@@ -92,5 +103,42 @@ class UserApplicationServiceTest {
         verify(userModel).updateById();
         verify(userCache).delete(8L);
         verify(usernameCache).delete(8L);
+    }
+
+    @Test
+    void getUserAccountSummaryListShouldMapRoleNameAndEnabledStatus() {
+        SysRoleEntity adminRole = new SysRoleEntity();
+        adminRole.setRoleName("管理员");
+        when(roleCache.getObjectById(10L)).thenReturn(adminRole);
+
+        SysRoleEntity operatorRole = new SysRoleEntity();
+        operatorRole.setRoleName("操作员");
+        when(roleCache.getObjectById(11L)).thenReturn(operatorRole);
+
+        SysUserEntity enabledUser = new SysUserEntity();
+        enabledUser.setUsername("alice");
+        enabledUser.setRoleId(10L);
+        enabledUser.setEmail("alice@example.com");
+        enabledUser.setStatus(1);
+
+        SysUserEntity disabledUser = new SysUserEntity();
+        disabledUser.setUsername("bob");
+        disabledUser.setRoleId(11L);
+        disabledUser.setEmail("bob@example.com");
+        disabledUser.setStatus(2);
+
+        when(userService.listUserAccountSummary()).thenReturn(List.of(enabledUser, disabledUser));
+
+        List<UserAccountSummaryDTO> accountSummaryList = applicationService.getUserAccountSummaryList();
+
+        assertEquals(2, accountSummaryList.size());
+        assertEquals("alice", accountSummaryList.get(0).getUsername());
+        assertEquals("管理员", accountSummaryList.get(0).getRoleName());
+        assertEquals("alice@example.com", accountSummaryList.get(0).getEmail());
+        assertTrue(accountSummaryList.get(0).getEnabled());
+        assertEquals("bob", accountSummaryList.get(1).getUsername());
+        assertEquals("操作员", accountSummaryList.get(1).getRoleName());
+        assertEquals("bob@example.com", accountSummaryList.get(1).getEmail());
+        assertFalse(accountSummaryList.get(1).getEnabled());
     }
 }

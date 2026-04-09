@@ -64,10 +64,15 @@ class SysMenuServiceImplTest {
     @Rollback
     void testIsMenuAssignToRole() {
         List<SysMenuEntity> allMenus = menuService.list();
+        List<Long> roleMenuIds = menuService.getMenuIdsByRoleId(2L);
 
         boolean isAssignToRole = menuService.isMenuAssignToRoles(CollUtil.getFirst(allMenus).getMenuId());
-        // role2 默认不给最后一个权限 所以最后一个菜单无权限
-        boolean isNotAssignToRole = menuService.isMenuAssignToRoles(CollUtil.getLast(allMenus).getMenuId());
+        Long unassignedMenuId = allMenus.stream()
+            .map(SysMenuEntity::getMenuId)
+            .filter(menuId -> !roleMenuIds.contains(menuId))
+            .findFirst()
+            .orElseThrow();
+        boolean isNotAssignToRole = menuService.isMenuAssignToRoles(unassignedMenuId);
 
         Assertions.assertFalse(isNotAssignToRole);
         Assertions.assertTrue(isAssignToRole);

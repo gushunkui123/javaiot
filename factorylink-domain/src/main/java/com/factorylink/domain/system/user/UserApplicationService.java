@@ -17,6 +17,7 @@ import com.factorylink.domain.system.user.command.UpdateUserCommand;
 import com.factorylink.domain.system.user.command.UpdateUserPasswordCommand;
 import com.factorylink.domain.system.user.db.SearchUserDO;
 import com.factorylink.domain.system.user.dto.UserDTO;
+import com.factorylink.domain.system.user.dto.UserAccountSummaryDTO;
 import com.factorylink.domain.system.user.dto.UserDetailDTO;
 import com.factorylink.domain.system.user.dto.UserProfileDTO;
 import com.factorylink.domain.system.user.model.UserModel;
@@ -59,6 +60,12 @@ public class UserApplicationService {
         List<UserDTO> userDTOList = userPage.getRecords().stream().map(UserDTO::new).collect(Collectors.toList());
         auditUserEnricher.enrich(userDTOList);
         return new PageDTO<>(userDTOList, userPage.getTotal());
+    }
+
+    public List<UserAccountSummaryDTO> getUserAccountSummaryList() {
+        return userService.listUserAccountSummary().stream()
+            .map(UserAccountSummaryDTO::new)
+            .collect(Collectors.toList());
     }
 
     public UserProfileDTO getUserProfile(Long userId) {

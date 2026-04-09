@@ -12,6 +12,7 @@ import com.factorylink.domain.system.user.command.AddUserCommand;
 import com.factorylink.domain.system.user.command.ChangeStatusCommand;
 import com.factorylink.domain.system.user.command.ResetPasswordCommand;
 import com.factorylink.domain.system.user.command.UpdateUserCommand;
+import com.factorylink.domain.system.user.dto.UserAccountSummaryDTO;
 import com.factorylink.domain.system.user.dto.UserDTO;
 import com.factorylink.domain.system.user.dto.UserDetailDTO;
 import com.factorylink.domain.system.user.query.SearchUserQuery;
@@ -60,6 +61,17 @@ public class SysUserController extends BaseController {
     public ResponseDTO<PageDTO<UserDTO>> userList(SearchUserQuery<SearchUserDO> query) {
         PageDTO<UserDTO> page = userApplicationService.getUserList(query);
         return ResponseDTO.ok(page);
+    }
+
+    /**
+     * 获取全部账号摘要
+     */
+    @Operation(summary = "账号摘要列表")
+    @PreAuthorize("@permission.has('system:user:summaryList')")
+    @GetMapping("/accounts")
+    public ResponseDTO<List<UserAccountSummaryDTO>> userAccountSummaryList() {
+        List<UserAccountSummaryDTO> accountSummaryList = userApplicationService.getUserAccountSummaryList();
+        return ResponseDTO.ok(accountSummaryList);
     }
 
     @Operation(summary = "用户列表导出")

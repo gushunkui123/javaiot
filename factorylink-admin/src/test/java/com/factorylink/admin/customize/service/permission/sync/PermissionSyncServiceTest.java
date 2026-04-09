@@ -88,6 +88,25 @@ class PermissionSyncServiceTest {
     }
 
     @Test
+    void testSyncShouldAllowIndependentSummaryPermissionUnderUserList() {
+        Map<String, String> scanned = new LinkedHashMap<>();
+        scanned.put("system:user:summaryList", "账号摘要列表");
+        when(scanner.scan()).thenReturn(scanned);
+
+        when(menuService.list()).thenReturn(List.of(
+            pageMenu(5L, 1L, "用户管理", "system:user:list")
+        ));
+
+        PermissionSyncResultDTO result = permissionSyncService.sync();
+
+        assertTrue(result.isApplied());
+        assertEquals(1, result.getAdded().size());
+        assertEquals("system:user:summaryList", result.getAdded().getFirst().getPermission());
+        assertEquals("system:user:list", result.getAdded().getFirst().getParentPermission());
+        verify(menuService).save(any(SysMenuEntity.class));
+    }
+
+    @Test
     void testSyncShouldSkipWhenParentNotFound() {
         Map<String, String> scanned = new LinkedHashMap<>();
         scanned.put("system:post:query", "岗位详情");

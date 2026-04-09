@@ -87,4 +87,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserEntity
         return baseMapper.getUserList(query.toPage(), query.toQueryWrapper());
     }
 
+    @Override
+    public List<SysUserEntity> listUserAccountSummary() {
+        return this.lambdaQuery()
+            .select(SysUserEntity::getUsername, SysUserEntity::getRoleId, SysUserEntity::getEmail,
+                SysUserEntity::getStatus)
+            .orderByAsc(SysUserEntity::getUsername)
+            .list();
+    }
+
 }
