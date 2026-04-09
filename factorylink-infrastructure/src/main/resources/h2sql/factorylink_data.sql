@@ -74,6 +74,7 @@ INSERT INTO sys_menu VALUES (23, '用户删除', 0, ' ', 5, '', 1, 'system:user:
 INSERT INTO sys_menu VALUES (24, '用户导出', 0, ' ', 5, '', 1, 'system:user:export', '{"title":"用户导出"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
 INSERT INTO sys_menu VALUES (25, '用户导入', 0, ' ', 5, '', 1, 'system:user:import', '{"title":"用户导入"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
 INSERT INTO sys_menu VALUES (26, '重置密码', 0, ' ', 5, '', 1, 'system:user:resetPwd', '{"title":"重置密码"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
+INSERT INTO sys_menu VALUES (66, '账号摘要列表', 0, ' ', 5, '', 1, 'system:user:summaryList', '{"title":"账号摘要列表"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
 INSERT INTO sys_menu VALUES (27, '角色查询', 0, ' ', 6, '', 1, 'system:role:query', '{"title":"角色查询"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
 INSERT INTO sys_menu VALUES (28, '角色新增', 0, ' ', 6, '', 1, 'system:role:add', '{"title":"角色新增"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
 INSERT INTO sys_menu VALUES (29, '角色修改', 0, ' ', 6, '', 1, 'system:role:edit', '{"title":"角色修改"}', 1, '', 0, '2022-05-21 08:30:54', null, null, 0);
@@ -211,6 +212,7 @@ INSERT INTO `sys_role_menu` VALUES ('2', '59');
 INSERT INTO `sys_role_menu` VALUES ('2', '60');
 INSERT INTO `sys_role_menu` VALUES ('2', '61');
 INSERT INTO `sys_role_menu` VALUES ('2', '62');
+INSERT INTO `sys_role_menu` VALUES ('2', '66');
 -- roleId = 2的权限 特地少一个 方便测试
 INSERT INTO `sys_role_menu` VALUES ('3', '1');
 

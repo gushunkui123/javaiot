@@ -5,7 +5,7 @@ import com.factorylink.domain.system.post.db.SysPostEntity;
 import com.factorylink.domain.system.role.db.SysRoleEntity;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -88,5 +88,11 @@ public interface SysUserService extends IService<SysUserEntity> {
      */
     Page<SearchUserDO> getUserList(AbstractPageQuery<SearchUserDO> query);
 
+    /**
+     * 查询全部账号摘要
+     *
+     * @return 账号摘要列表
+     */
+    List<SysUserEntity> listUserAccountSummary();
 
 }
