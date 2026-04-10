@@ -47,6 +47,7 @@ nbdist/
 !*/build/*.xml
 
 /factorylink-admin/src/main/resources/application-prod.yml
+/factorylink-admin/src/main/resources/application-dev-local.yml
 
 .claude
 配方.xlsx

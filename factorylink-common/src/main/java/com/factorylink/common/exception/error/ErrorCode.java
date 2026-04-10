@@ -202,6 +202,12 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED(11308, "已完成工单不允许删除", "Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED"),
 
+        // -------------------------------- MACHINE -------------------------------------------------
+
+        MACHINE_CODE_IS_NOT_UNIQUE(11401, "设备编码:{} 已存在", "Business.MACHINE_CODE_IS_NOT_UNIQUE"),
+
+        MACHINE_NOT_FOUND(11402, "设备不存在: {}", "Business.MACHINE_NOT_FOUND"),
+
         // ---------------------------------- USER -----------------------------------------------
 
         USER_NON_EXIST(10501, "登录用户：{} 不存在", "Business.USER_NON_EXIST"),

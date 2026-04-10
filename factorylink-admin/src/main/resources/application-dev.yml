@@ -1,3 +1,6 @@
+# 可选导入本地配置（不纳入版本管理，存放敏感信息如邮件密码、数据库密码等）
+spring.config.import: optional:classpath:application-dev-local.yml
+
 # 数据源配置
 spring:
     datasource:
@@ -59,7 +62,7 @@ spring:
 #                    username: root
 #                    password: 12345
 
-    # 邮件配置
+    # 邮件配置（真实值请配置在 application-dev-local.yml 中）
     mail:
         host: smtp.example.com
         port: 465
@@ -122,7 +125,11 @@ factorylink:
     # 轮询配置
     polling:
         # 工单生产状态轮询间隔（毫秒），默认30秒
-        work-order-interval: 2000
+        work-order-interval: 3000
+    # 健康检查配置
+    health-check:
+        # 设备在线状态检测间隔（毫秒），默认2分钟
+        machine-interval: 180000
     # 外部设备连接配置
     machines:
         main-scale:

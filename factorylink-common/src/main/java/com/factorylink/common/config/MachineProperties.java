@@ -6,7 +6,11 @@ import org.springframework.stereotype.Component;
 
 /**
  * 外部设备连接配置
+ *
+ * @deprecated 设备配置已迁移到数据库（biz_machine 表），请使用 MachineConfigProvider 替代。
+ *             此类将在后续版本移除。
  */
+@Deprecated
 @Component
 @ConfigurationProperties(prefix = "factorylink.machines")
 @Data
