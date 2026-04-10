@@ -2,6 +2,8 @@ package com.factorylink.domain.business.machine.db;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import java.util.Date;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
@@ -21,6 +23,20 @@ public class BizMachineServiceImpl extends ServiceImpl<BizMachineMapper, BizMach
     @Override
     public BizMachineEntity getByMachineCode(String machineCode) {
         return lambdaQuery().eq(BizMachineEntity::getMachineCode, machineCode).one();
+    }
+
+    @Override
+    public List<BizMachineEntity> listEnabled() {
+        return lambdaQuery().eq(BizMachineEntity::getEnabled, true).list();
+    }
+
+    @Override
+    public void updateOnlineStatus(Long machineId, boolean online) {
+        lambdaUpdate()
+            .eq(BizMachineEntity::getMachineId, machineId)
+            .set(BizMachineEntity::getOnlineStatus, online)
+            .set(BizMachineEntity::getLastCheckTime, new Date())
+            .update();
     }
 
 }

@@ -125,7 +125,11 @@ factorylink:
     # 轮询配置
     polling:
         # 工单生产状态轮询间隔（毫秒），默认30秒
-        work-order-interval: 2000
+        work-order-interval: 3000
+    # 健康检查配置
+    health-check:
+        # 设备在线状态检测间隔（毫秒），默认2分钟
+        machine-interval: 180000
     # 外部设备连接配置
     machines:
         main-scale:

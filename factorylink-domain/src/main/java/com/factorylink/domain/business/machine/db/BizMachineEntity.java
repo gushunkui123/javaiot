@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
+import java.util.Date;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -68,6 +69,14 @@ public class BizMachineEntity extends BaseEntity<BizMachineEntity> {
     @Schema(description = "备注")
     @TableField("remark")
     private String remark;
+
+    @Schema(description = "在线状态（0-离线 1-在线）")
+    @TableField("online_status")
+    private Boolean onlineStatus;
+
+    @Schema(description = "最后检测时间")
+    @TableField("last_check_time")
+    private Date lastCheckTime;
 
     @Override
     public Serializable pkVal() {

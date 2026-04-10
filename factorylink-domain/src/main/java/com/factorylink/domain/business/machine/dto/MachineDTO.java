@@ -44,6 +44,10 @@ public class MachineDTO implements AuditableDTO {
 
     private String remark;
 
+    private Boolean onlineStatus;
+
+    private Date lastCheckTime;
+
     private Long creatorId;
 
     private String creatorName;
