@@ -27,6 +27,10 @@ public class AddMachineCommand {
     @Size(max = 30, message = "设备类型长度不能超过30个字符")
     protected String deviceType;
 
+    @Schema(description = "所属产线")
+    @Size(max = 50, message = "产线名称长度不能超过50个字符")
+    protected String productionLine;
+
     @Schema(description = "是否启用")
     protected Boolean enabled = true;
 

@@ -28,6 +28,8 @@ public class MachineDTO implements AuditableDTO {
 
     private String deviceType;
 
+    private String productionLine;
+
     private Boolean enabled;
 
     private String ip;

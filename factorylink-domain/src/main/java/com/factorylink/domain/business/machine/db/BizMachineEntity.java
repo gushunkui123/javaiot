@@ -38,6 +38,10 @@ public class BizMachineEntity extends BaseEntity<BizMachineEntity> {
     @TableField("device_type")
     private String deviceType;
 
+    @Schema(description = "所属产线")
+    @TableField("production_line")
+    private String productionLine;
+
     @Schema(description = "是否启用（0-禁用 1-启用）")
     @TableField("enabled")
     private Boolean enabled;
