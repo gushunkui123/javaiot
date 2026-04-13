@@ -25,7 +25,7 @@ public class JacksonConfig implements Jackson2ObjectMapperBuilderCustomizer{
         // 防XSS脚本注入
         jacksonObjectMapperBuilder.deserializers(new JsonHtmlXssTrimSerializer());
         // 默认时区配置
-        jacksonObjectMapperBuilder.timeZone(TimeZone.getDefault());
+        jacksonObjectMapperBuilder.timeZone(TimeZone.getTimeZone("Asia/Shanghai"));
     }
 
 }
