@@ -151,14 +151,30 @@ public class ScaleSyncService {
     // ======================== 原料下发 ========================
 
     public SyncResultDTO syncMaterial(Long materialId, OperationType operationType) {
+        return syncMaterial(materialId, operationType, null);
+    }
+
+    public SyncResultDTO syncMaterial(Long materialId, OperationType operationType,
+            Set<DeviceType> deviceTypes) {
         BizMaterialEntity material = materialService.getById(materialId);
         if (material == null) {
             throw new IllegalArgumentException("原料不存在: " + materialId);
         }
 
+        boolean all = deviceTypes == null || deviceTypes.isEmpty();
         SyncResultDTO result = new SyncResultDTO();
-        result.setMainScale(syncMaterialToDevice("MAIN_SCALE", material, operationType));
-        result.setMicroScale(syncMaterialToDevice("MICRO_SCALE", material, operationType));
+
+        if (all || deviceTypes.contains(DeviceType.MAIN_SCALE)) {
+            result.setMainScale(syncMaterialToDevice("MAIN_SCALE", material, operationType));
+        } else {
+            result.setMainScale(DeviceResult.skipped("未选择该设备"));
+        }
+
+        if (all || deviceTypes.contains(DeviceType.MICRO_SCALE)) {
+            result.setMicroScale(syncMaterialToDevice("MICRO_SCALE", material, operationType));
+        } else {
+            result.setMicroScale(DeviceResult.skipped("未选择该设备"));
+        }
         return result;
     }
 
