@@ -1,5 +1,6 @@
 package com.factorylink.domain.business.machine.dto;
 
+import java.util.List;
 import lombok.Data;
 
 /**
@@ -17,11 +18,20 @@ public class SyncResultDTO {
         private boolean success;
         private String message;
         private boolean skipped;
+        private List<String> warnings;
 
         public static DeviceResult success() {
             DeviceResult result = new DeviceResult();
             result.setSuccess(true);
             result.setMessage("ok");
+            return result;
+        }
+
+        public static DeviceResult success(List<String> warnings) {
+            DeviceResult result = new DeviceResult();
+            result.setSuccess(true);
+            result.setMessage("ok");
+            result.setWarnings(warnings);
             return result;
         }
 

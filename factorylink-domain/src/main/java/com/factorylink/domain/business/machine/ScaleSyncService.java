@@ -20,13 +20,18 @@ import com.factorylink.infrastructure.machine.client.MainScaleClient;
 import com.factorylink.infrastructure.machine.client.MicroScaleClient;
 import com.factorylink.infrastructure.machine.dto.ScaleApiResponse;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
+import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest.FormulaEntry;
 import com.factorylink.infrastructure.machine.dto.request.ScalePartsRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleWorkOrderRequest;
+import com.factorylink.infrastructure.machine.dto.response.MaterialInBucketData;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -102,6 +107,7 @@ public class ScaleSyncService {
         try {
             ScaleApiResponse<Void> response;
             Object requestBody;
+            List<String> bucketWarnings = Collections.emptyList();
 
             if (operationType == OperationType.DELETE) {
                 ScaleFormulaRequest request = formulaScaleConverter.toDeleteRequest(formula);
@@ -120,6 +126,9 @@ public class ScaleSyncService {
                     : formulaScaleConverter.toMicroScaleRequest(formula, items);
                 requestBody = request;
 
+                // 检查料桶中是否包含配方中的原料
+                bucketWarnings = checkMaterialsInBuckets(deviceType, request.getFormulaEntryList());
+
                 response = switch (operationType) {
                     case ADD -> "MAIN_SCALE".equals(deviceType)
                         ? mainScaleClient.addFormula(request)
@@ -134,17 +143,66 @@ public class ScaleSyncService {
             String op = operationType.name() + "_FORMULA";
             if (response.isSuccess()) {
                 saveSyncLog(deviceType, op, formula.getFormulaId(), requestBody, null, 0, 1);
-                return DeviceResult.success();
+                DeviceResult result = DeviceResult.success(bucketWarnings.isEmpty() ? null : bucketWarnings);
+                return result;
             }
 
             saveSyncLog(deviceType, op, formula.getFormulaId(), requestBody, response.getRtnmsg(), 0, 0);
-            return DeviceResult.fail(response.getRtnmsg());
+            DeviceResult result = DeviceResult.fail(response.getRtnmsg());
+            if (!bucketWarnings.isEmpty()) {
+                result.setWarnings(bucketWarnings);
+            }
+            return result;
 
         } catch (Exception e) {
             log.error("配方下发到{}失败", deviceType, e);
             saveSyncLog(deviceType, operationType.name() + "_FORMULA",
                 formula.getFormulaId(), null, e.getMessage(), 3, 0);
             return DeviceResult.fail(e.getMessage());
+        }
+    }
+
+    /**
+     * 检查配方中的原料是否在设备料桶中
+     *
+     * @return 不在料桶中的原料警告列表，空列表表示全部在料桶中
+     */
+    private List<String> checkMaterialsInBuckets(String deviceType, List<FormulaEntry> formulaEntries) {
+        if (formulaEntries == null || formulaEntries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        try {
+            ScaleApiResponse<MaterialInBucketData> bucketResponse = "MAIN_SCALE".equals(deviceType)
+                ? mainScaleClient.getMaterialInBuckets()
+                : microScaleClient.getMaterialInBuckets();
+
+            if (!bucketResponse.isSuccess()) {
+                log.warn("查询{}料桶数据失败: {}", deviceType, bucketResponse.getRtnmsg());
+                return Collections.emptyList();
+            }
+
+            Set<String> materialsInBuckets = bucketResponse.getRtndata() == null
+                ? Set.of()
+                : bucketResponse.getRtndata().stream()
+                    .map(MaterialInBucketData::getMaterialNo)
+                    .collect(Collectors.toSet());
+
+            List<String> warnings = new ArrayList<>();
+            for (FormulaEntry entry : formulaEntries) {
+                if (entry.getMaterialNo() != null && !materialsInBuckets.contains(entry.getMaterialNo())) {
+                    warnings.add("原料 " + entry.getMaterialNo() + " 不在料桶中");
+                }
+            }
+
+            if (!warnings.isEmpty()) {
+                log.warn("配方下发到{}时发现{}个原料不在料桶中: {}", deviceType, warnings.size(), warnings);
+            }
+            return warnings;
+
+        } catch (Exception e) {
+            log.warn("查询{}料桶数据异常，跳过料桶校验: {}", deviceType, e.getMessage());
+            return Collections.emptyList();
         }
     }
 
