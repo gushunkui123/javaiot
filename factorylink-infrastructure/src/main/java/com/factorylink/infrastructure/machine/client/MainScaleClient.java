@@ -9,6 +9,7 @@ import com.factorylink.infrastructure.machine.dto.request.ScalePartsRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleWorkOrderRequest;
 import com.factorylink.infrastructure.machine.dto.response.AlarmLogData;
 import com.factorylink.infrastructure.machine.dto.response.MaterialConsumptionData;
+import com.factorylink.infrastructure.machine.dto.response.MaterialInBucketData;
 import com.factorylink.infrastructure.machine.dto.response.ProcessData;
 import com.factorylink.infrastructure.machine.dto.response.WeighingRecordData;
 import com.factorylink.infrastructure.machine.dto.response.WorkOrderData;
@@ -119,6 +120,11 @@ public class MainScaleClient {
     }
 
     // ======================== 查询操作 ========================
+
+    public ScaleApiResponse<MaterialInBucketData> getMaterialInBuckets() {
+        Map<String, String> params = baseQueryParams("getMaterialInBuckets");
+        return scaleApiClient.query(config().getApiUrl(), params, MaterialInBucketData.class);
+    }
 
     public ScaleApiResponse<WorkOrderData> getWorkOrder(String workOrderNo, String formulaCode,
             String orderDateFrom, String orderDateTo, String orderState) {
