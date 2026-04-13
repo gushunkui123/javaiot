@@ -90,7 +90,7 @@ public class BizMaterialController extends BaseController {
         CustomExcelUtil.writeToResponse(ListUtil.toList(new AddMaterialCommand()), AddMaterialCommand.class, response);
     }
 
-    @Operation(summary = "添加原料", description = "新增原料并自动按现有规则下发到已启用的主磅/微量设备。"
+    @Operation(summary = "添加原料", description = "新增原料并按原料类型自动下发到已启用设备：主料下发主磅，非主料下发微量。"
             + " 若自动下发失败，不影响原料新增，后续可通过手动下发重试")
     @PreAuthorize("@permission.has('business:material:add')")
     @AccessLog(title = "原料管理", businessType = BusinessTypeEnum.ADD)
