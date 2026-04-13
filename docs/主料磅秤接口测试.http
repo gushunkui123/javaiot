@@ -313,11 +313,11 @@ Content-Type: application/json
   "option": "addFormula",
   "plant": "{{plant}}",
   "machineId": {{machineId}},
-  "formulaCode": "F001",
-  "formulaName": "配方 01",
+  "formulaCode": "F19102",
+  "formulaName": "AAA配方",
   "FormulaEntryList": [
-    {"MaterialNo": "ZNO01", "MaterialWeight": 28.0, "StepNo": 1},
-    {"MaterialNo": "ZNO02", "MaterialWeight": 61.0, "StepNo": 1}
+    {"MaterialNo": "PP22040090", "MaterialWeight": 28.0, "StepNo": 1},
+    {"MaterialNo": "M02", "MaterialWeight": 61.0, "StepNo": 1}
   ]
 }
 
@@ -403,7 +403,7 @@ Content-Type: application/json
   "machineId": {{machineId}},
   "workOrderNo": "W0001",
   "workOrderDate": "2026-03-18",
-  "formulaCode": "F001",
+  "formulaCode": "F19101",
   "batch": 10,
   "lineNo": ""
 }

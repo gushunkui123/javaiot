@@ -180,9 +180,9 @@ Content-Type: application/json
   "option": "updateParts",
   "plant": "{{plant}}",
   "machineId": {{machineId}},
-  "partNo": "ZNO01",
-  "partName": "氧化锌 01-更新",
-  "partClass": "",
+  "partNo": "P26041236",
+  "partName": "测试原料3",
+  "partClass": "5",
   "unitBarcodeWeight": 50.0
 }
 
