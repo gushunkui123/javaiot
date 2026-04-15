@@ -6,6 +6,8 @@ import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest.FormulaEntry;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -81,6 +83,19 @@ public class FormulaScaleConverter {
 
         request.setFormulaEntryList(entries);
         return request;
+    }
+
+    /**
+     * 为主磅配方请求添加配方名条目（用于主磅显示配方名称）
+     */
+    public void addFormulaNameEntry(ScaleFormulaRequest request, BizFormulaEntity formula) {
+        FormulaEntry entry = new FormulaEntry();
+        entry.setMaterialNo(formula.getFormulaCode());
+        entry.setMaterialWeight(BigDecimal.ONE);
+        entry.setStepNo(1);
+        List<FormulaEntry> entries = new ArrayList<>(request.getFormulaEntryList());
+        entries.addFirst(entry);
+        request.setFormulaEntryList(entries);
     }
 
     /**

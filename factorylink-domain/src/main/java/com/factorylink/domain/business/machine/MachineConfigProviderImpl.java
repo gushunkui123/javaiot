@@ -31,6 +31,12 @@ public class MachineConfigProviderImpl implements MachineConfigProvider {
         return getEnabledMachine(machineCode) != null;
     }
 
+    @Override
+    public boolean isDeviceOnline(String machineCode) {
+        BizMachineEntity machine = machineService.getByMachineCode(machineCode);
+        return machine != null && Boolean.TRUE.equals(machine.getOnlineStatus());
+    }
+
     private BizMachineEntity getEnabledMachine(String machineCode) {
         BizMachineEntity machine = machineService.getByMachineCode(machineCode);
         if (machine == null || !Boolean.TRUE.equals(machine.getEnabled())) {

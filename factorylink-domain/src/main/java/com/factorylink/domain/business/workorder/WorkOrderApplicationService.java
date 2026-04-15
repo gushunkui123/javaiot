@@ -138,21 +138,11 @@ public class WorkOrderApplicationService {
         // 先下发配方
         Long formulaId = model.getFormulaId();
         if (formulaId != null) {
-            try {
-                scaleSyncService.syncFormula(formulaId, OperationType.ADD);
-            } catch (Exception e) {
-                log.warn("配方下发失败，formulaId={}，后续需重试: {}", formulaId, e.getMessage());
-            }
+            scaleSyncService.syncFormula(formulaId, OperationType.ADD);
         }
 
         // 再下发工单
-        SyncResultDTO syncResult = null;
-        try {
-            syncResult = scaleSyncService.syncWorkOrder(workOrderId, OperationType.ADD);
-        } catch (Exception e) {
-            log.warn("工单下发失败，工单ID={}，后续需重试: {}", workOrderId, e.getMessage());
-        }
-        return syncResult;
+        return scaleSyncService.syncWorkOrder(workOrderId, OperationType.ADD);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -168,11 +158,7 @@ public class WorkOrderApplicationService {
         // 先下发配方（DELETE操作时不下发配方）
         Long formulaId = workOrder.getFormulaId();
         if (formulaId != null && operationType != OperationType.DELETE) {
-            try {
-                scaleSyncService.syncFormula(formulaId, operationType);
-            } catch (Exception e) {
-                log.warn("配方下发失败，formulaId={}，后续需重试: {}", formulaId, e.getMessage());
-            }
+            scaleSyncService.syncFormula(formulaId, operationType);
         }
 
         // 再下发工单
@@ -193,11 +179,7 @@ public class WorkOrderApplicationService {
         formula.setItems(command.getItems());
         formula.updateById();
 
-        try {
-            scaleSyncService.syncFormula(formulaId, OperationType.UPDATE);
-        } catch (Exception e) {
-            log.warn("配方下发失败，formulaId={}，后续需重试: {}", formulaId, e.getMessage());
-        }
+        scaleSyncService.syncFormula(formulaId, OperationType.UPDATE);
 
         SseMessageLevel level = isProducing ? SseMessageLevel.ALERT : SseMessageLevel.NOTIFICATION;
         applicationEventPublisher.publishEvent(
