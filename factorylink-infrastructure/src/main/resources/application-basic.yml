@@ -37,6 +37,8 @@ factorylink:
 
 # 日志配置
 logging:
+  file:
+    path: logs/factorylink
   level:
     # 记得配置到包名
     com.factorylink: debug
