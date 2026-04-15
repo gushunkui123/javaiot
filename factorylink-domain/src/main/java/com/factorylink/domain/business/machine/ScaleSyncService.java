@@ -1,6 +1,8 @@
 package com.factorylink.domain.business.machine;
 
 import com.factorylink.common.config.MachineConfigProvider;
+import com.factorylink.common.exception.ApiException;
+import com.factorylink.common.exception.error.ErrorCode.External;
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
@@ -26,8 +28,6 @@ import com.factorylink.infrastructure.machine.dto.request.ScaleWorkOrderRequest;
 import com.factorylink.infrastructure.machine.dto.response.MaterialInBucketData;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -68,141 +68,139 @@ public class ScaleSyncService {
     // ======================== 配方下发 ========================
 
     public SyncResultDTO syncFormula(Long formulaId, OperationType operationType) {
-        return syncFormula(formulaId, operationType, null);
-    }
-
-    public SyncResultDTO syncFormula(Long formulaId, OperationType operationType,
-            Set<DeviceType> deviceTypes) {
         BizFormulaEntity formula = formulaService.getById(formulaId);
         if (formula == null) {
             throw new IllegalArgumentException("配方不存在: " + formulaId);
         }
 
-        boolean all = deviceTypes == null || deviceTypes.isEmpty();
+        // 校验两台设备都已启用且在线
+        validateDeviceReady("MAIN_SCALE");
+        validateDeviceReady("MICRO_SCALE");
+
+        if (operationType == OperationType.DELETE) {
+            return deleteFormulaFromBothDevices(formula);
+        } else {
+            return addOrUpdateFormula(formula);
+        }
+    }
+
+    private SyncResultDTO deleteFormulaFromBothDevices(BizFormulaEntity formula) {
+        deleteFormulaOrIgnoreNotFound("MAIN_SCALE", formula);
+        deleteFormulaOrIgnoreNotFound("MICRO_SCALE", formula);
+
+        saveSyncLog("MAIN_SCALE", "DELETE_FORMULA", formula.getFormulaId(), null, null, 0, 1);
+        saveSyncLog("MICRO_SCALE", "DELETE_FORMULA", formula.getFormulaId(), null, null, 0, 1);
+
         SyncResultDTO result = new SyncResultDTO();
-
-        // 主磅
-        if (all || deviceTypes.contains(DeviceType.MAIN_SCALE)) {
-            result.setMainScale(syncFormulaToDevice("MAIN_SCALE", formula, operationType));
-        } else {
-            result.setMainScale(DeviceResult.skipped("未选择该设备"));
-        }
-
-        // 微量
-        if (all || deviceTypes.contains(DeviceType.MICRO_SCALE)) {
-            result.setMicroScale(syncFormulaToDevice("MICRO_SCALE", formula, operationType));
-        } else {
-            result.setMicroScale(DeviceResult.skipped("未选择该设备"));
-        }
-
+        result.setMainScale(DeviceResult.success());
+        result.setMicroScale(DeviceResult.success());
         return result;
     }
 
-    private DeviceResult syncFormulaToDevice(String deviceType, BizFormulaEntity formula,
-            OperationType operationType) {
-        if (!isDeviceEnabled(deviceType)) {
-            return DeviceResult.skipped("设备未启用");
+    private SyncResultDTO addOrUpdateFormula(BizFormulaEntity formula) {
+        // 加载配方明细
+        List<BizFormulaItemEntity> items = formulaItemService.list(
+            new LambdaQueryWrapper<BizFormulaItemEntity>()
+                .eq(BizFormulaItemEntity::getFormulaId, formula.getFormulaId())
+                .orderByAsc(BizFormulaItemEntity::getSortOrder));
+
+        // 构建主磅和微量请求
+        ScaleFormulaRequest mainRequest = formulaScaleConverter.toMainScaleRequest(formula, items);
+        ScaleFormulaRequest microRequest = formulaScaleConverter.toMicroScaleRequest(formula, items);
+
+        // 先删除旧配方
+        deleteFormulaOrIgnoreNotFound("MAIN_SCALE", formula);
+        deleteFormulaOrIgnoreNotFound("MICRO_SCALE", formula);
+
+        // 校验料桶中的原料匹配
+        validateMaterialsInBuckets("MAIN_SCALE", mainRequest.getFormulaEntryList());
+        validateMaterialsInBuckets("MICRO_SCALE", microRequest.getFormulaEntryList());
+
+        // 为主料机器添加配方名对应的原料（material_name 和 material_code 均为配方名，类型为主料）
+        ScalePartsRequest formulaNameParts = new ScalePartsRequest();
+        formulaNameParts.setPlant("");
+        formulaNameParts.setPartNo(formula.getFormulaName());
+        formulaNameParts.setPartName(formula.getFormulaName());
+        formulaNameParts.setPartClass("5");
+        mainScaleClient.addParts(formulaNameParts);
+
+        // 为主磅请求添加配方名条目
+        formulaScaleConverter.addFormulaNameEntry(mainRequest, formula);
+
+        // 下发配方到两台设备
+        ScaleApiResponse<Void> mainResp = mainScaleClient.addFormula(mainRequest);
+        if (!mainResp.isSuccess()) {
+            saveSyncLog("MAIN_SCALE", "ADD_FORMULA", formula.getFormulaId(), mainRequest, mainResp.getRtnmsg(), 0, 0);
+            throw new ApiException(External.SCALE_SYNC_FAILED, "主磅: " + mainResp.getRtnmsg());
         }
+        saveSyncLog("MAIN_SCALE", "ADD_FORMULA", formula.getFormulaId(), mainRequest, null, 0, 1);
 
-        try {
-            ScaleApiResponse<Void> response;
-            Object requestBody;
-            List<String> bucketWarnings = Collections.emptyList();
+        ScaleApiResponse<Void> microResp = microScaleClient.addFormula(microRequest);
+        if (!microResp.isSuccess()) {
+            saveSyncLog("MICRO_SCALE", "ADD_FORMULA", formula.getFormulaId(), microRequest, microResp.getRtnmsg(), 0, 0);
+            throw new ApiException(External.SCALE_SYNC_FAILED, "微量: " + microResp.getRtnmsg());
+        }
+        saveSyncLog("MICRO_SCALE", "ADD_FORMULA", formula.getFormulaId(), microRequest, null, 0, 1);
 
-            if (operationType == OperationType.DELETE) {
-                ScaleFormulaRequest request = formulaScaleConverter.toDeleteRequest(formula);
-                requestBody = request;
-                response = "MAIN_SCALE".equals(deviceType)
-                    ? mainScaleClient.deleteFormula(request)
-                    : microScaleClient.deleteFormula(request);
-            } else {
-                List<BizFormulaItemEntity> items = formulaItemService.list(
-                    new LambdaQueryWrapper<BizFormulaItemEntity>()
-                        .eq(BizFormulaItemEntity::getFormulaId, formula.getFormulaId())
-                        .orderByAsc(BizFormulaItemEntity::getSortOrder));
+        SyncResultDTO result = new SyncResultDTO();
+        result.setMainScale(DeviceResult.success());
+        result.setMicroScale(DeviceResult.success());
+        return result;
+    }
 
-                ScaleFormulaRequest request = "MAIN_SCALE".equals(deviceType)
-                    ? formulaScaleConverter.toMainScaleRequest(formula, items)
-                    : formulaScaleConverter.toMicroScaleRequest(formula, items);
-                requestBody = request;
-
-                // 检查料桶中是否包含配方中的原料
-                bucketWarnings = checkMaterialsInBuckets(deviceType, request.getFormulaEntryList());
-
-                response = switch (operationType) {
-                    case ADD -> "MAIN_SCALE".equals(deviceType)
-                        ? mainScaleClient.addFormula(request)
-                        : microScaleClient.addFormula(request);
-                    case UPDATE -> "MAIN_SCALE".equals(deviceType)
-                        ? mainScaleClient.updateFormula(request)
-                        : microScaleClient.updateFormula(request);
-                    default -> throw new IllegalArgumentException("不支持的操作: " + operationType);
-                };
-            }
-
-            String op = operationType.name() + "_FORMULA";
-            if (response.isSuccess()) {
-                saveSyncLog(deviceType, op, formula.getFormulaId(), requestBody, null, 0, 1);
-                DeviceResult result = DeviceResult.success(bucketWarnings.isEmpty() ? null : bucketWarnings);
-                return result;
-            }
-
-            saveSyncLog(deviceType, op, formula.getFormulaId(), requestBody, response.getRtnmsg(), 0, 0);
-            DeviceResult result = DeviceResult.fail(response.getRtnmsg());
-            if (!bucketWarnings.isEmpty()) {
-                result.setWarnings(bucketWarnings);
-            }
-            return result;
-
-        } catch (Exception e) {
-            log.error("配方下发到{}失败", deviceType, e);
-            saveSyncLog(deviceType, operationType.name() + "_FORMULA",
-                formula.getFormulaId(), null, e.getMessage(), 3, 0);
-            return DeviceResult.fail(e.getMessage());
+    private void validateDeviceReady(String deviceType) {
+        if (!machineConfigProvider.isDeviceEnabled(deviceType)) {
+            throw new ApiException(External.SCALE_DEVICE_NOT_ENABLED, deviceType);
+        }
+        if (!machineConfigProvider.isDeviceOnline(deviceType)) {
+            throw new ApiException(External.SCALE_DEVICE_OFFLINE, deviceType);
         }
     }
 
-    /**
-     * 检查配方中的原料是否在设备料桶中
-     *
-     * @return 不在料桶中的原料警告列表，空列表表示全部在料桶中
-     */
-    private List<String> checkMaterialsInBuckets(String deviceType, List<FormulaEntry> formulaEntries) {
+    private void deleteFormulaOrIgnoreNotFound(String deviceType, BizFormulaEntity formula) {
+        ScaleFormulaRequest request = formulaScaleConverter.toDeleteRequest(formula);
+        ScaleApiResponse<Void> response = "MAIN_SCALE".equals(deviceType)
+            ? mainScaleClient.deleteFormula(request)
+            : microScaleClient.deleteFormula(request);
+
+        if (response.isSuccess()) {
+            return;
+        }
+        if (response.getRtnmsg() != null && response.getRtnmsg().contains("配方编号不存在")) {
+            return;
+        }
+        throw new ApiException(External.SCALE_DELETE_BEFORE_SYNC_FAILED,
+            deviceType + ": " + response.getRtnmsg());
+    }
+
+    private void validateMaterialsInBuckets(String deviceType, List<FormulaEntry> formulaEntries) {
         if (formulaEntries == null || formulaEntries.isEmpty()) {
-            return Collections.emptyList();
+            return;
         }
 
-        try {
-            ScaleApiResponse<MaterialInBucketData> bucketResponse = "MAIN_SCALE".equals(deviceType)
-                ? mainScaleClient.getMaterialInBuckets()
-                : microScaleClient.getMaterialInBuckets();
+        ScaleApiResponse<MaterialInBucketData> bucketResponse = "MAIN_SCALE".equals(deviceType)
+            ? mainScaleClient.getMaterialInBuckets()
+            : microScaleClient.getMaterialInBuckets();
 
-            if (!bucketResponse.isSuccess()) {
-                log.warn("查询{}料桶数据失败: {}", deviceType, bucketResponse.getRtnmsg());
-                return Collections.emptyList();
-            }
+        if (!bucketResponse.isSuccess()) {
+            throw new ApiException(External.SCALE_BUCKET_QUERY_FAILED,
+                deviceType + ": " + bucketResponse.getRtnmsg());
+        }
 
-            Set<String> materialsInBuckets = bucketResponse.getRtndata() == null
-                ? Set.of()
-                : bucketResponse.getRtndata().stream()
-                    .map(MaterialInBucketData::getMaterialNo)
-                    .collect(Collectors.toSet());
+        Set<String> materialsInBuckets = bucketResponse.getRtndata() == null
+            ? Set.of()
+            : bucketResponse.getRtndata().stream()
+                .map(MaterialInBucketData::getMaterialNo)
+                .collect(Collectors.toSet());
 
-            List<String> warnings = new ArrayList<>();
-            for (FormulaEntry entry : formulaEntries) {
-                if (entry.getMaterialNo() != null && !materialsInBuckets.contains(entry.getMaterialNo())) {
-                    warnings.add("原料 " + entry.getMaterialNo() + " 不在料桶中");
-                }
-            }
+        List<String> missingMaterials = formulaEntries.stream()
+            .filter(e -> e.getMaterialNo() != null && !materialsInBuckets.contains(e.getMaterialNo()))
+            .map(FormulaEntry::getMaterialNo)
+            .toList();
 
-            if (!warnings.isEmpty()) {
-                log.warn("配方下发到{}时发现{}个原料不在料桶中: {}", deviceType, warnings.size(), warnings);
-            }
-            return warnings;
-
-        } catch (Exception e) {
-            log.warn("查询{}料桶数据异常，跳过料桶校验: {}", deviceType, e.getMessage());
-            return Collections.emptyList();
+        if (!missingMaterials.isEmpty()) {
+            throw new ApiException(External.SCALE_MATERIAL_NOT_IN_BUCKET,
+                deviceType + " - " + String.join(", ", missingMaterials));
         }
     }
 

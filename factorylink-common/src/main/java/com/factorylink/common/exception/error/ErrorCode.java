@@ -295,7 +295,15 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         SCALE_QUERY_FAILED(1103, "查询磅秤设备数据失败：{}", "External.SCALE_QUERY_FAILED"),
 
-        SCALE_DEVICE_NOT_ENABLED(1104, "磅秤设备未启用：{}", "External.SCALE_DEVICE_NOT_ENABLED");
+        SCALE_DEVICE_NOT_ENABLED(1104, "磅秤设备未启用：{}", "External.SCALE_DEVICE_NOT_ENABLED"),
+
+        SCALE_DEVICE_OFFLINE(1105, "磅秤设备不在线：{}", "External.SCALE_DEVICE_OFFLINE"),
+
+        SCALE_DELETE_BEFORE_SYNC_FAILED(1106, "下发前删除旧配方失败：{}", "External.SCALE_DELETE_BEFORE_SYNC_FAILED"),
+
+        SCALE_MATERIAL_NOT_IN_BUCKET(1107, "配方原料不在料桶中：{}", "External.SCALE_MATERIAL_NOT_IN_BUCKET"),
+
+        SCALE_BUCKET_QUERY_FAILED(1108, "查询料桶数据失败：{}", "External.SCALE_BUCKET_QUERY_FAILED");
 
 
         private final int code;

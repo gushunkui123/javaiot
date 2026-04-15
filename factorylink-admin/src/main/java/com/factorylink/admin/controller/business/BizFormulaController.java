@@ -12,7 +12,6 @@ import com.factorylink.domain.business.formula.command.UpdateFormulaCommand;
 import com.factorylink.domain.business.formula.dto.FormulaDTO;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
 import com.factorylink.domain.business.machine.ScaleSyncService;
-import com.factorylink.domain.business.machine.ScaleSyncService.DeviceType;
 import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
 import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +20,6 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -114,9 +112,8 @@ public class BizFormulaController extends BaseController {
     @AccessLog(title = "配方管理", businessType = BusinessTypeEnum.MODIFY)
     @PostMapping("/{formulaId}/sync")
     public ResponseDTO<SyncResultDTO> syncFormula(@PathVariable Long formulaId,
-            @RequestParam(defaultValue = "ADD") OperationType operationType,
-            @RequestParam(required = false) Set<DeviceType> deviceTypes) {
-        SyncResultDTO result = scaleSyncService.syncFormula(formulaId, operationType, deviceTypes);
+            @RequestParam(defaultValue = "ADD") OperationType operationType) {
+        SyncResultDTO result = scaleSyncService.syncFormula(formulaId, operationType);
         return ResponseDTO.ok(result);
     }
 

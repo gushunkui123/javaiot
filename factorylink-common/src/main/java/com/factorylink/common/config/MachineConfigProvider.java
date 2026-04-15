@@ -23,4 +23,9 @@ public interface MachineConfigProvider {
      */
     boolean isDeviceEnabled(String machineCode);
 
+    /**
+     * 根据设备编码判断设备是否在线
+     */
+    boolean isDeviceOnline(String machineCode);
+
 }
