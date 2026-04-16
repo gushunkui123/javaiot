@@ -96,9 +96,18 @@ class WorkOrderModelTest {
     }
 
     @Test
-    void checkCanDeleteShouldPassWhenNotCompleted() {
+    void checkCanDeleteShouldThrowWhenProducing() {
         WorkOrderModel model = workOrderModelFactory.create();
         model.setProcessStatus(3);
+
+        ApiException exception = assertThrows(ApiException.class, model::checkCanDelete);
+        assertEquals(Business.WORK_ORDER_PRODUCING_CAN_NOT_BE_DELETED, exception.getErrorCode());
+    }
+
+    @Test
+    void checkCanDeleteShouldPassWhenNotProducingOrCompleted() {
+        WorkOrderModel model = workOrderModelFactory.create();
+        model.setProcessStatus(2);
 
         assertDoesNotThrow(model::checkCanDelete);
     }

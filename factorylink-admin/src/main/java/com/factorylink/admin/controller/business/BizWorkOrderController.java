@@ -110,7 +110,7 @@ public class BizWorkOrderController extends BaseController {
         return ResponseDTO.ok();
     }
 
-    @Operation(summary = "删除工单", description = "按ID批量删除工单，已完成状态的工单不允许删除")
+    @Operation(summary = "删除工单", description = "按ID批量删除工单，生产中及已完成状态的工单不允许删除")
     @PreAuthorize("@permission.has('business:workOrder:remove')")
     @AccessLog(title = "工单管理", businessType = BusinessTypeEnum.DELETE)
     @DeleteMapping
