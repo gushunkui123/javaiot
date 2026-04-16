@@ -2,11 +2,15 @@ package com.factorylink.domain.business.machine;
 
 import com.factorylink.common.config.MachineConfigProvider;
 import com.factorylink.common.exception.ApiException;
+import com.factorylink.common.exception.error.ErrorCode.Business;
 import com.factorylink.common.exception.error.ErrorCode.External;
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessService;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessStepEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessStepService;
 import com.factorylink.domain.business.machine.converter.FormulaScaleConverter;
 import com.factorylink.domain.business.machine.converter.MaterialScaleConverter;
 import com.factorylink.domain.business.machine.converter.WorkOrderScaleConverter;
@@ -21,6 +25,7 @@ import com.factorylink.domain.business.workorder.db.BizWorkOrderService;
 import com.factorylink.infrastructure.machine.client.MainScaleClient;
 import com.factorylink.infrastructure.machine.client.MicroScaleClient;
 import com.factorylink.infrastructure.machine.dto.ScaleApiResponse;
+import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaProcessRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest.FormulaEntry;
 import com.factorylink.infrastructure.machine.dto.request.ScalePartsRequest;
@@ -29,6 +34,7 @@ import com.factorylink.infrastructure.machine.dto.response.MaterialInBucketData;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Date;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -62,6 +68,8 @@ public class ScaleSyncService {
     // DB Service
     private final BizFormulaService formulaService;
     private final BizFormulaItemService formulaItemService;
+    private final BizFormulaProcessService formulaProcessService;
+    private final BizFormulaProcessStepService formulaProcessStepService;
     private final BizMaterialService materialService;
     private final BizWorkOrderService workOrderService;
 
@@ -107,6 +115,7 @@ public class ScaleSyncService {
         // 构建主磅和微量请求
         ScaleFormulaRequest mainRequest = formulaScaleConverter.toMainScaleRequest(formula, items);
         ScaleFormulaRequest microRequest = formulaScaleConverter.toMicroScaleRequest(formula, items);
+        ScaleFormulaProcessRequest processRequest = buildProcessRequest(formula);
 
         // 先删除旧配方
         deleteFormulaOrIgnoreNotFound("MAIN_SCALE", formula);
@@ -117,12 +126,20 @@ public class ScaleSyncService {
         validateMaterialsInBuckets("MICRO_SCALE", microRequest.getFormulaEntryList());
 
         // 为主料机器添加配方名对应的原料（material_name 和 material_code 均为配方名，类型为主料）
-        ScalePartsRequest formulaNameParts = new ScalePartsRequest();
-        formulaNameParts.setPlant("");
-        formulaNameParts.setPartNo(formula.getFormulaName());
-        formulaNameParts.setPartName(formula.getFormulaName());
-        formulaNameParts.setPartClass("5");
-        mainScaleClient.addParts(formulaNameParts);
+//        ScalePartsRequest formulaNameParts = new ScalePartsRequest();
+//        formulaNameParts.setPlant("");
+//        formulaNameParts.setPartNo(formula.getFormulaName());
+//        formulaNameParts.setPartName(formula.getFormulaName());
+//        formulaNameParts.setPartClass("5");
+//        mainScaleClient.addParts(formulaNameParts);
+
+        // 为主料机器添加配方编码对应的原料
+        ScalePartsRequest formulaCodeParts = new ScalePartsRequest();
+        formulaCodeParts.setPlant("");
+        formulaCodeParts.setPartNo(formula.getFormulaCode());
+        formulaCodeParts.setPartName(formula.getFormulaCode());
+        formulaCodeParts.setPartClass("5");
+        mainScaleClient.addParts(formulaCodeParts);
 
         // 为主磅请求添加配方名条目
         formulaScaleConverter.addFormulaNameEntry(mainRequest, formula);
@@ -141,6 +158,14 @@ public class ScaleSyncService {
             throw new ApiException(External.SCALE_SYNC_FAILED, "微量: " + microResp.getRtnmsg());
         }
         saveSyncLog("MICRO_SCALE", "ADD_FORMULA", formula.getFormulaId(), microRequest, null, 0, 1);
+
+        // 为主磅配方更新绑定工艺信息
+        ScaleApiResponse<Void> processResp = mainScaleClient.updateFormulaProcess(processRequest);
+        if (!processResp.isSuccess()) {
+            saveSyncLog("MAIN_SCALE", "UPDATE_FORMULA_PROCESS", formula.getFormulaId(), processRequest, processResp.getRtnmsg(), 0, 0);
+            throw new ApiException(External.SCALE_SYNC_FAILED, "主磅工艺: " + processResp.getRtnmsg());
+        }
+        saveSyncLog("MAIN_SCALE", "UPDATE_FORMULA_PROCESS", formula.getFormulaId(), processRequest, null, 0, 1);
 
         SyncResultDTO result = new SyncResultDTO();
         result.setMainScale(DeviceResult.success());
@@ -202,6 +227,32 @@ public class ScaleSyncService {
             throw new ApiException(External.SCALE_MATERIAL_NOT_IN_BUCKET,
                 deviceType + " - " + String.join(", ", missingMaterials));
         }
+    }
+
+    private ScaleFormulaProcessRequest buildProcessRequest(BizFormulaEntity formula) {
+        if (formula.getProcessId() == null) {
+            throw new ApiException(Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_SYNC, formula.getFormulaCode());
+        }
+        if (formulaProcessService.getById(formula.getProcessId()) == null) {
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, formula.getProcessId(), "工艺");
+        }
+
+        List<BizFormulaProcessStepEntity> steps = formulaProcessStepService.list(
+            new LambdaQueryWrapper<BizFormulaProcessStepEntity>()
+                .eq(BizFormulaProcessStepEntity::getProcessId, formula.getProcessId())
+                .orderByAsc(BizFormulaProcessStepEntity::getSortOrder)
+                .orderByAsc(BizFormulaProcessStepEntity::getStepId));
+
+        if (steps.isEmpty()) {
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, formula.getProcessId(), "工艺步骤");
+        }
+
+        List<BizFormulaProcessStepEntity> sortedSteps = steps.stream()
+            .sorted(Comparator
+                .comparing(BizFormulaProcessStepEntity::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(BizFormulaProcessStepEntity::getStepId, Comparator.nullsLast(Long::compareTo)))
+            .toList();
+        return formulaScaleConverter.toProcessRequest(formula, sortedSteps);
     }
 
     // ======================== 原料下发 ========================

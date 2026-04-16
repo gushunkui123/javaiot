@@ -3,8 +3,10 @@ package com.factorylink.domain.business.workorder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,8 +21,11 @@ import com.factorylink.domain.business.workorder.dto.WorkOrderDTO;
 import com.factorylink.domain.business.workorder.model.WorkOrderModel;
 import com.factorylink.domain.business.workorder.model.WorkOrderModelFactory;
 import com.factorylink.domain.business.workorder.query.WorkOrderQuery;
+import com.factorylink.domain.business.formula.model.FormulaModel;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
 import com.factorylink.domain.business.machine.ScaleSyncService;
+import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
+import com.factorylink.domain.business.machine.dto.SyncResultDTO;
 import com.factorylink.domain.common.audit.AuditUserEnricher;
 import com.factorylink.domain.common.command.BulkOperationCommand;
 import org.springframework.context.ApplicationEventPublisher;
@@ -156,6 +161,68 @@ class WorkOrderApplicationServiceTest {
             () -> applicationService.deleteWorkOrder(new BulkOperationCommand<>(List.of(1L))));
 
         assertEquals(Business.WORK_ORDER_COMPLETED_CAN_NOT_BE_DELETED, exception.getErrorCode());
+    }
+
+    @Test
+    void startProductionShouldRejectWhenFormulaHasNoProcess() {
+        WorkOrderModel workOrder = mock(WorkOrderModel.class);
+        when(workOrderModelFactory.loadById(1L)).thenReturn(workOrder);
+        when(workOrder.getFormulaId()).thenReturn(9L);
+
+        FormulaModel formula = new FormulaModel();
+        formula.setFormulaId(9L);
+        formula.setFormulaCode("F009");
+        when(formulaModelFactory.loadById(9L)).thenReturn(formula);
+
+        ApiException exception = assertThrows(ApiException.class, () -> applicationService.startProduction(1L));
+
+        assertEquals(Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_START_PRODUCTION, exception.getErrorCode());
+        verify(workOrder, never()).startProduction();
+        verify(scaleSyncService, never()).syncFormula(anyLong(), any());
+    }
+
+    @Test
+    void startProductionShouldSyncFormulaAndWorkOrderWhenProcessBound() {
+        WorkOrderModel workOrder = mock(WorkOrderModel.class);
+        when(workOrderModelFactory.loadById(1L)).thenReturn(workOrder);
+        when(workOrder.getFormulaId()).thenReturn(9L);
+
+        FormulaModel formula = new FormulaModel();
+        formula.setFormulaId(9L);
+        formula.setFormulaCode("F009");
+        formula.setProcessId(3L);
+        when(formulaModelFactory.loadById(9L)).thenReturn(formula);
+
+        SyncResultDTO syncResult = new SyncResultDTO();
+        when(scaleSyncService.syncWorkOrder(1L, OperationType.ADD)).thenReturn(syncResult);
+
+        SyncResultDTO result = applicationService.startProduction(1L);
+
+        assertEquals(syncResult, result);
+        verify(workOrder).startProduction();
+        verify(workOrder).updateById();
+        verify(scaleSyncService).syncFormula(9L, OperationType.ADD);
+        verify(scaleSyncService).syncWorkOrder(1L, OperationType.ADD);
+    }
+
+    @Test
+    void syncWorkOrderWithFormulaShouldRejectWhenFormulaHasNoProcess() {
+        BizWorkOrderEntity workOrder = new BizWorkOrderEntity();
+        workOrder.setWorkOrderId(1L);
+        workOrder.setFormulaId(9L);
+        when(workOrderService.getById(1L)).thenReturn(workOrder);
+
+        FormulaModel formula = new FormulaModel();
+        formula.setFormulaId(9L);
+        formula.setFormulaCode("F009");
+        when(formulaModelFactory.loadById(9L)).thenReturn(formula);
+
+        ApiException exception = assertThrows(ApiException.class,
+            () -> applicationService.syncWorkOrderWithFormula(1L, OperationType.ADD));
+
+        assertEquals(Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_SYNC, exception.getErrorCode());
+        verify(scaleSyncService, never()).syncFormula(anyLong(), any());
+        verify(scaleSyncService, never()).syncWorkOrder(anyLong(), any());
     }
 
 }

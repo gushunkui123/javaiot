@@ -1,7 +1,7 @@
-package com.factorylink.domain.business.formula.dto;
+package com.factorylink.domain.business.formula.process.dto;
 
 import cn.hutool.core.bean.BeanUtil;
-import com.factorylink.domain.business.formula.db.BizFormulaEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessEntity;
 import com.factorylink.domain.common.audit.AuditableDTO;
 import java.util.Date;
 import java.util.List;
@@ -13,29 +13,13 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class FormulaDTO implements AuditableDTO {
+public class FormulaProcessDTO implements AuditableDTO {
 
-    public FormulaDTO(BizFormulaEntity entity) {
+    public FormulaProcessDTO(BizFormulaProcessEntity entity) {
         if (entity != null) {
             BeanUtil.copyProperties(entity, this);
         }
     }
-
-    private Long formulaId;
-
-    private String formulaCode;
-
-    private String formulaName;
-
-    private String formulaDate;
-
-    private String moldCode;
-
-    private String batch;
-
-    private String batchCount;
-
-    private String orderNo;
 
     private Long processId;
 
@@ -55,6 +39,6 @@ public class FormulaDTO implements AuditableDTO {
 
     private Date updateTime;
 
-    private List<FormulaItemDTO> items;
+    private List<FormulaProcessStepDTO> steps;
 
 }

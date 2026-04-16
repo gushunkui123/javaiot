@@ -55,6 +55,10 @@ public class BizFormulaEntity extends BaseEntity<BizFormulaEntity> {
     @TableField("order_no")
     private String orderNo;
 
+    @Schema(description = "工艺ID")
+    @TableField("process_id")
+    private Long processId;
+
     @Override
     public Serializable pkVal() {
         return this.formulaId;

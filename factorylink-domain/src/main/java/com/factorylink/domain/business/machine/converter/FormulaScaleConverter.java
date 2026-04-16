@@ -2,8 +2,11 @@ package com.factorylink.domain.business.machine.converter;
 
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessStepEntity;
 import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
+import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaProcessRequest;
+import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaProcessRequest.ProcessEntry;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest.FormulaEntry;
 import java.math.BigDecimal;
@@ -96,6 +99,30 @@ public class FormulaScaleConverter {
         List<FormulaEntry> entries = new ArrayList<>(request.getFormulaEntryList());
         entries.addFirst(entry);
         request.setFormulaEntryList(entries);
+    }
+
+    public ScaleFormulaProcessRequest toProcessRequest(BizFormulaEntity formula, List<BizFormulaProcessStepEntity> steps) {
+        ScaleFormulaProcessRequest request = new ScaleFormulaProcessRequest();
+        request.setPlant("");
+        request.setFormulaCode(formula.getFormulaCode());
+        List<ProcessEntry> entries = steps.stream().map(step -> {
+            ProcessEntry entry = new ProcessEntry();
+            entry.setStepNo(step.getStepNo());
+            entry.setActionId(step.getActionId());
+            entry.setMixingTime(step.getMixingTime());
+            entry.setMixingCurrent(step.getMixingCurrent());
+            entry.setMixingTemp(step.getMixingTemp());
+            entry.setRotateSpeed(step.getRotateSpeed());
+            entry.setPressure(step.getPressure());
+            entry.setClosingConditionId(step.getClosingConditionId());
+            entry.setTurningTimes(step.getTurningTimes());
+            entry.setRisingTime(step.getRisingTime());
+            entry.setFallingTime(step.getFallingTime());
+            return entry;
+        }).toList();
+
+        request.setFormulaProcessEntryList(entries);
+        return request;
     }
 
     /**

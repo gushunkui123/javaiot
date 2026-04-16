@@ -184,6 +184,14 @@ public enum ErrorCode implements ErrorCodeInterface {
 
         FORMULA_ALREADY_ASSIGNED_TO_WORK_ORDER_CAN_NOT_BE_DELETED(11205, "配方已被工单引用，请先解除工单中的引用再删除", "Business.FORMULA_ALREADY_ASSIGNED_TO_WORK_ORDER_CAN_NOT_BE_DELETED"),
 
+        FORMULA_PROCESS_CODE_IS_NOT_UNIQUE(11206, "工艺编号:{} 已存在", "Business.FORMULA_PROCESS_CODE_IS_NOT_UNIQUE"),
+
+        FORMULA_PROCESS_ALREADY_BOUND_TO_FORMULA_CAN_NOT_BE_DELETED(11207, "工艺已被配方引用，请先解除配方中的绑定再删除", "Business.FORMULA_PROCESS_ALREADY_BOUND_TO_FORMULA_CAN_NOT_BE_DELETED"),
+
+        FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_SYNC(11208, "配方:{} 尚未绑定工艺，无法下发到设备", "Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_SYNC"),
+
+        FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_START_PRODUCTION(11209, "配方:{} 尚未绑定工艺，无法开始生产", "Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_START_PRODUCTION"),
+
         // -------------------------------- WORK ORDER -------------------------------------------------
 
         WORK_ORDER_NO_IS_NOT_UNIQUE(11301, "工单编号:{} 已存在", "Business.WORK_ORDER_NO_IS_NOT_UNIQUE"),

@@ -20,6 +20,8 @@ import com.factorylink.domain.business.formula.dto.FormulaItemDTO;
 import com.factorylink.domain.business.formula.dto.MissingMaterialDTO;
 import com.factorylink.domain.business.formula.model.FormulaModel;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessService;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.machine.ScaleSyncService.OperationType;
@@ -36,6 +38,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +59,8 @@ public class FormulaApplicationService {
 
     private final BizFormulaItemService formulaItemService;
 
+    private final BizFormulaProcessService formulaProcessService;
+
     private final AuditUserEnricher auditUserEnricher;
 
     private final BizMaterialService materialService;
@@ -67,6 +72,7 @@ public class FormulaApplicationService {
     public PageDTO<FormulaDTO> getFormulaList(FormulaQuery query) {
         Page<BizFormulaEntity> page = formulaService.page(query.toPage(), query.toQueryWrapper());
         List<FormulaDTO> records = page.getRecords().stream().map(FormulaDTO::new).toList();
+        enrichProcessInfo(records);
         auditUserEnricher.enrich(records);
         return new PageDTO<>(records, page.getTotal());
     }
@@ -105,6 +111,7 @@ public class FormulaApplicationService {
             return itemDTO;
         }).toList();
         dto.setItems(itemDTOs);
+        enrichProcessInfo(List.of(dto));
 
         return dto;
     }
@@ -114,6 +121,7 @@ public class FormulaApplicationService {
         FormulaModel formulaModel = formulaModelFactory.create();
         formulaModel.loadFromAddCommand(addCommand);
         formulaModel.checkFormulaCodeUnique();
+        formulaModel.checkProcessExists();
         formulaModel.checkMaterialsExist();
         formulaModel.insert();
     }
@@ -123,6 +131,7 @@ public class FormulaApplicationService {
         FormulaModel formulaModel = formulaModelFactory.loadById(updateCommand.getFormulaId());
         formulaModel.loadFromUpdateCommand(updateCommand);
         formulaModel.checkFormulaCodeUnique();
+        formulaModel.checkProcessExists();
         formulaModel.checkMaterialsExist();
         formulaModel.updateById();
     }
@@ -282,6 +291,28 @@ public class FormulaApplicationService {
             return "色粒";
         }
         return category;
+    }
+
+    private void enrichProcessInfo(List<FormulaDTO> formulas) {
+        List<Long> processIds = formulas.stream()
+            .map(FormulaDTO::getProcessId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        if (processIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, BizFormulaProcessEntity> processMap = formulaProcessService.listByIds(processIds).stream()
+            .collect(Collectors.toMap(BizFormulaProcessEntity::getProcessId, process -> process));
+
+        for (FormulaDTO formula : formulas) {
+            BizFormulaProcessEntity process = processMap.get(formula.getProcessId());
+            if (process != null) {
+                formula.setProcessCode(process.getProcessCode());
+                formula.setProcessName(process.getProcessName());
+            }
+        }
     }
 
 }

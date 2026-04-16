@@ -4,6 +4,7 @@ import com.factorylink.common.config.MachineConfigProvider;
 import com.factorylink.common.config.ScaleMachineConfig;
 import com.factorylink.infrastructure.machine.dto.ScaleApiResponse;
 import com.factorylink.infrastructure.machine.dto.request.ScaleBarcodeRequest;
+import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaProcessRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScalePartsRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleWorkOrderRequest;
@@ -68,6 +69,13 @@ public class MainScaleClient {
 
     public ScaleApiResponse<Void> updateFormula(ScaleFormulaRequest request) {
         request.setOption("updateFormula");
+        request.setMachineId(config().getScaleMachineId());
+        request.setPlant(config().getPlant());
+        return scaleApiClient.write(config().getApiWriteUrl(), request);
+    }
+
+    public ScaleApiResponse<Void> updateFormulaProcess(ScaleFormulaProcessRequest request) {
+        request.setOption("updateFormulaProcess");
         request.setMachineId(config().getScaleMachineId());
         request.setPlant(config().getPlant());
         return scaleApiClient.write(config().getApiWriteUrl(), request);
