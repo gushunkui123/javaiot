@@ -2,6 +2,7 @@ package com.factorylink.domain.business.machine.converter;
 
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessStepEntity;
 import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaProcessRequest;
@@ -100,60 +101,25 @@ public class FormulaScaleConverter {
         request.setFormulaEntryList(entries);
     }
 
-    /**
-     * 构建默认配方工艺请求（投料 → 密炼 → 排料）
-     */
-    public ScaleFormulaProcessRequest toDefaultProcessRequest(BizFormulaEntity formula) {
+    public ScaleFormulaProcessRequest toProcessRequest(BizFormulaEntity formula, List<BizFormulaProcessStepEntity> steps) {
         ScaleFormulaProcessRequest request = new ScaleFormulaProcessRequest();
         request.setPlant("");
         request.setFormulaCode(formula.getFormulaCode());
-
-        List<ProcessEntry> entries = new ArrayList<>();
-
-        // 步骤1: 投料 (ActionID=2)
-        ProcessEntry step1 = new ProcessEntry();
-        step1.setStepNo(1);
-        step1.setActionId(2);
-        step1.setMixingTime(BigDecimal.ZERO);
-        step1.setMixingCurrent(BigDecimal.ZERO);
-        step1.setMixingTemp(BigDecimal.ZERO);
-        step1.setRotateSpeed(BigDecimal.ZERO);
-        step1.setPressure(BigDecimal.ZERO);
-        step1.setClosingConditionId(0);
-        step1.setTurningTimes(0);
-        step1.setRisingTime(BigDecimal.ZERO);
-        step1.setFallingTime(BigDecimal.ZERO);
-        entries.add(step1);
-
-        // 步骤2: 密炼 (ActionID=4)
-        ProcessEntry step2 = new ProcessEntry();
-        step2.setStepNo(0);
-        step2.setActionId(4);
-        step2.setMixingTime(BigDecimal.ZERO);
-        step2.setMixingCurrent(BigDecimal.ZERO);
-        step2.setMixingTemp(BigDecimal.ZERO);
-        step2.setRotateSpeed(BigDecimal.ZERO);
-        step2.setPressure(BigDecimal.ZERO);
-        step2.setClosingConditionId(0);
-        step2.setTurningTimes(0);
-        step2.setRisingTime(BigDecimal.ZERO);
-        step2.setFallingTime(BigDecimal.ZERO);
-        entries.add(step2);
-
-        // 步骤3: 排料 (ActionID=9)
-        ProcessEntry step3 = new ProcessEntry();
-        step3.setStepNo(0);
-        step3.setActionId(9);
-        step3.setMixingTime(BigDecimal.ZERO);
-        step3.setMixingCurrent(BigDecimal.ZERO);
-        step3.setMixingTemp(BigDecimal.ZERO);
-        step3.setRotateSpeed(BigDecimal.ZERO);
-        step3.setPressure(BigDecimal.ZERO);
-        step3.setClosingConditionId(0);
-        step3.setTurningTimes(0);
-        step3.setRisingTime(BigDecimal.ZERO);
-        step3.setFallingTime(BigDecimal.ZERO);
-        entries.add(step3);
+        List<ProcessEntry> entries = steps.stream().map(step -> {
+            ProcessEntry entry = new ProcessEntry();
+            entry.setStepNo(step.getStepNo());
+            entry.setActionId(step.getActionId());
+            entry.setMixingTime(step.getMixingTime());
+            entry.setMixingCurrent(step.getMixingCurrent());
+            entry.setMixingTemp(step.getMixingTemp());
+            entry.setRotateSpeed(step.getRotateSpeed());
+            entry.setPressure(step.getPressure());
+            entry.setClosingConditionId(step.getClosingConditionId());
+            entry.setTurningTimes(step.getTurningTimes());
+            entry.setRisingTime(step.getRisingTime());
+            entry.setFallingTime(step.getFallingTime());
+            return entry;
+        }).toList();
 
         request.setFormulaProcessEntryList(entries);
         return request;
