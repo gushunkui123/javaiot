@@ -132,14 +132,14 @@ public class WorkOrderApplicationService {
     @Transactional(rollbackFor = Exception.class)
     public SyncResultDTO startProduction(Long workOrderId) {
         WorkOrderModel model = workOrderModelFactory.loadById(workOrderId);
+        Long formulaId = model.getFormulaId();
+        FormulaModel formula = ensureFormulaHasProcess(formulaId,
+            Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_START_PRODUCTION);
         model.startProduction();
         model.updateById();
 
         // 先下发配方
-        Long formulaId = model.getFormulaId();
-        if (formulaId != null) {
-            scaleSyncService.syncFormula(formulaId, OperationType.ADD);
-        }
+        scaleSyncService.syncFormula(formula.getFormulaId(), OperationType.ADD);
 
         // 再下发工单
         return scaleSyncService.syncWorkOrder(workOrderId, OperationType.ADD);
@@ -158,6 +158,7 @@ public class WorkOrderApplicationService {
         // 先下发配方（DELETE操作时不下发配方）
         Long formulaId = workOrder.getFormulaId();
         if (formulaId != null && operationType != OperationType.DELETE) {
+            ensureFormulaHasProcess(formulaId, Business.FORMULA_NO_PROCESS_ASSIGNED_CAN_NOT_SYNC);
             scaleSyncService.syncFormula(formulaId, operationType);
         }
 
@@ -184,6 +185,17 @@ public class WorkOrderApplicationService {
         SseMessageLevel level = isProducing ? SseMessageLevel.ALERT : SseMessageLevel.NOTIFICATION;
         applicationEventPublisher.publishEvent(
                 new FormulaModifiedEvent(this, command.getWorkOrderId(), formulaId, level));
+    }
+
+    private FormulaModel ensureFormulaHasProcess(Long formulaId, Business errorCode) {
+        if (formulaId == null) {
+            throw new ApiException(Business.WORK_ORDER_NO_FORMULA_ASSIGNED);
+        }
+        FormulaModel formula = formulaModelFactory.loadById(formulaId);
+        if (formula.getProcessId() == null) {
+            throw new ApiException(errorCode, formula.getFormulaCode());
+        }
+        return formula;
     }
 
 }
