@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
@@ -39,6 +40,10 @@ public class AddFormulaCommand {
 
     @Schema(description = "生产订单号")
     protected String orderNo;
+
+    @Schema(description = "工艺ID")
+    @Positive(message = "工艺ID必须为正数")
+    protected Long processId;
 
     @Schema(description = "配方明细列表")
     @NotEmpty(message = "配方明细不能为空")

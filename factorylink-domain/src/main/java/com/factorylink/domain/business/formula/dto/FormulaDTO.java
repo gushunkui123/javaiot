@@ -37,6 +37,12 @@ public class FormulaDTO implements AuditableDTO {
 
     private String orderNo;
 
+    private Long processId;
+
+    private String processCode;
+
+    private String processName;
+
     private Long creatorId;
 
     private String creatorName;

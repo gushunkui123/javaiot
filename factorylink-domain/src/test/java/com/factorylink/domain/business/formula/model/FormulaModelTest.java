@@ -13,6 +13,8 @@ import com.factorylink.domain.business.formula.command.FormulaItemCommand;
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessService;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,8 +24,10 @@ class FormulaModelTest {
 
     private final BizFormulaService formulaService = mock(BizFormulaService.class);
     private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
+    private final BizFormulaProcessService formulaProcessService = mock(BizFormulaProcessService.class);
     private final BizMaterialService materialService = mock(BizMaterialService.class);
-    private final FormulaModelFactory formulaModelFactory = new FormulaModelFactory(formulaService, formulaItemService, materialService);
+    private final FormulaModelFactory formulaModelFactory =
+        new FormulaModelFactory(formulaService, formulaItemService, formulaProcessService, materialService);
 
     @Test
     void loadFromAddCommandShouldTrimFields() {
@@ -85,6 +89,35 @@ class FormulaModelTest {
         when(formulaService.isFormulaCodeDuplicated(1L, "F999")).thenReturn(false);
 
         assertDoesNotThrow(model::checkFormulaCodeUnique);
+    }
+
+    @Test
+    void checkProcessExistsShouldPassWhenProcessIsNotBound() {
+        FormulaModel model = formulaModelFactory.create();
+
+        assertDoesNotThrow(model::checkProcessExists);
+    }
+
+    @Test
+    void checkProcessExistsShouldThrowWhenProcessMissing() {
+        FormulaModel model = formulaModelFactory.create();
+        model.setProcessId(9L);
+        when(formulaProcessService.getById(9L)).thenReturn(null);
+
+        ApiException exception = assertThrows(ApiException.class, model::checkProcessExists);
+
+        assertEquals(Business.COMMON_OBJECT_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void checkProcessExistsShouldPassWhenProcessExists() {
+        FormulaModel model = formulaModelFactory.create();
+        model.setProcessId(9L);
+        BizFormulaProcessEntity process = new BizFormulaProcessEntity();
+        process.setProcessId(9L);
+        when(formulaProcessService.getById(9L)).thenReturn(process);
+
+        assertDoesNotThrow(model::checkProcessExists);
     }
 
     @Test

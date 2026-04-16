@@ -5,6 +5,7 @@ import com.factorylink.common.exception.error.ErrorCode.Business;
 import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessService;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,7 @@ public class FormulaModelFactory {
 
     private final BizFormulaService formulaService;
     private final BizFormulaItemService formulaItemService;
+    private final BizFormulaProcessService formulaProcessService;
     private final BizMaterialService materialService;
 
     public FormulaModel loadById(Long formulaId) {
@@ -25,11 +27,11 @@ public class FormulaModelFactory {
         if (byId == null) {
             throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, formulaId, "配方");
         }
-        return new FormulaModel(byId, formulaService, formulaItemService, materialService);
+        return new FormulaModel(byId, formulaService, formulaItemService, formulaProcessService, materialService);
     }
 
     public FormulaModel create() {
-        return new FormulaModel(formulaService, formulaItemService, materialService);
+        return new FormulaModel(formulaService, formulaItemService, formulaProcessService, materialService);
     }
 
 }

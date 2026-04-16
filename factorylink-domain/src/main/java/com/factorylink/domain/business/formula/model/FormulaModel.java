@@ -11,6 +11,7 @@ import com.factorylink.domain.business.formula.db.BizFormulaEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemEntity;
 import com.factorylink.domain.business.formula.db.BizFormulaItemService;
 import com.factorylink.domain.business.formula.db.BizFormulaService;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessService;
 import com.factorylink.domain.business.material.db.BizMaterialEntity;
 import com.factorylink.domain.business.material.db.BizMaterialService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -34,22 +35,26 @@ public class FormulaModel extends BizFormulaEntity {
 
     private BizFormulaService formulaService;
     private BizFormulaItemService formulaItemService;
+    private BizFormulaProcessService formulaProcessService;
     private BizMaterialService materialService;
 
     public FormulaModel(BizFormulaService formulaService, BizFormulaItemService formulaItemService,
-            BizMaterialService materialService) {
+            BizFormulaProcessService formulaProcessService, BizMaterialService materialService) {
         this.formulaService = formulaService;
         this.formulaItemService = formulaItemService;
+        this.formulaProcessService = formulaProcessService;
         this.materialService = materialService;
     }
 
     public FormulaModel(BizFormulaEntity entity, BizFormulaService formulaService,
-            BizFormulaItemService formulaItemService, BizMaterialService materialService) {
+            BizFormulaItemService formulaItemService, BizFormulaProcessService formulaProcessService,
+            BizMaterialService materialService) {
         if (entity != null) {
             BeanUtil.copyProperties(entity, this);
         }
         this.formulaService = formulaService;
         this.formulaItemService = formulaItemService;
+        this.formulaProcessService = formulaProcessService;
         this.materialService = materialService;
     }
 
@@ -71,6 +76,15 @@ public class FormulaModel extends BizFormulaEntity {
     public void checkFormulaCodeUnique() {
         if (formulaService.isFormulaCodeDuplicated(getFormulaId(), getFormulaCode())) {
             throw new ApiException(Business.FORMULA_CODE_IS_NOT_UNIQUE, getFormulaCode());
+        }
+    }
+
+    public void checkProcessExists() {
+        if (getProcessId() == null) {
+            return;
+        }
+        if (formulaProcessService.getById(getProcessId()) == null) {
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, getProcessId(), "工艺");
         }
     }
 

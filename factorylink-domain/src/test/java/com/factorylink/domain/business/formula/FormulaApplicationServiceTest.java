@@ -22,6 +22,8 @@ import com.factorylink.domain.business.formula.db.BizFormulaService;
 import com.factorylink.domain.business.formula.dto.FormulaDTO;
 import com.factorylink.domain.business.formula.model.FormulaModel;
 import com.factorylink.domain.business.formula.model.FormulaModelFactory;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessEntity;
+import com.factorylink.domain.business.formula.process.db.BizFormulaProcessService;
 import com.factorylink.domain.business.formula.query.FormulaQuery;
 import com.factorylink.domain.business.machine.ScaleSyncService;
 import com.factorylink.domain.business.material.db.BizMaterialService;
@@ -40,12 +42,14 @@ class FormulaApplicationServiceTest {
     private final FormulaModelFactory formulaModelFactory = mock(FormulaModelFactory.class);
     private final BizFormulaService formulaService = mock(BizFormulaService.class);
     private final BizFormulaItemService formulaItemService = mock(BizFormulaItemService.class);
+    private final BizFormulaProcessService formulaProcessService = mock(BizFormulaProcessService.class);
     private final AuditUserEnricher auditUserEnricher = mock(AuditUserEnricher.class);
     private final BizMaterialService materialService = mock(BizMaterialService.class);
     private final BizWorkOrderService workOrderService = mock(BizWorkOrderService.class);
     private final ScaleSyncService scaleSyncService = mock(ScaleSyncService.class);
     private final FormulaApplicationService applicationService =
-        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, auditUserEnricher,
+        new FormulaApplicationService(formulaModelFactory, formulaService, formulaItemService, formulaProcessService,
+            auditUserEnricher,
             materialService, workOrderService, scaleSyncService);
 
     @Test
@@ -69,12 +73,21 @@ class FormulaApplicationServiceTest {
         FormulaModel model = new FormulaModel();
         model.setFormulaId(8L);
         model.setFormulaCode("F001");
+        model.setProcessId(3L);
         when(formulaModelFactory.loadById(8L)).thenReturn(model);
         when(formulaItemService.list(any(LambdaQueryWrapper.class))).thenReturn(List.<BizFormulaItemEntity>of());
+        BizFormulaProcessEntity process = new BizFormulaProcessEntity();
+        process.setProcessId(3L);
+        process.setProcessCode("P001");
+        process.setProcessName("标准工艺");
+        when(formulaProcessService.listByIds(List.of(3L))).thenReturn(List.of(process));
 
         FormulaDTO dto = applicationService.getFormulaInfo(8L);
 
         assertEquals(8L, dto.getFormulaId());
+        assertEquals(3L, dto.getProcessId());
+        assertEquals("P001", dto.getProcessCode());
+        assertEquals("标准工艺", dto.getProcessName());
         verify(auditUserEnricher).enrich(dto);
     }
 
@@ -119,6 +132,7 @@ class FormulaApplicationServiceTest {
 
         verify(formulaModel).loadFromAddCommand(command);
         verify(formulaModel).checkFormulaCodeUnique();
+        verify(formulaModel).checkProcessExists();
         verify(formulaModel).insert();
     }
 
@@ -137,6 +151,7 @@ class FormulaApplicationServiceTest {
 
         verify(formulaModel).loadFromUpdateCommand(command);
         verify(formulaModel).checkFormulaCodeUnique();
+        verify(formulaModel).checkProcessExists();
         verify(formulaModel).updateById();
     }
 
