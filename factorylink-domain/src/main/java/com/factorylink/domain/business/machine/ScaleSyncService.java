@@ -21,6 +21,7 @@ import com.factorylink.domain.business.workorder.db.BizWorkOrderService;
 import com.factorylink.infrastructure.machine.client.MainScaleClient;
 import com.factorylink.infrastructure.machine.client.MicroScaleClient;
 import com.factorylink.infrastructure.machine.dto.ScaleApiResponse;
+import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaProcessRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest;
 import com.factorylink.infrastructure.machine.dto.request.ScaleFormulaRequest.FormulaEntry;
 import com.factorylink.infrastructure.machine.dto.request.ScalePartsRequest;
@@ -117,12 +118,20 @@ public class ScaleSyncService {
         validateMaterialsInBuckets("MICRO_SCALE", microRequest.getFormulaEntryList());
 
         // 为主料机器添加配方名对应的原料（material_name 和 material_code 均为配方名，类型为主料）
-        ScalePartsRequest formulaNameParts = new ScalePartsRequest();
-        formulaNameParts.setPlant("");
-        formulaNameParts.setPartNo(formula.getFormulaName());
-        formulaNameParts.setPartName(formula.getFormulaName());
-        formulaNameParts.setPartClass("5");
-        mainScaleClient.addParts(formulaNameParts);
+//        ScalePartsRequest formulaNameParts = new ScalePartsRequest();
+//        formulaNameParts.setPlant("");
+//        formulaNameParts.setPartNo(formula.getFormulaName());
+//        formulaNameParts.setPartName(formula.getFormulaName());
+//        formulaNameParts.setPartClass("5");
+//        mainScaleClient.addParts(formulaNameParts);
+
+        // 为主料机器添加配方编码对应的原料
+        ScalePartsRequest formulaCodeParts = new ScalePartsRequest();
+        formulaCodeParts.setPlant("");
+        formulaCodeParts.setPartNo(formula.getFormulaCode());
+        formulaCodeParts.setPartName(formula.getFormulaCode());
+        formulaCodeParts.setPartClass("5");
+        mainScaleClient.addParts(formulaCodeParts);
 
         // 为主磅请求添加配方名条目
         formulaScaleConverter.addFormulaNameEntry(mainRequest, formula);
@@ -141,6 +150,15 @@ public class ScaleSyncService {
             throw new ApiException(External.SCALE_SYNC_FAILED, "微量: " + microResp.getRtnmsg());
         }
         saveSyncLog("MICRO_SCALE", "ADD_FORMULA", formula.getFormulaId(), microRequest, null, 0, 1);
+
+        // 为主磅配方更新默认工艺信息（投料 → 密炼 → 排料）
+        ScaleFormulaProcessRequest processRequest = formulaScaleConverter.toDefaultProcessRequest(formula);
+        ScaleApiResponse<Void> processResp = mainScaleClient.updateFormulaProcess(processRequest);
+        if (!processResp.isSuccess()) {
+            saveSyncLog("MAIN_SCALE", "UPDATE_FORMULA_PROCESS", formula.getFormulaId(), processRequest, processResp.getRtnmsg(), 0, 0);
+            throw new ApiException(External.SCALE_SYNC_FAILED, "主磅工艺: " + processResp.getRtnmsg());
+        }
+        saveSyncLog("MAIN_SCALE", "UPDATE_FORMULA_PROCESS", formula.getFormulaId(), processRequest, null, 0, 1);
 
         SyncResultDTO result = new SyncResultDTO();
         result.setMainScale(DeviceResult.success());
