@@ -51,6 +51,8 @@
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
         <!-- Mockito 版本（或直接用 mockito-inline）-->
         <mockito.version>4.11.0</mockito.version>
+        <!-- Modbus TCP（Java 17+），与 Spring Boot 所用 Netty 由 BOM 协调 -->
+        <digitalpetri-modbus.version>2.1.5</digitalpetri-modbus.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -294,6 +296,13 @@
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-annotations</artifactId>
                 <version>${io.swagger.version}</version>
+            </dependency>
+
+            <!-- Modbus TCP 客户端/服务端（串口 RTU 可另增 modbus-serial） -->
+            <dependency>
+                <groupId>com.digitalpetri.modbus</groupId>
+                <artifactId>modbus-tcp</artifactId>
+                <version>${digitalpetri-modbus.version}</version>
             </dependency>
 
         </dependencies>

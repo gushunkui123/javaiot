@@ -30,17 +30,19 @@ agileboot:
     mysql: false
     redis: false
 
-
-
 springdoc:
   api-docs:
     enabled: true
     groups:
       enabled: true
+  swagger-ui:
+    persist-authorization: true
   group-configs:
     - group: '公共API'
       packages-to-scan: com.agileboot.admin.controller.common
     - group: '内置系统API'
       packages-to-scan: com.agileboot.admin.controller.system
+    - group: '数据测试'
+      packages-to-scan: com.agileboot.domain.factorylink.plc.controller
 
 

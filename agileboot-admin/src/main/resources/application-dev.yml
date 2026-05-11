@@ -53,6 +53,9 @@ spring:
                     url: jdbc:mysql://10.0.100.27:3306/agileboot?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
                     username: root
                     password: QWEasdZXC456456
+#                    url: jdbc:mysql://127.0.0.1:3306/agileboot?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+#                    username: root
+#                    password: 123456
                 # 从库数据源
 #                slave:
 #                    url: jdbc:mysql://localhost:33067/agileboot2?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
@@ -63,13 +66,14 @@ spring:
     data:
         redis:
             # 地址
-            host: 10.0.100.27
+#            host: 10.0.100.27
+            host: 127.0.0.1
             # 端口，默认为6379
             port: 6379
             # 数据库索引
             database: 1
             # 密码
-            password: redis_2D2TRk
+#            password: redis_2D2TRk
             # 连接超时时间
             timeout: 10s
             lettuce:
@@ -93,8 +97,35 @@ springdoc:
         # ***注意*** 开启Swagger UI界面  **安全考虑的话生产环境需要关掉**
         # 因为knife4j的一些配置不灵活 所以重新改回springdoc+swagger的组合  真实开发的时候 使用apifox这种工具效率更高
         enabled: true
-        persistAuthorization: true
 
+
+# 自建 EMQX（dev；与边缘网关约定 Topic 后可将 enabled 设为 true）
+factory-link:
+    emqx:
+        enabled: true
+        broker-url: tcp://10.0.100.26:1883
+        client-id:  agileboot-client
+        username: test01
+        password: 123456asd
+        inbound-topics:
+            - plc_data
+        completion-timeout: 5000
+        inbound-qos: 1
+        plc-data-topic: plc_data
+        plc-data-device-name: 射出机五号机
+#factory-link:
+#    emqx:
+#        enabled: true
+#        broker-url: tcp://10.0.96.103:36198
+#        client-id: plc1500
+#        username: lzxy
+#        password: 123456asd
+#        inbound-topics:
+#            - factorylink/device/+/telemetry/weight
+#            - factorylink/device/+/telemetry/alarm
+#            - factorylink/device/+/status/heartbeat
+#        completion-timeout: 5000
+#        inbound-qos: 1
 
 # 项目相关配置
 agileboot:
