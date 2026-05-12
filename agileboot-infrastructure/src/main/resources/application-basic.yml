@@ -76,6 +76,7 @@ spring:
     serialization:
       write-dates-as-timestamps: false
     date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
 
 
 
