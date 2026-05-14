@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -61,7 +62,9 @@ public class MonitorController extends BaseController {
     @Operation(summary = "在线用户列表")
     @PreAuthorize("@permission.has('monitor:online:list')")
     @GetMapping("/onlineUsers")
-    public ResponseDTO<PageDTO<OnlineUserDTO>> onlineUsers(String ipAddress, String username) {
+    public ResponseDTO<PageDTO<OnlineUserDTO>> onlineUsers(
+            @RequestParam(required = false) String ipAddress,
+            @RequestParam(required = false) String username) {
         List<OnlineUserDTO> onlineUserList = monitorApplicationService.getOnlineUserList(username, ipAddress);
         return ResponseDTO.ok(new PageDTO<>(onlineUserList));
     }
