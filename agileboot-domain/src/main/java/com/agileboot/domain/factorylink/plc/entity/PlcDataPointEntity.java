@@ -46,22 +46,21 @@ public class PlcDataPointEntity implements Serializable {
     private String unit;
 
     @TableField("current_value")
-    private Double currentValue;
+    private String currentValue;
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public String getSwitchText() {
+    public String getCurrentValue() {
         if (currentValue == null) {
             return null;
         }
-        if (currentValue == 0) {
+        if ("off".equalsIgnoreCase(currentValue)) {
             return "关";
-        }
-        if (currentValue == 1) {
+        } else if ("on".equalsIgnoreCase(currentValue)) {
             return "开";
+        } else {
+            return currentValue;
         }
-        return null;
     }
-
+    
     @TableField("created_at")
     private Date createdAt;
 

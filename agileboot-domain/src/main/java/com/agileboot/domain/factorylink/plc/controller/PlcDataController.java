@@ -40,15 +40,15 @@ public class PlcDataController {
     }
 
     /**
-     * 返回该设备该秒内的全部数据点。
+     * 根据 设备名 解析设备 id返回该设备全部数据点。
      */
-    @Operation(summary = "按展示名查询最新一批 PLC 数据点")
+    @Operation(summary = "按设备名称查询该设备下全部 PLC 数据点")
     @GetMapping("/points/recent")
     public ResponseDTO<List<PlcDataPointEntity>> recentPoints(
-            @Parameter(description = "数据点展示名称 display_name", required = true,example = "实时重量")
-            @RequestParam("displayName")
+            @Parameter(description = "设备名称", required = true, example = "主磅")
+            @RequestParam("deviceName")
             @NotBlank
-            String displayName) {
-        return ResponseDTO.ok(plcDataPointService.listLatestSameSecondByDisplayName(displayName));
+            String deviceName) {
+        return ResponseDTO.ok(plcDataPointService.listAllByDeviceName(deviceName));
     }
 }
