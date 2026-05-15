@@ -52,3 +52,4 @@ public class PlcDataController {
         return ResponseDTO.ok(plcDataPointService.listAllByDeviceName(deviceName));
     }
 }
+
