@@ -2,6 +2,9 @@ package com.agileboot.domain.factorylink.plc.service;
 
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.baomidou.mybatisplus.extension.service.IService;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Map;
 import java.util.List;
 
 public interface PlcDataService extends IService<PlcDataEntity> {
@@ -15,7 +18,12 @@ public interface PlcDataService extends IService<PlcDataEntity> {
     void ingestFlatJsonTelemetry(String deviceName, String jsonPayload);
 
     /**
-     * 按设备返回「最新一次采集」的全部字段行：取该设备最大的 时间，返回该时间下所有行。
+     * 按设备返回全部字段行：取该设备最大的 时间，返回该时间下所有行。
      */
     List<PlcDataEntity> listLatestSameTimestampByDeviceName(String deviceName);
+
+    /**
+     * 批量查询各设备在 plc_data 中的最新采集时间。
+     */
+    Map<String, Date> mapLatestDataTimestampByDeviceNames(Collection<String> deviceNames);
 }

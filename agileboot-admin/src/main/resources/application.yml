@@ -44,5 +44,7 @@ springdoc:
       packages-to-scan: com.agileboot.admin.controller.system
     - group: '数据测试'
       packages-to-scan: com.agileboot.domain.factorylink.plc.controller
+    - group: '射出机管理'
+      packages-to-scan: com.agileboot.domain.factorylink.shootmachine.controller
 
 

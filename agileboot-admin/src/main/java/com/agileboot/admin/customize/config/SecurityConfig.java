@@ -135,7 +135,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 // 对于登录login 注册register 以及公共Api的请求允许匿名访问
                 // 注意： 当携带token请求以下这几个接口时 会返回403的错误
-                .requestMatchers("/login", "/register", "/getConfig", "/api/**").anonymous()
+                .requestMatchers("/login", "/register", "/getConfig").anonymous()
+                // 射出机管理接口需要认证
+                .requestMatchers("/api/shoot/machines/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/", "/*.html", "/*.css", "/*.js",
                     "/profile/**").permitAll()
                 // TODO this is danger.
