@@ -10,9 +10,7 @@ import java.util.Date;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * PLC 对应表 plc_data。
- */
+/** PLC 对应表 plc_data。 */
 @Getter
 @Setter
 @TableName("plc_data")
@@ -25,6 +23,10 @@ public class PlcDataEntity implements Serializable {
 
     @TableField("device_name")
     private String deviceName;
+
+    /** 关联 shoot_machine.id */
+    @TableField("machine_id")
+    private Long machineId;
 
     /** 业务上的采集时间，映射列名 timestamp */
     @TableField("`timestamp`")

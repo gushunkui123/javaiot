@@ -8,8 +8,6 @@ import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
-import com.agileboot.infrastructure.cache.RedisUtil;
-import com.agileboot.infrastructure.cache.redis.CacheKeyEnum;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,11 +30,9 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
     /** PLC 字段值（field_value）最大长度 */
     private static final int VAL_MAX = 500;
 
-    private final RedisUtil redisUtil;
-
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void ingestFlatJsonTelemetry(String deviceName, String jsonPayload) {
+    public void ingestFlatJsonTelemetry(Long machineId, String deviceName, String jsonPayload) {
         if (StrUtil.isBlank(deviceName) || StrUtil.isBlank(jsonPayload)) {
             return;
         }
@@ -52,6 +48,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         List<PlcDataEntity> rows = new ArrayList<>(root.size());
         for (String key : root.keySet()) {
             PlcDataEntity row = new PlcDataEntity();
+            row.setMachineId(machineId);
             row.setDeviceName(device);
             row.setDataTimestamp(ts);
             row.setFieldKey(StrUtil.subPre(key, KEY_MAX));
@@ -61,7 +58,6 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         }
         if (!rows.isEmpty()) {
             saveBatch(rows, 200);
-            cacheLatestTimestampIfNewer(device, ts);
         }
     }
 
@@ -70,85 +66,42 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (StrUtil.isBlank(deviceName)) {
             return List.of();
         }
-        List<PlcDataEntity> rows =
-                baseMapper.selectListLatestSameTimestampByDeviceName(deviceName.trim());
-        for (PlcDataEntity row : rows) {
-            row.setName(PlcFieldKeyDisplayNames.resolve(row.getFieldKey()));
+        return enrichDisplayNames(
+                baseMapper.selectListLatestSameTimestampByDeviceName(deviceName.trim()));
+    }
+
+    @Override
+    public List<PlcDataEntity> listLatestSameTimestampByMachineId(Long machineId) {
+        if (machineId == null) {
+            return List.of();
         }
+        return enrichDisplayNames(baseMapper.selectListLatestSameTimestampByMachineId(machineId));
+    }
+
+    private List<PlcDataEntity> enrichDisplayNames(List<PlcDataEntity> rows) {
+        rows.forEach(row -> row.setName(PlcFieldKeyDisplayNames.resolve(row.getFieldKey())));
         return rows;
     }
 
-    /**
-     * 批量查询各设备最新采集时间。
-     * 
-     * 查库后回写/清理 Redis。
-     */
     @Override
-    public Map<String, Date> mapLatestDataTimestampByDeviceNames(Collection<String> deviceNames) {
-        if (deviceNames == null || deviceNames.isEmpty()) {
+    public Map<Long, Date> mapLatestDataTimestampByMachineIds(Collection<Long> machineIds) {
+        if (machineIds == null || machineIds.isEmpty()) {
             return Map.of();
         }
-        List<String> names =
-                deviceNames.stream()
-                        .filter(StrUtil::isNotBlank)
-                        .map(String::trim)
-                        .distinct()
-                        .toList();
-        if (names.isEmpty()) {
+        List<Long> ids =
+                machineIds.stream().filter(id -> id != null && id > 0).distinct().toList();
+        if (ids.isEmpty()) {
             return Map.of();
         }
-
-        Map<String, Date> fromDb = loadLatestTimestampFromDb(names);
-        for (String name : names) {
-            Date ts = fromDb.get(name);
-            if (ts != null) {
-                cacheLatestTimestamp(name, ts);
-            } else {
-                redisUtil.deleteObject(latestTimestampCacheKey(name));
-            }
-        }
-        return fromDb;
-    }
-        // 从数据库查询
-    private Map<String, Date> loadLatestTimestampFromDb(List<String> deviceNames) {
-        List<Map<String, Object>> rows = baseMapper.selectLatestTimestampByDeviceNames(deviceNames);
-        Map<String, Date> result = new HashMap<>();
+        List<Map<String, Object>> rows = baseMapper.selectLatestTimestampByMachineIds(ids);
+        Map<Long, Date> result = new HashMap<>();
         for (Map<String, Object> row : rows) {
-            String deviceName = (String) row.get("device_name");
+            Long machineId = Convert.toLong(row.get("machine_id"), null);
             Date timestamp = Convert.toDate(row.get("data_timestamp"), null);
-            if (deviceName != null && timestamp != null) {
-                result.put(deviceName, timestamp);
+            if (machineId != null && timestamp != null) {
+                result.put(machineId, timestamp);
             }
         }
         return result;
-    }
-
-   
-    private void cacheLatestTimestampIfNewer(String deviceName, Date timestamp) {
-        if (StrUtil.isBlank(deviceName) || timestamp == null) {
-            return;
-        }
-        String key = latestTimestampCacheKey(deviceName);
-        Long cached = redisUtil.getCacheObject(key);
-        if (cached != null && timestamp.getTime() < cached) {
-            return;
-        }
-        cacheLatestTimestamp(deviceName, timestamp);
-    }
- // 写缓存
-    private void cacheLatestTimestamp(String deviceName, Date timestamp) {
-        if (StrUtil.isBlank(deviceName) || timestamp == null) {
-            return;
-        }
-        CacheKeyEnum cacheKey = CacheKeyEnum.PLC_DEVICE_LATEST_TS_KEY;
-        redisUtil.setCacheObject(
-                latestTimestampCacheKey(deviceName),
-                timestamp.getTime(),
-                cacheKey.expiration(),
-                cacheKey.timeUnit());
-    }
-        // 缓存键
-    private static String latestTimestampCacheKey(String deviceName) {
-        return CacheKeyEnum.PLC_DEVICE_LATEST_TS_KEY.key() + deviceName;
     }
 }

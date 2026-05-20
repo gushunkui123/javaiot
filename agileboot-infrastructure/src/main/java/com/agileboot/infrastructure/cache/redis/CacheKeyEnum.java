@@ -17,13 +17,6 @@ public enum CacheKeyEnum {
     POST_ENTITY_KEY("post_entity:", 60, TimeUnit.MINUTES),
     ROLE_MODEL_INFO_KEY("role_model_info:", 60, TimeUnit.MINUTES),
 
-    /**
-     * FactoryLink：plc_data 各设备最新采集时间（epoch 毫秒）。
-     * <p>
-     * 完整键：{@code factorylink:plc:latest_ts:}{设备名}；MQTT 入库时写入，射出机列表读取。
-     */
-    PLC_DEVICE_LATEST_TS_KEY("factorylink:plc:latest_ts:", 10, TimeUnit.MINUTES),
-
     ;
 
 

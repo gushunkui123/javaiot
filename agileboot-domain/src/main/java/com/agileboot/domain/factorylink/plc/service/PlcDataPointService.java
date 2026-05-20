@@ -8,7 +8,7 @@ public interface PlcDataPointService extends IService<PlcDataPointEntity> {
 
     /**
      *
-     * id 升序。
+     *  用主表的名称得到id查询数据表中全部字段
      */
     List<PlcDataPointEntity> listAllByDeviceName(String deviceName);
 }
