@@ -42,6 +42,14 @@ public class PlcDataPointEntity implements Serializable {
     @TableField("display_name")
     private String displayName;
 
+    /** 排序号：越小越靠前；默认 10000，未勾选可设为更大值 */
+    @TableField("sort_order")
+    private Integer sortOrder = 10000;
+
+    /** 勾选标记色；未勾选为 null */
+    @TableField("mark_color")
+    private String markColor;
+
     @TableField("unit")
     private String unit;
 

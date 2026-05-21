@@ -3,7 +3,6 @@ import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,8 +34,7 @@ public class ShootMachineController {
             @Parameter(description = "每页数量", example = "20")
             @RequestParam(value = "pageSize", defaultValue = "20")
             int pageSize) {
-        IPage<ShootMachineEntity> page = shootMachineService.list(pageNum, pageSize);
-        return ResponseDTO.ok(new PageDTO<>(page.getRecords(), page.getTotal()));
+        return ResponseDTO.ok(shootMachineService.list(pageNum, pageSize));
     }
 
     @Operation(summary = "查询机台详情")
@@ -78,6 +76,4 @@ public class ShootMachineController {
         shootMachineService.delete(id);
         return ResponseDTO.ok();
     }
-
-
 }

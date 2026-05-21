@@ -6,9 +6,9 @@ import java.util.List;
 
 public interface PlcDataPointService extends IService<PlcDataPointEntity> {
 
-    /**
-     *
-     *  用主表的名称得到id查询数据表中全部字段
-     */
+    /** 用设备名称查询全部点位：先 sort_order 升序，再按 mark_color 分组。 */
     List<PlcDataPointEntity> listAllByDeviceName(String deviceName);
+
+    /** 批量更新点位 sortOrder、markColor取消勾选 markColor 传 null）。 */
+    void batchUpdateSortOrder(String deviceName, List<PlcDataPointEntity> items);
 }
