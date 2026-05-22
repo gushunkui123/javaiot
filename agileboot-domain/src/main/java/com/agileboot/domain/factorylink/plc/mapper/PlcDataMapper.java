@@ -14,7 +14,7 @@ public interface PlcDataMapper extends BaseMapper<PlcDataEntity> {
   // 按机台ID查询最新数据时间
   @Select(
       "<script>"
-          + "SELECT machine_id, MAX(`timestamp`) AS data_timestamp "
+          + "SELECT machine_id, DATE_FORMAT(MAX(`timestamp`), '%Y-%m-%d %H:%i:%s') AS data_timestamp "
           + "FROM plc_data WHERE deleted = 0 AND machine_id IN "
           + "<foreach collection='machineIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> "
           + "GROUP BY machine_id"

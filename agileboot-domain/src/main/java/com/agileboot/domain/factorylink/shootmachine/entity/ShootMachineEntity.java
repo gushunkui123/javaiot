@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.Data;
 
@@ -41,9 +43,10 @@ public class ShootMachineEntity implements Serializable {
     @TableField("topic")
     private String topic;
 
-    /** 最新 PLC 采集时间（非表字段） */
+    /** 最新 PLC 采集时间（非表字段，与 plc_data.timestamp 字面一致） */
     @TableField(exist = false)
-    private Date latestPlcDataTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime latestPlcDataTime;
 
     /** 最新采集时间在 2 分钟内为 true，否则停机（非表字段） */
     @TableField(exist = false)

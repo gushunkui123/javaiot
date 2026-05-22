@@ -1,6 +1,7 @@
 package com.agileboot.domain.factorylink.plc.service.impl;
 
 import cn.hutool.core.convert.Convert;
+import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -9,6 +10,7 @@ import com.agileboot.domain.factorylink.plc.mapper.PlcDataMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -61,6 +63,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         }
     }
 
+    //根据设备名称查询
     @Override
     public List<PlcDataEntity> listLatestSameTimestampByDeviceName(String deviceName) {
         if (StrUtil.isBlank(deviceName)) {
@@ -70,6 +73,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
                 baseMapper.selectListLatestSameTimestampByDeviceName(deviceName.trim()));
     }
 
+    //根据id查询
     @Override
     public List<PlcDataEntity> listLatestSameTimestampByMachineId(Long machineId) {
         if (machineId == null) {
@@ -78,13 +82,15 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         return enrichDisplayNames(baseMapper.selectListLatestSameTimestampByMachineId(machineId));
     }
 
+    //解析显示名称
     private List<PlcDataEntity> enrichDisplayNames(List<PlcDataEntity> rows) {
         rows.forEach(row -> row.setName(PlcFieldKeyDisplayNames.resolve(row.getFieldKey())));
         return rows;
     }
 
+    //根据所有ids查询
     @Override
-    public Map<Long, Date> mapLatestDataTimestampByMachineIds(Collection<Long> machineIds) {
+    public Map<Long, LocalDateTime> mapLatestDataTimestampByMachineIds(Collection<Long> machineIds) {
         if (machineIds == null || machineIds.isEmpty()) {
             return Map.of();
         }
@@ -93,13 +99,13 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (ids.isEmpty()) {
             return Map.of();
         }
-        List<Map<String, Object>> rows = baseMapper.selectLatestTimestampByMachineIds(ids);
-        Map<Long, Date> result = new HashMap<>();
-        for (Map<String, Object> row : rows) {
-            Long machineId = Convert.toLong(row.get("machine_id"), null);
-            Date timestamp = Convert.toDate(row.get("data_timestamp"), null);
-            if (machineId != null && timestamp != null) {
-                result.put(machineId, timestamp);
+        Map<Long, LocalDateTime> result = new HashMap<>();
+        for (Map<String, Object> row : baseMapper.selectLatestTimestampByMachineIds(ids)) {
+            Long machineId = Convert.toLong(row.get("machine_id"));
+            LocalDateTime ts =
+                    LocalDateTimeUtil.parse(Convert.toStr(row.get("data_timestamp")), "yyyy-MM-dd HH:mm:ss");
+            if (machineId != null && ts != null) {
+                result.put(machineId, ts);
             }
         }
         return result;

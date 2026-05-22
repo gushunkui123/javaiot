@@ -3,7 +3,7 @@ package com.agileboot.domain.factorylink.plc.service;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.baomidou.mybatisplus.extension.service.IService;
 import java.util.Collection;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -25,5 +25,5 @@ public interface PlcDataService extends IService<PlcDataEntity> {
     List<PlcDataEntity> listLatestSameTimestampByMachineId(Long machineId);
 
     /** 批量查询各 machine_id 最新采集时间。 */
-    Map<Long, Date> mapLatestDataTimestampByMachineIds(Collection<Long> machineIds);
+    Map<Long, LocalDateTime> mapLatestDataTimestampByMachineIds(Collection<Long> machineIds);
 }

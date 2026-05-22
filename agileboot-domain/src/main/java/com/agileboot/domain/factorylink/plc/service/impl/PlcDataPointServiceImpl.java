@@ -1,7 +1,6 @@
 package com.agileboot.domain.factorylink.plc.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.StrUtil;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataPointEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataPointMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataPointService;
@@ -17,24 +16,23 @@ public class PlcDataPointServiceImpl extends ServiceImpl<PlcDataPointMapper, Plc
         implements PlcDataPointService {
 
     @Override
-    public List<PlcDataPointEntity> listAllByDeviceName(String deviceName) {
-        if (StrUtil.isBlank(deviceName)) {
+    public List<PlcDataPointEntity> listRecentPoints(Long deviceId) {
+        if (deviceId == null) {
             return List.of();
         }
-        return baseMapper.selectListByDeviceName(deviceName.trim());
+        return baseMapper.selectListByDeviceId(deviceId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void batchUpdateSortOrder(String deviceName, List<PlcDataPointEntity> items) {
-        if (StrUtil.isBlank(deviceName) || CollUtil.isEmpty(items)) {
+    public void batchUpdateSortOrder(Long deviceId, List<PlcDataPointEntity> items) {
+        if (deviceId == null || CollUtil.isEmpty(items)) {
             return;
         }
         items.forEach(item -> {
             if (item.getId() == null || item.getSortOrder() == null) {
                 return;
             }
-            // markColor 允许 null，用于取消勾选时清空
             baseMapper.updateSortAndMarkById(item.getId(), item.getSortOrder(), item.getMarkColor());
         });
     }

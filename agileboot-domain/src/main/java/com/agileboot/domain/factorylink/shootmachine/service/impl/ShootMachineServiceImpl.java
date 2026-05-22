@@ -15,7 +15,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, ShootMachineEntity>
         implements ShootMachineService {
 
-    /** 超过该时长未收到 PLC 数据视为停机（2 分钟） */
-    private static final long PLC_STOP_THRESHOLD_MS = 2 * 60 * 1000L;
+    private static final int PLC_STOP_MINUTES = 2;
 
     private final PlcDataService plcDataService;
     private final ShootMachineStationMapper shootMachineStationMapper;
@@ -108,12 +107,13 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         if (machineIds.isEmpty()) {
             return;
         }
-        Map<Long, Date> latestByMachineId = plcDataService.mapLatestDataTimestampByMachineIds(machineIds);
-        long now = System.currentTimeMillis();
+        Map<Long, LocalDateTime> latestMap =
+                plcDataService.mapLatestDataTimestampByMachineIds(machineIds);
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(PLC_STOP_MINUTES);
         for (ShootMachineEntity machine : machines) {
-            Date latest = latestByMachineId.get(machine.getId());
+            LocalDateTime latest = latestMap.get(machine.getId());
             machine.setLatestPlcDataTime(latest);
-            machine.setRunning(latest != null && now - latest.getTime() <= PLC_STOP_THRESHOLD_MS);
+            machine.setRunning(latest != null && !latest.isBefore(cutoff));
         }
     }
 }

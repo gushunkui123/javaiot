@@ -11,13 +11,12 @@ public interface PlcDataPointMapper extends BaseMapper<PlcDataPointEntity> {
 
     @Select(
             "SELECT pdp.id, pdp.device_id, pdp.area, pdp.number, pdp.byte_offset, pdp.bit_offset, "
-                    + "pdp.data_type, pdp.display_name, pdp.sort_order, pdp.mark_color, pdp.unit, "
-                    + "pdp.current_value, pdp.created_at, pdp.updated_at "
-                    + "FROM plc_data_point pdp "
-                    + "INNER JOIN plc_device pd ON pdp.device_id = pd.id "
-                    + "WHERE pd.device_name = #{deviceName} "
+                    + "pdp.data_type, pdp.display_name, "
+                    + "pdp.sort_order, pdp.mark_color, pdp.unit, pdp.current_value, pdp.updated_at "
+                    + "FROM plc_data_point pdp FORCE INDEX (idx_point_device_sort) "
+                    + "WHERE pdp.device_id = #{deviceId} "
                     + "ORDER BY pdp.sort_order ASC, pdp.mark_color ASC, pdp.id ASC")
-    List<PlcDataPointEntity> selectListByDeviceName(String deviceName);
+    List<PlcDataPointEntity> selectListByDeviceId(@Param("deviceId") Long deviceId);
 
     /** 更新排序号与标记色；不刷新 updated_at。 */
     @Update(

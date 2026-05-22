@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
@@ -13,6 +14,7 @@ import lombok.Data;
  * 从库表 plc_data_point：数据点定义与当前值。
  */
 @Data
+@JsonInclude(Include.NON_NULL)
 @TableName("plc_data_point")
 public class PlcDataPointEntity implements Serializable {
 
@@ -56,19 +58,6 @@ public class PlcDataPointEntity implements Serializable {
     @TableField("current_value")
     private String currentValue;
 
-    public String getCurrentValue() {
-        if (currentValue == null) {
-            return null;
-        }
-        if ("off".equalsIgnoreCase(currentValue)) {
-            return "关";
-        } else if ("on".equalsIgnoreCase(currentValue)) {
-            return "开";
-        } else {
-            return currentValue;
-        }
-    }
-    
     @TableField("created_at")
     private Date createdAt;
 
