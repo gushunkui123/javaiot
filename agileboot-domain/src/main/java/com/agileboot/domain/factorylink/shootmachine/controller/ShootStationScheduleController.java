@@ -18,8 +18,8 @@ public class ShootStationScheduleController {
 
     private final ShootStationScheduleService shootStationScheduleService;
 
-    @Operation(summary = "查询站位下的排期列表")
-    @GetMapping
+    @Operation(summary = "查询站位下的排期列表（时间轴）")
+    @GetMapping("/station-schedules")
     public ResponseDTO<List<ShootStationScheduleEntity>> listByStation(
             @Parameter(description = "站位ID", required = true) @RequestParam Long stationId) {
         return ResponseDTO.ok(shootStationScheduleService.listByStationId(stationId));
@@ -40,7 +40,7 @@ public class ShootStationScheduleController {
     }
 
     @Operation(summary = "新增排期")
-    @PostMapping
+    @PostMapping("/create")
     public ResponseDTO<ShootStationScheduleEntity> create(@RequestBody ShootStationScheduleEntity entity) {
         return ResponseDTO.ok(shootStationScheduleService.create(entity.getStationId(), entity));
     }

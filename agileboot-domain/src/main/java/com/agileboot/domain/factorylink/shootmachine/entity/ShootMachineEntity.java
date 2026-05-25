@@ -8,7 +8,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.Date;
 import lombok.Data;
 
 @Data
@@ -30,10 +29,12 @@ public class ShootMachineEntity implements Serializable {
     private String remark;
 
     @TableField("created_at")
-    private Date createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
 
     @TableField("updated_at")
-    private Date updatedAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
 
     @TableField("deleted")
     @TableLogic

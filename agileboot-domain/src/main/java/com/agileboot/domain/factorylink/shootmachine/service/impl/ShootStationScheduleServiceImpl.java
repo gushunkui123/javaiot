@@ -12,7 +12,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStation
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,28 +29,18 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Override
     public List<ShootStationScheduleEntity> listByStationId(Long stationId) {
         getStationOrThrow(stationId);
-        return lambdaQuery()
-                .eq(ShootStationScheduleEntity::getStationId, stationId)
-                .orderByAsc(ShootStationScheduleEntity::getStartTime)
-                .list();
+        return baseMapper.selectListByStationIdWithMold(stationId);
     }
 
     @Override
     public List<ShootStationScheduleEntity> listCurrentByMachineId(Long machineId) {
         shootMachineService.getByIdOrThrow(machineId);
-        Date now = new Date();
-        return lambdaQuery()
-                .eq(ShootStationScheduleEntity::getMachineId, machineId)
-                .le(ShootStationScheduleEntity::getStartTime, now)
-                .gt(ShootStationScheduleEntity::getEndTime, now)
-                .ne(ShootStationScheduleEntity::getStatus, ShootStationScheduleEntity.STATUS_CANCELLED)
-                .orderByAsc(ShootStationScheduleEntity::getStationNo)
-                .list();
+        return baseMapper.selectListCurrentByMachineIdWithMold(machineId, LocalDateTime.now());
     }
 
     @Override
     public ShootStationScheduleEntity getByIdOrThrow(Long id) {
-        ShootStationScheduleEntity entity = getById(id);
+        ShootStationScheduleEntity entity = baseMapper.selectByIdWithMold(id);
         if (entity == null) {
             throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "排期");
         }
@@ -76,7 +66,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ShootStationScheduleEntity update(Long id, ShootStationScheduleEntity entity) {
-        ShootStationScheduleEntity existing = getByIdOrThrow(id);
+        ShootStationScheduleEntity existing = requireExists(id);
         if (ShootStationScheduleEntity.STATUS_CANCELLED.equals(existing.getStatus())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "已取消的排期不能编辑");
         }
@@ -98,14 +88,14 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        getByIdOrThrow(id);
+        requireExists(id);
         removeById(id);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id) {
-        ShootStationScheduleEntity entity = getByIdOrThrow(id);
+        ShootStationScheduleEntity entity = requireExists(id);
         entity.setStatus(ShootStationScheduleEntity.STATUS_CANCELLED);
         updateById(entity);
     }
@@ -117,6 +107,14 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
             throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, stationId, "站位");
         }
         return station;
+    }
+
+    private ShootStationScheduleEntity requireExists(Long id) {
+        ShootStationScheduleEntity entity = getById(id);
+        if (entity == null) {
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "排期");
+        }
+        return entity;
     }
 
     private void fillFromStation(ShootStationScheduleEntity entity, ShootMachineStationEntity station) {
@@ -132,26 +130,26 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         if (entity.getStartTime() == null || entity.getEndTime() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "开始时间和结束时间不能为空");
         }
-        if (!entity.getStartTime().before(entity.getEndTime())) {
+        if (!entity.getStartTime().isBefore(entity.getEndTime())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "结束时间必须晚于开始时间");
         }
     }
 
     /** 同一站位下时间段不能重叠（已取消的排期不参与校验）。 */
-    private void assertNoOverlap(Long stationId, Date start, Date end, Long excludeId) {
-        List<ShootStationScheduleEntity> existing =
+    private void assertNoOverlap(Long stationId, LocalDateTime start, LocalDateTime end, Long excludeId) {
+        long overlapCount =
                 lambdaQuery()
                         .eq(ShootStationScheduleEntity::getStationId, stationId)
                         .ne(
                                 ShootStationScheduleEntity::getStatus,
                                 ShootStationScheduleEntity.STATUS_CANCELLED)
+                        .lt(ShootStationScheduleEntity::getStartTime, end)
+                        .gt(ShootStationScheduleEntity::getEndTime, start)
                         .ne(excludeId != null, ShootStationScheduleEntity::getId, excludeId)
-                        .list();
-        for (ShootStationScheduleEntity other : existing) {
-            if (start.before(other.getEndTime()) && other.getStartTime().before(end)) {
-                throw new ApiException(
-                        Client.COMMON_REQUEST_PARAMETERS_INVALID, "该站位在该时间段已有排期，不能重叠");
-            }
+                        .count();
+        if (overlapCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该站位在该时间段已有排期，不能重叠");
         }
     }
 }

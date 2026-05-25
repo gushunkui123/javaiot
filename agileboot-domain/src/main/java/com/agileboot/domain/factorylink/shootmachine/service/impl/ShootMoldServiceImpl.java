@@ -7,8 +7,10 @@ import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
+import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -23,6 +25,7 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
         implements ShootMoldService {
 
     private final ShootMoldRuleMapper shootMoldRuleMapper;
+    private final ShootStationScheduleMapper shootStationScheduleMapper;
 
     @Override
     public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize) {
@@ -68,9 +71,25 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
+        assertNoActiveSchedule(id);
         removeById(id);
         shootMoldRuleMapper.delete(
                 Wrappers.<ShootMoldRuleEntity>lambdaQuery().eq(ShootMoldRuleEntity::getMoldId, id));
+    }
+
+    /** 存在未取消的排期时不允许删除模具。 */
+    private void assertNoActiveSchedule(Long moldId) {
+        Long scheduleCount =
+                shootStationScheduleMapper.selectCount(
+                        Wrappers.<ShootStationScheduleEntity>lambdaQuery()
+                                .eq(ShootStationScheduleEntity::getMoldId, moldId)
+                                .ne(
+                                        ShootStationScheduleEntity::getStatus,
+                                        ShootStationScheduleEntity.STATUS_CANCELLED));
+        if (scheduleCount != null && scheduleCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具下存在排期，请先删除或取消排期后再删除模具");
+        }
     }
 
     // 验证

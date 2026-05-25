@@ -40,6 +40,15 @@ public final class PlcFieldKeyDisplayNames {
         return FIELD_NAME_MAP.getOrDefault(baseKey, "");
     }
 
+    /** 解析中文名；无映射时退回 fieldKey 本身。 */
+    public static String resolveOrCode(String fieldKey) {
+        if (StrUtil.isBlank(fieldKey)) {
+            return "";
+        }
+        String name = resolve(fieldKey);
+        return StrUtil.isNotBlank(name) ? name : fieldKey.trim();
+    }
+
     /**
      * 解析站位号，解析失败返回 null
      * 例：dang_qian_jia_liu_time_1 -> 1

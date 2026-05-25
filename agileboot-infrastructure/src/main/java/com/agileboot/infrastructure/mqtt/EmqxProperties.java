@@ -33,6 +33,9 @@ public class EmqxProperties {
      */
     private String plcDataDeviceName;
 
+    /** 环境数据 MQTT 主题，默认 HWY01 */
+    private String environmentDataTopic;
+
     public String resolvePlcDataTopic() {
         return plcDataTopic != null && !plcDataTopic.isBlank() ? plcDataTopic.trim() : "plc_data";
     }
@@ -41,5 +44,11 @@ public class EmqxProperties {
         return plcDataDeviceName != null && !plcDataDeviceName.isBlank()
                 ? plcDataDeviceName.trim()
                 : "unknown";
+    }
+
+    public String resolveEnvironmentDataTopic() {
+        return environmentDataTopic != null && !environmentDataTopic.isBlank()
+                ? environmentDataTopic.trim()
+                : "HWY01";
     }
 }

@@ -26,19 +26,17 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
 
     @Override
     public List<ShootMoldRuleEntity> listAll() {
-        return lambdaQuery()
-                .orderByAsc(ShootMoldRuleEntity::getMoldId)
-                .orderByAsc(ShootMoldRuleEntity::getFieldCode)
-                .list();
+        return enrichFieldNames(
+                lambdaQuery()
+                        .orderByAsc(ShootMoldRuleEntity::getMoldId)
+                        .orderByAsc(ShootMoldRuleEntity::getFieldCode)
+                        .list());
     }
 
     @Override
     public List<ShootMoldRuleEntity> listByMoldId(Long moldId) {
         shootMoldService.getByIdOrThrow(moldId);
-        return lambdaQuery()
-                .eq(ShootMoldRuleEntity::getMoldId, moldId)
-                .orderByAsc(ShootMoldRuleEntity::getFieldCode)
-                .list();
+        return enrichFieldNames(baseMapper.selectListByMoldIdWithMold(moldId));
     }
 
     @Override
@@ -47,7 +45,7 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         if (entity == null) {
             throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "模具规则");
         }
-        return entity;
+        return enrichFieldName(entity);
     }
 
     @Override
@@ -57,7 +55,7 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         fillRule(entity);
         entity.setDeleted(false);
         save(entity);
-        return entity;
+        return enrichFieldName(entity);
     }
 
     @Override
@@ -69,7 +67,7 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         entity.setCreatedAt(existing.getCreatedAt());
         fillRule(entity);
         updateById(entity);
-        return entity;
+        return enrichFieldName(entity);
     }
 
     @Override
@@ -110,7 +108,17 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         if (entity.getEnabled() == null) {
             entity.setEnabled(true);
         }
-        String name = PlcFieldKeyDisplayNames.resolve(entity.getFieldCode());
-        entity.setFieldName(StrUtil.isNotBlank(name) ? name : entity.getFieldCode());
+        enrichFieldName(entity);
+    }
+
+    /** 展示名统一由 field_code */
+    private ShootMoldRuleEntity enrichFieldName(ShootMoldRuleEntity rule) {
+        rule.setFieldName(PlcFieldKeyDisplayNames.resolveOrCode(rule.getFieldCode()));
+        return rule;
+    }
+
+    private List<ShootMoldRuleEntity> enrichFieldNames(List<ShootMoldRuleEntity> rules) {
+        rules.forEach(this::enrichFieldName);
+        return rules;
     }
 }

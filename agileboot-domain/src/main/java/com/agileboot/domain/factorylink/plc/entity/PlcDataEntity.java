@@ -5,8 +5,9 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -30,7 +31,8 @@ public class PlcDataEntity implements Serializable {
 
     /** 业务上的采集时间，映射列名 timestamp */
     @TableField("`timestamp`")
-    private Date dataTimestamp;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime dataTimestamp;
 
     @TableField("field_key")
     private String fieldKey;
@@ -43,7 +45,8 @@ public class PlcDataEntity implements Serializable {
     private String fieldValue;
 
     @TableField("create_time")
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
 
     @TableField("deleted")
     @TableLogic

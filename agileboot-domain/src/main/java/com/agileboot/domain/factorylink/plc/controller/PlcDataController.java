@@ -1,9 +1,11 @@
 package com.agileboot.domain.factorylink.plc.controller;
 
 import com.agileboot.common.core.dto.ResponseDTO;
+import com.agileboot.domain.factorylink.plc.entity.EnvironmentDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataPointEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDeviceEntity;
+import com.agileboot.domain.factorylink.plc.service.EnvironmentDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataPointService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
@@ -32,6 +34,7 @@ public class PlcDataController {
     private final PlcDataService plcDataService;
     private final PlcDataPointService plcDataPointService;
     private final PlcDeviceService plcDeviceService;
+    private final EnvironmentDataService environmentDataService;
 
     @Operation(summary = "查询设备最新一批 PLC 数据（同一时间）")
     @GetMapping("/data/recent")
@@ -47,6 +50,16 @@ public class PlcDataController {
     @GetMapping("/devices")
     public ResponseDTO<List<PlcDeviceEntity>> listDevices() {
         return ResponseDTO.ok(plcDeviceService.listAll());
+    }
+
+    @Operation(summary = "查询环境数据最新一条")
+    @GetMapping("/environment")
+    public ResponseDTO<EnvironmentDataEntity> latestEnvironmentData(
+            @Parameter(description = "设备 MAC", required = true, example = "78421CBF3C30")
+            @RequestParam("mac")
+            @NotBlank
+            String mac) {
+        return ResponseDTO.ok(environmentDataService.latestByMac(mac));
     }
 
     @Operation(summary = "查询 PLC 数据点（按 sort_order 排序）")

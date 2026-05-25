@@ -1,7 +1,6 @@
 package com.agileboot.domain.factorylink.plc.service.impl;
 
 import cn.hutool.core.convert.Convert;
-import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -9,14 +8,14 @@ import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,7 +45,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
             return;
         }
         String device = deviceName.trim();
-        Date ts = new Date();
+        LocalDateTime ts = LocalDateTime.now();
         List<PlcDataEntity> rows = new ArrayList<>(root.size());
         for (String key : root.keySet()) {
             PlcDataEntity row = new PlcDataEntity();
@@ -69,8 +68,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (StrUtil.isBlank(deviceName)) {
             return List.of();
         }
-        return enrichDisplayNames(
-                baseMapper.selectListLatestSameTimestampByDeviceName(deviceName.trim()));
+        return enrichDisplayNames(baseMapper.selectListLatestSameTimestampByDeviceName(deviceName.trim()));
     }
 
     //根据id查询
@@ -99,15 +97,15 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (ids.isEmpty()) {
             return Map.of();
         }
-        Map<Long, LocalDateTime> result = new HashMap<>();
-        for (Map<String, Object> row : baseMapper.selectLatestTimestampByMachineIds(ids)) {
-            Long machineId = Convert.toLong(row.get("machine_id"));
-            LocalDateTime ts =
-                    LocalDateTimeUtil.parse(Convert.toStr(row.get("data_timestamp")), "yyyy-MM-dd HH:mm:ss");
-            if (machineId != null && ts != null) {
-                result.put(machineId, ts);
-            }
-        }
-        return result;
+        return baseMapper
+                .selectList(
+                        new QueryWrapper<PlcDataEntity>()
+                                .select("machine_id AS machineId", "MAX(`timestamp`) AS dataTimestamp")
+                                .eq("deleted", 0)
+                                .in("machine_id", ids)
+                                .groupBy("machine_id"))
+                .stream()
+                .filter(row -> row.getMachineId() != null && row.getDataTimestamp() != null)
+                .collect(Collectors.toMap(PlcDataEntity::getMachineId, PlcDataEntity::getDataTimestamp, (a, b) -> a));
     }
 }

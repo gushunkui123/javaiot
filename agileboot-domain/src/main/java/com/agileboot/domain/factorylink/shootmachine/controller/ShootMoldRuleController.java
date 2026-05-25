@@ -31,6 +31,13 @@ public class ShootMoldRuleController {
         return ResponseDTO.ok(shootMoldRuleService.listAll());
     }
 
+    @Operation(summary = "查询指定模具下的规则列表")
+    @GetMapping("{moldId}")
+    public ResponseDTO<List<ShootMoldRuleEntity>> listByMold(
+            @Parameter(description = "模具ID", required = true) @PathVariable Long moldId) {
+        return ResponseDTO.ok(shootMoldRuleService.listByMoldId(moldId));
+    }
+
     @Operation(summary = "整批保存模具规则")
     @PutMapping("/mold/{moldId}")
     public ResponseDTO<Void> saveByMold(

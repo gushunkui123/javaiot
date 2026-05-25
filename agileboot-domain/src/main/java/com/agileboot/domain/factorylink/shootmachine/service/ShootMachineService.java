@@ -16,6 +16,4 @@ public interface ShootMachineService extends IService<ShootMachineEntity> {
     ShootMachineEntity update(Long id, ShootMachineEntity entity);
     // 删除
     void delete(Long id);
-
-
 }
