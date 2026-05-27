@@ -9,8 +9,12 @@ import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
+import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity;
+import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineStationMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -32,6 +36,8 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
 
     private final PlcDataService plcDataService;
     private final ShootMachineStationMapper shootMachineStationMapper;
+    private final ShootStationScheduleMapper shootStationScheduleMapper;
+    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
 
     @Override
     public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize) {
@@ -78,15 +84,46 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
+        assertNoStations(id);
+        assertNoActiveSchedule(id);
+        assertNoAlarm(id);
         removeById(id);
-        deleteStationsByMachineId(id);
     }
 
-    /** 删机台时级联逻辑删除其下站位 */
-    private void deleteStationsByMachineId(Long machineId) {
-        shootMachineStationMapper.delete(
-                Wrappers.<ShootMachineStationEntity>lambdaQuery()
-                        .eq(ShootMachineStationEntity::getMachineId, machineId));
+    /** 存在站位时不允许删除机台。 */
+    private void assertNoStations(Long machineId) {
+        Long stationCount =
+                shootMachineStationMapper.selectCount(
+                        Wrappers.<ShootMachineStationEntity>lambdaQuery()
+                                .eq(ShootMachineStationEntity::getMachineId, machineId));
+        if (stationCount != null && stationCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该机台下存在站位，请先删除站位后再删除机台");
+        }
+    }
+
+    /** 存在未取消的排期时不允许删除机台。 */
+    private void assertNoActiveSchedule(Long machineId) {
+        Long scheduleCount =
+                shootStationScheduleMapper.selectCount(
+                        Wrappers.<ShootStationScheduleEntity>lambdaQuery()
+                                .eq(ShootStationScheduleEntity::getMachineId, machineId)
+                                .ne(
+                                        ShootStationScheduleEntity::getStatus,
+                                        ShootStationScheduleEntity.STATUS_CANCELLED));
+        if (scheduleCount != null && scheduleCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该机台下存在排期，请先删除或取消排期后再删除机台");
+        }
+    }
+
+    /** 存在报警时不允许删除机台。 */
+    private void assertNoAlarm(Long machineId) {
+        long alarmCount = shootRuleAlarmMapper.countAlarms(machineId, null, null, null);
+        if (alarmCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该机台下存在报警记录，请先删除报警后再删除机台");
+        }
     }
 
     private void validateMachineName(String machineName) {

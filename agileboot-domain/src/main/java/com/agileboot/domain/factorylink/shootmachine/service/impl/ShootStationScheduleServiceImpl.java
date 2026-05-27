@@ -6,6 +6,7 @@ import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
@@ -25,6 +26,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     private final ShootMachineService shootMachineService;
     private final ShootMachineStationService shootMachineStationService;
     private final ShootMoldService shootMoldService;
+    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
 
     @Override
     public List<ShootStationScheduleEntity> listByStationId(Long stationId) {
@@ -89,7 +91,17 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         requireExists(id);
+        assertNoAlarm(id);
         removeById(id);
+    }
+
+    /** 存在报警时不允许删除排期。 */
+    private void assertNoAlarm(Long stationId) {
+        long alarmCount = shootRuleAlarmMapper.countAlarms(null, null, stationId, null);
+        if (alarmCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该排期下存在报警记录，请先删除报警后再删除排期");
+        }
     }
 
     @Override

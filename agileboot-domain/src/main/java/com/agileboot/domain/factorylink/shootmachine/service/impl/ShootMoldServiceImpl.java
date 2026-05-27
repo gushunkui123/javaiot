@@ -10,6 +10,7 @@ import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -26,6 +27,7 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
 
     private final ShootMoldRuleMapper shootMoldRuleMapper;
     private final ShootStationScheduleMapper shootStationScheduleMapper;
+    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
 
     @Override
     public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize) {
@@ -71,10 +73,22 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
+        assertNoRules(id);
         assertNoActiveSchedule(id);
+        assertNoAlarm(id);
         removeById(id);
-        shootMoldRuleMapper.delete(
-                Wrappers.<ShootMoldRuleEntity>lambdaQuery().eq(ShootMoldRuleEntity::getMoldId, id));
+    }
+
+    /** 存在规则时不允许删除模具。 */
+    private void assertNoRules(Long moldId) {
+        Long ruleCount =
+                shootMoldRuleMapper.selectCount(
+                        Wrappers.<ShootMoldRuleEntity>lambdaQuery()
+                                .eq(ShootMoldRuleEntity::getMoldId, moldId));
+        if (ruleCount != null && ruleCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具下存在规则，请先删除规则后再删除模具");
+        }
     }
 
     /** 存在未取消的排期时不允许删除模具。 */
@@ -89,6 +103,15 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
         if (scheduleCount != null && scheduleCount > 0) {
             throw new ApiException(
                     Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具下存在排期，请先删除或取消排期后再删除模具");
+        }
+    }
+
+    /** 存在报警时不允许删除模具。 */
+    private void assertNoAlarm(Long moldId) {
+        long alarmCount = shootRuleAlarmMapper.countAlarms(null, moldId, null, null);
+        if (alarmCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具下存在报警记录，请先删除报警后再删除模具");
         }
     }
 

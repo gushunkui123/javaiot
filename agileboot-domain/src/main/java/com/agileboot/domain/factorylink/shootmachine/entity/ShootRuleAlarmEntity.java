@@ -12,16 +12,25 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
-@TableName("shoot_mold_rule")
-public class ShootMoldRuleEntity implements Serializable {
+@TableName("shoot_rule_alarm")
+public class ShootRuleAlarmEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    @TableField("machine_id")
+    private Long machineId;
+
+    @TableField("station_id")
+    private Long stationId;
+
     @TableField("mold_id")
     private Long moldId;
+
+    @TableField("rule_id")
+    private Long ruleId;
 
     @TableField("field_code")
     private String fieldCode;
@@ -35,8 +44,18 @@ public class ShootMoldRuleEntity implements Serializable {
     @TableField("max_value")
     private BigDecimal maxValue;
 
-    @TableField("enabled")
-    private Boolean enabled;
+    @TableField("current_value")
+    private BigDecimal currentValue;
+
+    @TableField("alarm_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime alarmTime;
+
+    @TableField("handle_status")
+    private String handleStatus;
+
+    @TableField("handle_remark")
+    private String handleRemark;
 
     @TableField("created_at")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -50,23 +69,21 @@ public class ShootMoldRuleEntity implements Serializable {
     @TableLogic
     private Boolean deleted;
 
-    /** 模具型号（非表字段，按模具查询规则时填充） */
+    /** 机器名称（非表字段，关联查询时填充） */
+    @TableField(exist = false)
+    private String machineName;
+
+    /** 站位名称（非表字段，关联查询时填充） */
+    @TableField(exist = false)
+    private String stationName;
+
+    /** 模具型号（非表字段，关联查询时填充） */
     @TableField(exist = false)
     private String moldModel;
 
-    /** 模具颜色（非表字段，按模具查询规则时填充） */
+    /** 模具颜色（非表字段，关联查询时填充） */
     @TableField(exist = false)
-    private String color;
+    private String moldColor;
 
-    /** 站位ID（非表字段，按机台查询规则时填充） */
-    @TableField(exist = false)
-    private Long stationId;
 
-    /** 站位编号（非表字段，按机台查询规则时填充） */
-    @TableField(exist = false)
-    private Integer stationNo;
-
-    /** 站位名称（非表字段，按机台查询规则时填充） */
-    @TableField(exist = false)
-    private String stationName;
 }

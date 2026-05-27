@@ -19,6 +19,6 @@ public interface ShootMoldRuleService extends IService<ShootMoldRuleEntity> {
 
     void delete(Long id);
 
-    /** 按模具整批保存规则（先删后增，用于配置页提交 min/max）。 */
+    /** 按模具整批保存规则。 */
     void saveByMoldId(Long moldId, List<ShootMoldRuleEntity> rules);
 }

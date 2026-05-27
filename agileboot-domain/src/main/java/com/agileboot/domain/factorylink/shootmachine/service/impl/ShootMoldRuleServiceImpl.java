@@ -8,6 +8,7 @@ import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -23,6 +24,7 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         implements ShootMoldRuleService {
 
     private final ShootMoldService shootMoldService;
+    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
 
     @Override
     public List<ShootMoldRuleEntity> listAll() {
@@ -74,7 +76,17 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
+        assertNoAlarm(id);
         removeById(id);
+    }
+
+    /** 存在报警时不允许删除规则。 */
+    private void assertNoAlarm(Long ruleId) {
+        long alarmCount = shootRuleAlarmMapper.countAlarms(null, null, null, ruleId);
+        if (alarmCount > 0) {
+            throw new ApiException(
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该规则下存在报警记录，请先删除报警后再删除规则");
+        }
     }
 
     @Override
