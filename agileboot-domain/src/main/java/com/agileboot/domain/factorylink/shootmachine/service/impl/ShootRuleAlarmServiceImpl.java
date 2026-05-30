@@ -1,27 +1,40 @@
 package com.agileboot.domain.factorylink.shootmachine.service.impl;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
+import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity;
+import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
+import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
+import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper, ShootRuleAlarmEntity>
         implements ShootRuleAlarmService {
 
     private static final int ALARM_DEDUP_MINUTES = 1;
+
+    private final ShootStationScheduleService shootStationScheduleService;
+    private final ShootMoldRuleService shootMoldRuleService;
 
     @Override
     public List<ShootRuleAlarmEntity> listUnhandledWithRelation(Long machineId) {
@@ -72,22 +85,86 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
         entity.setHandleStatus("true");
         entity.setHandleRemark(StrUtil.isBlank(handleRemark) ? "" : handleRemark);
-        entity.setUpdatedAt(LocalDateTime.now());
         updateById(entity);
         return entity;
     }
 
     @Override
     public Map<String, Long> getStatisticsOverview(Long machineId) {
-        Map<String, Long> statistics = new HashMap<>();
-        statistics.put("totalCount", lambdaQuery()
-                .eq(machineId != null, ShootRuleAlarmEntity::getMachineId, machineId)
-                .count());
-        statistics.put("alarmCount", lambdaQuery()
-                .eq(machineId != null, ShootRuleAlarmEntity::getMachineId, machineId)
-                .eq(ShootRuleAlarmEntity::getHandleStatus, "false")
-                .count());
-        return statistics;
+        return baseMapper.selectStatisticsOverview(machineId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void detectAndCreateAlarms(Long machineId, String jsonPayload) {
+        JSONObject root = parseJson(jsonPayload);
+        if (root == null) {
+            return;
+        }
+        // 获取当前排期信息
+        List<ShootStationScheduleEntity> schedules =
+                shootStationScheduleService.listCurrentByMachineId(machineId);
+
+        for (ShootStationScheduleEntity schedule : schedules) {
+            if (schedule.getMoldId() == null || schedule.getStationId() == null) {
+                continue;
+            }
+            // 获取模具规则信息
+            List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(schedule.getMoldId());
+            for (ShootMoldRuleEntity rule : rules) {
+                if (Boolean.FALSE.equals(rule.getEnabled())) {
+                    continue;
+                }
+                checkRuleAndCreateAlarm(machineId, schedule.getStationId(), rule, root);
+            }
+        }
+    }
+
+    private JSONObject parseJson(String json) {
+        try {
+            return JSONUtil.parseObj(json);
+        } catch (Exception e) {
+            log.warn("PLC JSON parse failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private void checkRuleAndCreateAlarm(Long machineId, Long stationId, ShootMoldRuleEntity rule, JSONObject root) {
+        String fieldValue = root.getStr(rule.getFieldCode());
+        if (StrUtil.isBlank(fieldValue)) {
+            return;
+        }
+        BigDecimal currentValue = Convert.toBigDecimal(fieldValue, null);
+        if (currentValue == null) {
+            log.warn("Field value convert failed: fieldCode={}, value={}", rule.getFieldCode(), fieldValue);
+            return;
+        }
+        boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
+                || currentValue.compareTo(rule.getMaxValue()) > 0;
+        if (isOutOfRange) {
+            createAlarmFromDetection(machineId, stationId, rule, currentValue);
+        }
+    }
+
+    private void createAlarmFromDetection(Long machineId, Long stationId, ShootMoldRuleEntity rule, BigDecimal currentValue) {
+        ShootRuleAlarmEntity alarm = new ShootRuleAlarmEntity();
+        alarm.setMachineId(machineId);
+        alarm.setStationId(stationId);
+        alarm.setMoldId(rule.getMoldId());
+        alarm.setRuleId(rule.getId());
+        alarm.setFieldCode(rule.getFieldCode());
+        alarm.setFieldName(rule.getFieldName());
+        alarm.setMinValue(rule.getMinValue());
+        alarm.setMaxValue(rule.getMaxValue());
+        alarm.setCurrentValue(currentValue);
+        alarm.setAlarmTime(LocalDateTime.now());
+        alarm.setHandleStatus("false");
+        try {
+            create(alarm);
+        } catch (Exception e) {
+            log.error("Create alarm failed: machineId={}, stationId={}, ruleId={}, fieldCode={}",
+                    machineId, stationId, rule.getId(), rule.getFieldCode(), e);
+        }
     }
 
     private void validateAlarm(ShootRuleAlarmEntity entity) {

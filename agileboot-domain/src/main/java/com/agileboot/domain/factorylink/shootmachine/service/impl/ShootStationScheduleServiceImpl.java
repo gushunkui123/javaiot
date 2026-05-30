@@ -6,8 +6,8 @@ import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
-import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
+import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
@@ -16,6 +16,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationScheduleMapper, ShootStationScheduleEntity> implements ShootStationScheduleService {
 
+
     private final ShootMachineService shootMachineService;
     private final ShootMachineStationService shootMachineStationService;
+
     private final ShootMoldService shootMoldService;
-    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
+    private final ShootDeleteValidator deleteValidator;
 
     @Override
     public List<ShootStationScheduleEntity> listByStationId(Long stationId) {
@@ -51,8 +55,8 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ShootStationScheduleEntity create(Long stationId, ShootStationScheduleEntity entity) {
-        ShootMachineStationEntity station = getStationOrThrow(stationId);
+    public ShootStationScheduleEntity create(ShootStationScheduleEntity entity) {
+        ShootMachineStationEntity station = getStationOrThrow(entity.getStationId());
         shootMoldService.getByIdOrThrow(entity.getMoldId());
         validateSchedule(entity);
         fillFromStation(entity, station);
@@ -60,7 +64,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
             entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
         }
         entity.setDeleted(false);
-        assertNoOverlap(stationId, entity.getStartTime(), entity.getEndTime(), null);
+        assertNoOverlap(entity.getStationId(), entity.getStartTime(), entity.getEndTime(), null);
         save(entity);
         return entity;
     }
@@ -78,7 +82,6 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         entity.setMachineId(existing.getMachineId());
         entity.setStationId(existing.getStationId());
         entity.setStationNo(existing.getStationNo());
-        entity.setCreatedAt(existing.getCreatedAt());
         if (StrUtil.isBlank(entity.getStatus())) {
             entity.setStatus(existing.getStatus());
         }
@@ -91,17 +94,8 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         requireExists(id);
-        assertNoAlarm(id);
+        deleteValidator.assertNoAlarm(null, null, id, null);
         removeById(id);
-    }
-
-    /** 存在报警时不允许删除排期。 */
-    private void assertNoAlarm(Long stationId) {
-        long alarmCount = shootRuleAlarmMapper.countAlarms(null, null, stationId, null);
-        if (alarmCount > 0) {
-            throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该排期下存在报警记录，请先删除报警后再删除排期");
-        }
     }
 
     @Override

@@ -80,7 +80,12 @@ public final class PlcFieldKeyDisplayNames {
      * 提取基础字段名（去掉末尾的站位号）
      * 例：dang_qian_jia_liu_time_1 -> dang_qian_jia_liu_time
      */
-    private static String extractBaseKey(String fieldKey) {
-        return fieldKey.trim().toLowerCase().replaceAll("_\\d+$", "");
+    public static String extractBaseKey(String fieldKey) {
+        if (StrUtil.isBlank(fieldKey)) {
+            return "";
+        }
+        String trimmedKey = fieldKey.trim().toLowerCase();
+        Matcher matcher = STATION_PATTERN.matcher(trimmedKey);
+        return matcher.find() ? matcher.replaceAll("") : trimmedKey;
     }
 }

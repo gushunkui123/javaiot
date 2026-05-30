@@ -29,11 +29,11 @@ public class PlcDataPointServiceImpl extends ServiceImpl<PlcDataPointMapper, Plc
         if (deviceId == null || CollUtil.isEmpty(items)) {
             return;
         }
-        items.forEach(item -> {
-            if (item.getId() == null || item.getSortOrder() == null) {
-                return;
-            }
-            baseMapper.updateSortAndMarkById(item.getId(), item.getSortOrder(), item.getMarkColor());
-        });
+        List<PlcDataPointEntity> validItems = items.stream()
+                .filter(item -> item.getId() != null && item.getSortOrder() != null)
+                .toList();
+        if (!validItems.isEmpty()) {
+            baseMapper.batchUpdateSortAndMark(validItems);
+        }
     }
 }

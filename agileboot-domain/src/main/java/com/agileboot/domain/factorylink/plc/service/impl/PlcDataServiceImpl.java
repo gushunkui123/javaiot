@@ -86,14 +86,16 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         return rows;
     }
 
-    //根据所有ids查询
+    //根据所有ids查询最新数据戳
     @Override
     public Map<Long, LocalDateTime> mapLatestDataTimestampByMachineIds(Collection<Long> machineIds) {
         if (machineIds == null || machineIds.isEmpty()) {
             return Map.of();
         }
-        List<Long> ids =
-                machineIds.stream().filter(id -> id != null && id > 0).distinct().toList();
+        List<Long> ids = machineIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
         if (ids.isEmpty()) {
             return Map.of();
         }
@@ -106,6 +108,9 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
                                 .groupBy("machine_id"))
                 .stream()
                 .filter(row -> row.getMachineId() != null && row.getDataTimestamp() != null)
-                .collect(Collectors.toMap(PlcDataEntity::getMachineId, PlcDataEntity::getDataTimestamp, (a, b) -> a));
+                .collect(Collectors.toMap(
+                        PlcDataEntity::getMachineId,
+                        PlcDataEntity::getDataTimestamp,
+                        (a, b) -> a));
     }
 }

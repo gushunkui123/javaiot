@@ -1,5 +1,5 @@
 package com.agileboot.domain.factorylink.plc.controller;
-
+import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.domain.factorylink.plc.entity.EnvironmentDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
@@ -9,12 +9,14 @@ import com.agileboot.domain.factorylink.plc.service.EnvironmentDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataPointService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
+import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -82,5 +84,27 @@ public class PlcDataController {
             @RequestBody List<PlcDataPointEntity> items) {
         plcDataPointService.batchUpdateSortOrder(deviceId, items);
         return ResponseDTO.ok();
+    }
+
+    @Operation(summary = "解析 PLC 数据字段中文名称列表")
+    @GetMapping("/data/resolveFieldNames")
+    public ResponseDTO<List<Map<String, String>>> resolveFieldNames(
+            @Parameter(description = "设备名称", required = true, example = "射出机五号机")
+            @RequestParam("deviceName")
+            @NotBlank
+            String deviceName) {
+        List<PlcDataEntity> dataList = plcDataService.listLatestSameTimestampByDeviceName(deviceName);
+        List<Map<String, String>> result = dataList.stream()
+                .map(PlcDataEntity::getFieldKey)
+                .filter(StrUtil::isNotBlank)
+                .map(PlcFieldKeyDisplayNames::extractBaseKey)
+                .distinct()
+                .sorted()
+                .map(code -> Map.of(
+                        "code", code,
+                        "name", PlcFieldKeyDisplayNames.resolveOrCode(code)
+                ))
+                .toList();
+        return ResponseDTO.ok(result);
     }
 }

@@ -1,5 +1,4 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
-
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
@@ -42,7 +41,7 @@ public class ShootStationScheduleController {
     @Operation(summary = "新增排期")
     @PostMapping("/create")
     public ResponseDTO<ShootStationScheduleEntity> create(@RequestBody ShootStationScheduleEntity entity) {
-        return ResponseDTO.ok(shootStationScheduleService.create(entity.getStationId(), entity));
+        return ResponseDTO.ok(shootStationScheduleService.create(entity));
     }
 
     @Operation(summary = "编辑排期")

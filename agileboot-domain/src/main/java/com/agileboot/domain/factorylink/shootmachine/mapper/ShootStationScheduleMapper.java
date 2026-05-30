@@ -4,9 +4,12 @@ import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationSchedule
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+@Mapper
 public interface ShootStationScheduleMapper extends BaseMapper<ShootStationScheduleEntity> {
 
     @Select(

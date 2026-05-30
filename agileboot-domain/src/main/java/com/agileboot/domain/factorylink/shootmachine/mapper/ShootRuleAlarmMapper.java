@@ -4,9 +4,13 @@ import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+@Mapper
 public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
 
     @Select(
@@ -67,4 +71,15 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("moldId") Long moldId,
             @Param("stationId") Long stationId,
             @Param("ruleId") Long ruleId);
+
+    @Select(
+            "<script>" +
+            "SELECT "
+                    + "COUNT(1) AS totalCount, "
+                    + "SUM(CASE WHEN handle_status = 'false' THEN 1 ELSE 0 END) AS alarmCount "
+                    + "FROM shoot_rule_alarm "
+                    + "WHERE deleted = 0 "
+                    + "<if test='machineId != null'>AND machine_id = #{machineId}</if> " +
+            "</script>")
+    Map<String, Long> selectStatisticsOverview(@Param("machineId") Long machineId);
 }

@@ -12,7 +12,7 @@ public interface ShootStationScheduleService extends IService<ShootStationSchedu
 
     ShootStationScheduleEntity getByIdOrThrow(Long id);
 
-    ShootStationScheduleEntity create(Long stationId, ShootStationScheduleEntity entity);
+    ShootStationScheduleEntity create(ShootStationScheduleEntity entity);
 
     ShootStationScheduleEntity update(Long id, ShootStationScheduleEntity entity);
 

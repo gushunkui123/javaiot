@@ -3,6 +3,7 @@ package com.agileboot.infrastructure.mybatisplus;
 import com.agileboot.infrastructure.user.AuthenticationUtils;
 import com.agileboot.infrastructure.user.web.SystemLoginUser;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
@@ -23,11 +24,18 @@ public class CustomMetaObjectHandler implements MetaObjectHandler {
     public static final String UPDATE_TIME_FIELD = "updateTime";
     public static final String UPDATER_ID_FIELD = "updaterId";
 
+    // 兼容 factorylink 模块的字段命名
+    public static final String CREATE_TIME_FIELD_ALT = "createdAt";
+    public static final String UPDATE_TIME_FIELD_ALT = "updatedAt";
+
 
     @Override
     public void insertFill(MetaObject metaObject) {
         if (metaObject.hasSetter(CREATE_TIME_FIELD)) {
             this.setFieldValByName(CREATE_TIME_FIELD, new Date(), metaObject);
+        }
+        if (metaObject.hasSetter(CREATE_TIME_FIELD_ALT)) {
+            this.setFieldValByName(CREATE_TIME_FIELD_ALT, LocalDateTime.now(), metaObject);
         }
 
         Long userId = getUserIdSafely();
@@ -40,6 +48,9 @@ public class CustomMetaObjectHandler implements MetaObjectHandler {
     public void updateFill(MetaObject metaObject) {
         if (metaObject.hasSetter(UPDATE_TIME_FIELD)) {
             this.setFieldValByName(UPDATE_TIME_FIELD, new Date(), metaObject);
+        }
+        if (metaObject.hasSetter(UPDATE_TIME_FIELD_ALT)) {
+            this.setFieldValByName(UPDATE_TIME_FIELD_ALT, LocalDateTime.now(), metaObject);
         }
 
         Long userId = getUserIdSafely();

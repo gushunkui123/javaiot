@@ -8,13 +8,15 @@ import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
-import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
+import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, ShootMoldRuleEntity>
         implements ShootMoldRuleService {
 
+
     private final ShootMoldService shootMoldService;
-    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
+    private final ShootDeleteValidator deleteValidator;
 
     @Override
     public List<ShootMoldRuleEntity> listAll() {
@@ -66,7 +69,6 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         ShootMoldRuleEntity existing = getByIdOrThrow(id);
         entity.setId(id);
         entity.setMoldId(existing.getMoldId());
-        entity.setCreatedAt(existing.getCreatedAt());
         fillRule(entity);
         updateById(entity);
         return enrichFieldName(entity);
@@ -76,17 +78,8 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
-        assertNoAlarm(id);
+        deleteValidator.assertNoAlarm(null, null, null, id);
         removeById(id);
-    }
-
-    /** 存在报警时不允许删除规则。 */
-    private void assertNoAlarm(Long ruleId) {
-        long alarmCount = shootRuleAlarmMapper.countAlarms(null, null, null, ruleId);
-        if (alarmCount > 0) {
-            throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该规则下存在报警记录，请先删除报警后再删除规则");
-        }
     }
 
     @Override

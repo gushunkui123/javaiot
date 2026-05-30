@@ -1,6 +1,7 @@
 package com.agileboot.domain.factorylink.shootmachine.service.impl;
 
 
+import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
@@ -15,6 +16,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShootMachineStationServiceImpl
         extends ServiceImpl<ShootMachineStationMapper, ShootMachineStationEntity>
         implements ShootMachineStationService {
+
 
     private final ShootMachineService shootMachineService;
     private final PlcDataService plcDataService;
@@ -45,7 +49,7 @@ public class ShootMachineStationServiceImpl
         Set<Integer> stationNos =
                 PlcFieldKeyDisplayNames.parseDistinctStationNos(
                         plcDataService.listLatestSameTimestampByMachineId(machineId).stream()
-                                .map(row -> row.getFieldKey())
+                                .map(PlcDataEntity::getFieldKey)
                                 .toList());
         if (stationNos.isEmpty()) {
             return 0;

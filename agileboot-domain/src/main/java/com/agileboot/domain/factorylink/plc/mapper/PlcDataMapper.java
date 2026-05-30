@@ -3,10 +3,13 @@ package com.agileboot.domain.factorylink.plc.mapper;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 /** PLC 遥测表 Mapper */
+@Mapper
 public interface PlcDataMapper extends BaseMapper<PlcDataEntity> {
 
     @Select(
