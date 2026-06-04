@@ -13,15 +13,22 @@ import org.apache.ibatis.annotations.Select;
 public interface ShootStationScheduleMapper extends BaseMapper<ShootStationScheduleEntity> {
 
     @Select(
-            "SELECT s.id, s.machine_id, s.station_id, s.station_no, s.mold_id, "
+            "<script>"
+                    + "SELECT s.id, s.machine_id, s.station_id, s.station_no, s.mold_id, "
                     + "s.start_time, s.end_time, s.status, s.remark, "
                     + "s.created_at, s.updated_at, s.deleted, "
                     + "m.mold_model, m.color "
                     + "FROM shoot_station_schedule s "
                     + "LEFT JOIN shoot_mold m ON s.mold_id = m.id AND m.deleted = 0 "
                     + "WHERE s.deleted = 0 AND s.station_id = #{stationId} AND s.status != 'cancelled' "
-                    + "ORDER BY s.start_time")
-    List<ShootStationScheduleEntity> selectListByStationIdWithMold(@Param("stationId") Long stationId);
+                    + "<if test='startDate != null'>AND s.start_time &gt;= #{startDate} </if>"
+                    + "<if test='endDate != null'>AND s.end_time &lt;= #{endDate} </if>"
+                    + "ORDER BY s.start_time"
+                    + "</script>")
+    List<ShootStationScheduleEntity> selectListByStationIdWithMoldAndDateRange(
+            @Param("stationId") Long stationId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 
     @Select(
             "SELECT s.id, s.machine_id, s.station_id, s.station_no, s.mold_id, "
@@ -31,7 +38,7 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
                     + "FROM shoot_station_schedule s "
                     + "LEFT JOIN shoot_mold m ON s.mold_id = m.id AND m.deleted = 0 "
                     + "WHERE s.deleted = 0 AND s.machine_id = #{machineId} AND s.status != 'cancelled' "
-                    + "AND s.start_time &lt;= #{now} AND s.end_time &gt; #{now} "
+                    + "AND s.start_time <= #{now} AND s.end_time > #{now} "
                     + "ORDER BY s.station_no")
     List<ShootStationScheduleEntity> selectListCurrentByMachineIdWithMold(
             @Param("machineId") Long machineId, @Param("now") LocalDateTime now);

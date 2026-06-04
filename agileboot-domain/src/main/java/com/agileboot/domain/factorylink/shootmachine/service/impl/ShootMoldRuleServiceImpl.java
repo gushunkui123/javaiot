@@ -15,11 +15,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, ShootMoldRuleEntity>
@@ -59,7 +60,11 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         shootMoldService.getByIdOrThrow(entity.getMoldId());
         fillRule(entity);
         entity.setDeleted(false);
-        save(entity);
+        try {
+            save(entity);
+        } catch (DuplicateKeyException e) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具已存在相同字段的规则");
+        }
         return enrichFieldName(entity);
     }
 
@@ -106,8 +111,8 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         if (entity.getMinValue() == null || entity.getMaxValue() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值和最大值不能为空");
         }
-        if (entity.getMinValue().compareTo(entity.getMaxValue()) > 0) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值不能大于最大值");
+        if (entity.getMinValue().compareTo(entity.getMaxValue()) >= 0) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值必须小于最大值");
         }
         entity.setFieldCode(entity.getFieldCode().trim().toLowerCase());
         if (entity.getEnabled() == null) {

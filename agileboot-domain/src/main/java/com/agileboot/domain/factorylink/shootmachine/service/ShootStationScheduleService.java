@@ -2,11 +2,12 @@ package com.agileboot.domain.factorylink.shootmachine.service;
 
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.baomidou.mybatisplus.extension.service.IService;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ShootStationScheduleService extends IService<ShootStationScheduleEntity> {
 
-    List<ShootStationScheduleEntity> listByStationId(Long stationId);
+    List<ShootStationScheduleEntity> listByStationId(Long stationId, LocalDateTime startDate, LocalDateTime endDate);
 
     List<ShootStationScheduleEntity> listCurrentByMachineId(Long machineId);
 

@@ -5,11 +5,13 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootStationSchedul
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "射出机站位排期")
+@Tag(name = "射出机模具生产记录")
 @RestController
 @RequestMapping("/api/shoot")
 @RequiredArgsConstructor
@@ -17,53 +19,55 @@ public class ShootStationScheduleController {
 
     private final ShootStationScheduleService shootStationScheduleService;
 
-    @Operation(summary = "查询站位下的排期列表（时间轴）")
+    @Operation(summary = "查询站位下的生产记录列表（时间轴）")
     @GetMapping("/station-schedules")
     public ResponseDTO<List<ShootStationScheduleEntity>> listByStation(
-            @Parameter(description = "站位ID", required = true) @RequestParam Long stationId) {
-        return ResponseDTO.ok(shootStationScheduleService.listByStationId(stationId));
+            @Parameter(description = "站位ID", required = true) @RequestParam Long stationId,
+            @Parameter(description = "开始时间") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
+            @Parameter(description = "结束时间") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
+        return ResponseDTO.ok(shootStationScheduleService.listByStationId(stationId, startDate, endDate));
     }
 
-    @Operation(summary = "查询机台当前时刻各站位生效中的排期")
+    @Operation(summary = "查询机台当前时刻各站位生效中的生产记录")
     @GetMapping("/current")
     public ResponseDTO<List<ShootStationScheduleEntity>> listCurrentByMachine(
             @Parameter(description = "机台ID", required = true) @RequestParam Long machineId) {
         return ResponseDTO.ok(shootStationScheduleService.listCurrentByMachineId(machineId));
     }
 
-    @Operation(summary = "查询排期详情")
+    @Operation(summary = "查询生产记录详情")
     @GetMapping("/{id}")
     public ResponseDTO<ShootStationScheduleEntity> getById(
-            @Parameter(description = "排期ID", required = true) @PathVariable Long id) {
+            @Parameter(description = "生产记录ID", required = true) @PathVariable Long id) {
         return ResponseDTO.ok(shootStationScheduleService.getByIdOrThrow(id));
     }
 
-    @Operation(summary = "新增排期")
+    @Operation(summary = "新增生产记录")
     @PostMapping("/create")
     public ResponseDTO<ShootStationScheduleEntity> create(@RequestBody ShootStationScheduleEntity entity) {
         return ResponseDTO.ok(shootStationScheduleService.create(entity));
     }
 
-    @Operation(summary = "编辑排期")
+    @Operation(summary = "编辑生产记录")
     @PutMapping("/{id}")
     public ResponseDTO<ShootStationScheduleEntity> update(
-            @Parameter(description = "排期ID", required = true) @PathVariable Long id,
+            @Parameter(description = "生产记录ID", required = true) @PathVariable Long id,
             @RequestBody ShootStationScheduleEntity entity) {
         return ResponseDTO.ok(shootStationScheduleService.update(id, entity));
     }
 
-    @Operation(summary = "删除排期")
+    @Operation(summary = "删除生产记录")
     @DeleteMapping("/{id}")
     public ResponseDTO<Void> delete(
-            @Parameter(description = "排期ID", required = true) @PathVariable Long id) {
+            @Parameter(description = "生产记录ID", required = true) @PathVariable Long id) {
         shootStationScheduleService.delete(id);
         return ResponseDTO.ok();
     }
 
-    @Operation(summary = "取消排期")
+    @Operation(summary = "取消生产记录")
     @PatchMapping("/{id}/cancel")
     public ResponseDTO<Void> cancel(
-            @Parameter(description = "排期ID", required = true) @PathVariable Long id) {
+            @Parameter(description = "生产记录ID", required = true) @PathVariable Long id) {
         shootStationScheduleService.cancel(id);
         return ResponseDTO.ok();
     }

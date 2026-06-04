@@ -1,5 +1,6 @@
 package com.agileboot.admin;
 
+import java.util.TimeZone;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -19,6 +20,8 @@ import org.springframework.context.annotation.ComponentScan;
 public class AgileBootAdminApplication {
 
     public static void main(String[] args) {
+        // 设置 JVM 默认时区为东八区，解决服务器 UTC 时间问题
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
         SpringApplication.run(AgileBootAdminApplication.class, args);
         String successMsg = "  ____   _                _                                                           __         _  _ \n"
                           + " / ___| | |_  __ _  _ __ | |_   _   _  _ __    ___  _   _   ___  ___  ___  ___  ___  / _| _   _ | || |\n"

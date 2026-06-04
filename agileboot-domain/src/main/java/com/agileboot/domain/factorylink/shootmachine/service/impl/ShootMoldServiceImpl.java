@@ -34,7 +34,7 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     public ShootMoldEntity getByIdOrThrow(Long id) {
         ShootMoldEntity entity = getById(id);
         if (entity == null) {
-            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "模具");
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID ,"请先添加模具信息");
         }
         return entity;
     }

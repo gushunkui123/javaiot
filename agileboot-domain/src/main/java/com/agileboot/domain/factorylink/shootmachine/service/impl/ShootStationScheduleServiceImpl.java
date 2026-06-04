@@ -33,9 +33,9 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     private final ShootDeleteValidator deleteValidator;
 
     @Override
-    public List<ShootStationScheduleEntity> listByStationId(Long stationId) {
+    public List<ShootStationScheduleEntity> listByStationId(Long stationId, LocalDateTime startDate, LocalDateTime endDate) {
         getStationOrThrow(stationId);
-        return baseMapper.selectListByStationIdWithMold(stationId);
+        return baseMapper.selectListByStationIdWithMoldAndDateRange(stationId, startDate, endDate);
     }
 
     @Override
