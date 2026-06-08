@@ -119,7 +119,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 if (Boolean.FALSE.equals(rule.getEnabled())) {
                     continue;
                 }
-                checkRuleAndCreateAlarm(machineId, schedule.getStationId(), rule, root);
+                checkRuleAndCreateAlarm(machineId, schedule.getStationId(), schedule.getStationNo(), rule, root);
             }
         }
     }
@@ -133,11 +133,12 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
     }
 
-    private void checkRuleAndCreateAlarm(Long machineId, Long stationId, ShootMoldRuleEntity rule, JSONObject root) {
+    private void checkRuleAndCreateAlarm(Long machineId, Long stationId, Integer stationNo, ShootMoldRuleEntity rule, JSONObject root) {
         // PLC 字段带站位号后缀（如 kai_mo_1），规则 fieldCode 是基础名（如 kai_mo），需要匹配
         String targetBaseKey = rule.getFieldCode();
         String matchedValue = root.keySet().stream()
                 .filter(key -> PlcFieldKeyDisplayNames.extractBaseKey(key).equals(targetBaseKey))
+                .filter(key -> stationNo == null || stationNo.equals(PlcFieldKeyDisplayNames.parseStationNo(key)))
                 .map(root::getStr)
                 .filter(StrUtil::isNotBlank)
                 .findFirst()
