@@ -48,7 +48,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     public ShootStationScheduleEntity getByIdOrThrow(Long id) {
         ShootStationScheduleEntity entity = baseMapper.selectByIdWithMold(id);
         if (entity == null) {
-            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "排期");
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "生产计划");
         }
         return entity;
     }
@@ -74,7 +74,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     public ShootStationScheduleEntity update(Long id, ShootStationScheduleEntity entity) {
         ShootStationScheduleEntity existing = requireExists(id);
         if (ShootStationScheduleEntity.STATUS_CANCELLED.equals(existing.getStatus())) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "已取消的排期不能编辑");
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "已取消的生产计划不能编辑");
         }
         shootMoldService.getByIdOrThrow(entity.getMoldId());
         validateSchedule(entity);
@@ -118,7 +118,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     private ShootStationScheduleEntity requireExists(Long id) {
         ShootStationScheduleEntity entity = getById(id);
         if (entity == null) {
-            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "排期");
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "生产计划");
         }
         return entity;
     }
@@ -141,7 +141,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         }
     }
 
-    /** 同一站位下时间段不能重叠（已取消的排期不参与校验）。 */
+    /** 同一站位下时间段不能重叠（已取消的生产计划不参与校验）。 */
     private void assertNoOverlap(Long stationId, LocalDateTime start, LocalDateTime end, Long excludeId) {
         long overlapCount =
                 lambdaQuery()
@@ -155,7 +155,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
                         .count();
         if (overlapCount > 0) {
             throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该站位在该时间段已有排期，不能重叠");
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该站位在该时间段已有生产计划，不能重叠");
         }
     }
 }

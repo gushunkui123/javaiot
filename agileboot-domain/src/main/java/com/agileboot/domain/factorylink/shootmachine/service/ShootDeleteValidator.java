@@ -37,7 +37,7 @@ public class ShootDeleteValidator {
         }
     }
 
-    /** 机台下存在未取消排期时不允许删除 */
+    /** 机台下存在未取消生产计划时不允许删除 */
     public void assertNoMachineActiveSchedule(Long machineId) {
         long count = stationScheduleMapper.selectCount(
                 Wrappers.<ShootStationScheduleEntity>lambdaQuery()
@@ -45,7 +45,7 @@ public class ShootDeleteValidator {
                         .ne(ShootStationScheduleEntity::getStatus, ShootStationScheduleEntity.STATUS_CANCELLED));
         if (count > 0) {
             throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该机台下存在排期，请先删除或取消排期后再删除机台");
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该机台下存在生产计划，请先删除或取消生产计划后再删除机台");
         }
     }
 
@@ -60,7 +60,7 @@ public class ShootDeleteValidator {
         }
     }
 
-    /** 模具下存在未取消排期时不允许删除 */
+    /** 模具下存在未取消生产计划时不允许删除 */
     public void assertNoMoldActiveSchedule(Long moldId) {
         long count = stationScheduleMapper.selectCount(
                 Wrappers.<ShootStationScheduleEntity>lambdaQuery()
@@ -68,7 +68,7 @@ public class ShootDeleteValidator {
                         .ne(ShootStationScheduleEntity::getStatus, ShootStationScheduleEntity.STATUS_CANCELLED));
         if (count > 0) {
             throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具下存在排期，请先删除或取消排期后再删除模具");
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该模具下存在生产计划，请先删除或取消生产计划后再删除模具");
         }
     }
 

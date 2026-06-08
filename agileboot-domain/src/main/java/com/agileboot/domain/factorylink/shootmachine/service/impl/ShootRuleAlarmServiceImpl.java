@@ -105,7 +105,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         if (root == null) {
             return;
         }
-        // 获取当前排期信息
+        // 获取当前生产计划信息
         List<ShootStationScheduleEntity> schedules =
                 shootStationScheduleService.listCurrentByMachineId(machineId);
 
