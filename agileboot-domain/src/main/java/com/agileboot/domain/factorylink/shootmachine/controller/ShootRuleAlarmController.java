@@ -24,16 +24,20 @@ public class ShootRuleAlarmController {
         return ResponseDTO.ok(shootRuleAlarmService.listUnhandledWithRelation(machineId));
     }
 
-    @Operation(summary = "查询报警详情")
-    @GetMapping("/{id}")
-    public ResponseDTO<ShootRuleAlarmEntity> getById(@PathVariable Long id) {
-        return ResponseDTO.ok(shootRuleAlarmService.getByIdOrThrow(id));
+    @Operation(summary = "根据站位号查询报警详情")
+    @GetMapping("/detail")
+    public ResponseDTO<Map<String, Object>> getDetailByStationNo(@RequestParam Integer stationNo) {
+        return ResponseDTO.ok(shootRuleAlarmService.getDetailByStationNo(stationNo));
     }
 
-    @Operation(summary = "处理报警")
-    @PatchMapping("/{id}/handle")
-    public ResponseDTO<ShootRuleAlarmEntity> handle(@PathVariable Long id, @RequestParam(required = false) String handleRemark) {
-        return ResponseDTO.ok(shootRuleAlarmService.handle(id, handleRemark));
+    @Operation(summary = "根据站位号和字段名称批量处理报警")
+    @PostMapping("/handleByStation")
+    public ResponseDTO<Void> handleByStation(
+            @RequestParam Integer stationNo,
+            @RequestParam String fieldName,
+            @RequestParam(required = false) String handleRemark) {
+        shootRuleAlarmService.handleByStationNoAndField(stationNo, fieldName, handleRemark);
+        return ResponseDTO.ok();
     }
 
     @Operation(summary = "统计概览")

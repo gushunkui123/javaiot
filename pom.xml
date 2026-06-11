@@ -53,6 +53,7 @@
         <mockito.version>4.11.0</mockito.version>
         <!-- Modbus TCP（Java 17+），与 Spring Boot 所用 Netty 由 BOM 协调 -->
         <digitalpetri-modbus.version>2.1.5</digitalpetri-modbus.version>
+        <minio.version>8.5.7</minio.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -303,6 +304,13 @@
                 <groupId>com.digitalpetri.modbus</groupId>
                 <artifactId>modbus-tcp</artifactId>
                 <version>${digitalpetri-modbus.version}</version>
+            </dependency>
+
+            <!-- MinIO 客户端 -->
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio</artifactId>
+                <version>${minio.version}</version>
             </dependency>
 
         </dependencies>

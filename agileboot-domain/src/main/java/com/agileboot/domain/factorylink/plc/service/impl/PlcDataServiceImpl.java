@@ -9,6 +9,7 @@ import com.agileboot.domain.factorylink.plc.mapper.PlcDataMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
+@DS("master")
 @RequiredArgsConstructor
 public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity> implements PlcDataService {
 

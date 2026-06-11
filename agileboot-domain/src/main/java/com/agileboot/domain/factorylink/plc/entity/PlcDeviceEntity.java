@@ -1,50 +1,68 @@
 package com.agileboot.domain.factorylink.plc.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import java.io.Serializable;
-import java.time.LocalDateTime;
 import lombok.Data;
 
-/** 从库表 plc_device：PLC 设备连接信息。 */
+import java.time.LocalDateTime;
+
+/**
+ * PLC设备连接信息 Entity
+ */
 @Data
 @TableName("plc_device")
-public class PlcDeviceEntity implements Serializable {
+public class PlcDeviceEntity {
 
-    private static final long serialVersionUID = 1L;
-
-    @TableId(value = "id", type = IdType.AUTO)
+    /** 主键 */
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @TableField("ip")
+    /** PLC IP 地址 */
     private String ip;
 
-    @TableField("device_name")
+    /** 设备名称 */
     private String deviceName;
 
-    @TableField("device_type")
+    /** PLC/设备型号说明 */
     private String deviceType;
 
-    @TableField("protocol")
+    /** 通讯协议标识 */
     private String protocol;
 
-    @TableField("port")
+    /** 协议端口（S7 常用 102或者另外的502） */
     private Integer port;
 
-    @TableField("rack")
-    private Integer rack;
+    /** 机架号 */
+    private Short rack;
 
-    @TableField("slot")
-    private Integer slot;
+    /** 槽号 */
+    private Short slot;
 
-    @TableField("created_at")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 
-    @TableField("updated_at")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    /** 更新时间 */
     private LocalDateTime updatedAt;
+
+       /** 照片 */
+     private String photo;
+
+     /** 传感器类型 */
+     private String sensorType;
+
+     /** 协议类型 */
+     private String protocolType;
+
+     /** 获取方式 */
+     private String acquisitionMethod;
+
+     /** 设备位置 */
+     private String deviceLocation;
+
+     /** 获取状态（0-离线 1-在线） */
+     private Integer acquisitionStatus;
+
+     /** 是否接入数据库（0-否 1-是） */
+     private Integer isConnectedDb;
 }

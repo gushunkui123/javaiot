@@ -35,6 +35,11 @@
             </exclusions>
         </dependency>
 
+        <!-- MinIO 客户端 -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+        </dependency>
 
     </dependencies>
 

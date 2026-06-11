@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
@@ -67,4 +68,37 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
                     + "<if test='machineId != null'>AND machine_id = #{machineId}</if> " +
             "</script>")
     Map<String, Long> selectStatisticsOverview(@Param("machineId") Long machineId);
+
+ @Select(
+        "<script>" +
+        "SELECT "
+                + "COUNT(a.id) AS alarmCount, "
+                + "MIN(a.alarm_time) AS minAlarmTime, "
+                + "MAX(a.alarm_time) AS maxAlarmTime, "
+                + "m.machine_name AS machineName, "
+                + "s.station_name AS stationName, "
+                + "a.field_name AS fieldName, "
+                + "a.current_value AS currentValue, "
+                + "a.min_value AS `minValue`, "
+                + "a.max_value AS `maxValue`, "
+                + "mo.mold_model AS moldModel, "
+                + "mo.color AS moldColor "
+                + "FROM shoot_rule_alarm a "
+                + "LEFT JOIN shoot_machine m ON a.machine_id = m.id AND m.deleted = 0 "
+                + "LEFT JOIN shoot_machine_station s ON a.station_id = s.id AND s.deleted = 0 "
+                + "LEFT JOIN shoot_mold mo ON a.mold_id = mo.id AND mo.deleted = 0 "
+                + "WHERE a.deleted = 0 AND s.station_no = #{stationNo} "
+                + "GROUP BY a.field_code, a.station_id, m.machine_name, s.station_name, "
+                + "a.field_name, a.current_value, a.min_value, a.max_value, mo.mold_model, mo.color "
+                + "ORDER BY MAX(a.alarm_time) DESC" +
+        "</script>")
+    List<Map<String, Object>> selectAlarmDetailGroupByField(@Param("stationNo") Integer stationNo);
+
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = #{handleRemark} "
+            + "WHERE deleted = 0 AND field_name = #{fieldName} "
+            + "AND station_id IN (SELECT id FROM shoot_machine_station WHERE station_no = #{stationNo} AND deleted = 0)")
+    void updateHandleByStationNoAndField(
+            @Param("stationNo") Integer stationNo,
+            @Param("fieldName") String fieldName,
+            @Param("handleRemark") String handleRemark);
 }

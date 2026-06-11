@@ -9,6 +9,7 @@ import com.agileboot.domain.factorylink.plc.service.EnvironmentDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataPointService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
+import com.agileboot.domain.factorylink.plc.util.MinioUploadUtil;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,12 +20,8 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "FactoryLink PLC 数据")
 @RestController
@@ -51,7 +48,15 @@ public class PlcDataController {
     @Operation(summary = "查询 PLC 设备列表")
     @GetMapping("/devices")
     public ResponseDTO<List<PlcDeviceEntity>> listDevices() {
-        return ResponseDTO.ok(plcDeviceService.listAll());
+        return ResponseDTO.ok(plcDeviceService.listAllDevices());
+    }
+
+    @Operation(summary = "查询设备及其点位数据")
+    @GetMapping("/dataPoints")
+    public ResponseDTO<List<Map<String, Object>>> listDataPoints(
+            @Parameter(description = "设备ID", required = false)
+            @RequestParam(value = "deviceId", required = false) Long deviceId) {
+        return ResponseDTO.ok(plcDeviceService.listDevicesWithDataPoints(deviceId));
     }
 
     @Operation(summary = "查询环境数据最新一条")
@@ -106,5 +111,30 @@ public class PlcDataController {
                 ))
                 .toList();
         return ResponseDTO.ok(result);
+    }
+    @Operation(summary = "上传文件到 MinIO（可更新设备照片）")
+    @PostMapping("/uploadToMinio")
+    public ResponseDTO<Map<String, Object>> uploadFileToMinio(
+            @Parameter(description = "上传目录（如 images/）", required = false)
+            @RequestParam(value = "baseDir", required = false, defaultValue = "") String baseDir,
+            @Parameter(description = "文件", required = true)
+            @RequestParam("file") MultipartFile file,
+            @Parameter(description = "设备ID（可选，传入则更新该设备的photo字段）", required = false)
+            @RequestParam(value = "deviceId", required = false) Long deviceId) {
+        
+        String fileName = MinioUploadUtil.upload(baseDir, file);
+        String url = MinioUploadUtil.getPublicUrl(fileName);
+        
+        boolean updated = false;
+        if (deviceId != null) {
+            updated = plcDeviceService.updateDevicePhoto(deviceId, url);
+        }
+        
+        return ResponseDTO.ok(Map.of(
+                "url", url,
+                "fileName", fileName,
+                "originalFilename", file.getOriginalFilename(),
+                "devicePhotoUpdated", updated
+        ));
     }
 }

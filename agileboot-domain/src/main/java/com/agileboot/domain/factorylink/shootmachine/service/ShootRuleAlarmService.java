@@ -13,11 +13,15 @@ public interface ShootRuleAlarmService extends IService<ShootRuleAlarmEntity> {
     /** 按ID查询报警 */
     ShootRuleAlarmEntity getByIdOrThrow(Long id);
 
+    /** 根据站位号查询报警详情 */
+    Map<String, Object> getDetailByStationNo(Integer stationNo);
+
     /** 创建报警记录（含去重逻辑） */
     ShootRuleAlarmEntity create(ShootRuleAlarmEntity entity);
 
-    /** 处理报警 */
-    ShootRuleAlarmEntity handle(Long id, String remark);
+
+    /** 根据站位号和字段名称批量处理报警 */
+    void handleByStationNoAndField(Integer stationNo, String fieldName, String handleRemark);
 
     /** 统计概览：返回总数和报警数 */
     Map<String, Long> getStatisticsOverview(Long machineId);

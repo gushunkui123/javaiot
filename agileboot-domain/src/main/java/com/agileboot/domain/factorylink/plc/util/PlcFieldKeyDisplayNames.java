@@ -40,6 +40,22 @@ public final class PlcFieldKeyDisplayNames {
         return FIELD_NAME_MAP.getOrDefault(baseKey, "");
     }
 
+    /**
+     * 解析中文名，保留站位号后缀
+     * 例：dang_qian_jia_liu_time_1 -> 当前加硫时间_1
+     */
+    public static String resolveWithStationNo(String fieldKey) {
+        if (StrUtil.isBlank(fieldKey)) {
+            return "";
+        }
+        String name = resolve(fieldKey);
+        Integer stationNo = parseStationNo(fieldKey);
+        if (StrUtil.isNotBlank(name) && stationNo != null) {
+            return name + "_" + stationNo;
+        }
+        return StrUtil.isNotBlank(name) ? name : fieldKey.trim();
+    }
+
     /** 解析中文名；无映射时退回 fieldKey 本身。 */
     public static String resolveOrCode(String fieldKey) {
         if (StrUtil.isBlank(fieldKey)) {

@@ -19,6 +19,8 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootStationSchedul
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +57,37 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     @Override
+    public Map<String, Object> getDetailByStationNo(Integer stationNo) {
+        List<Map<String, Object>> results = baseMapper.selectAlarmDetailGroupByField(stationNo);
+        if (results.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> detail = new LinkedHashMap<>();
+        List<Map<String, Object>> fieldAlarms = new ArrayList<>();
+        for (Map<String, Object> row : results) {
+            Map<String, Object> fieldAlarm = new LinkedHashMap<>();
+            fieldAlarm.put("fieldName", row.get("fieldName"));
+            fieldAlarm.put("alarmCount", row.get("alarmCount"));
+            fieldAlarm.put("minValue", row.get("minValue"));
+            fieldAlarm.put("maxValue", row.get("maxValue"));
+            fieldAlarm.put("currentValue", row.get("currentValue"));
+            fieldAlarm.put("minAlarmTime", row.get("minAlarmTime"));
+            fieldAlarm.put("maxAlarmTime", row.get("maxAlarmTime"));
+            fieldAlarms.add(fieldAlarm);
+
+            if (!detail.containsKey("stationName")) {
+                detail.put("stationName", row.get("stationName"));
+                detail.put("machineName", row.get("machineName"));
+                detail.put("moldModel", row.get("moldModel"));
+                detail.put("moldColor", row.get("moldColor"));
+            }
+        }
+
+        detail.put("fieldAlarms", fieldAlarms);
+        return detail;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public ShootRuleAlarmEntity create(ShootRuleAlarmEntity entity) {
         validateAlarm(entity);
@@ -80,17 +113,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         return entity;
     }
 
+
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ShootRuleAlarmEntity handle(Long id, String handleRemark) {
-        ShootRuleAlarmEntity entity = getByIdOrThrow(id);
-        if ("true".equals(entity.getHandleStatus())) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "该报警已处理，请勿重复操作");
-        }
-        entity.setHandleStatus("true");
-        entity.setHandleRemark(StrUtil.isBlank(handleRemark) ? "" : handleRemark);
-        updateById(entity);
-        return entity;
+    public void handleByStationNoAndField(Integer stationNo, String fieldName, String handleRemark) {
+        baseMapper.updateHandleByStationNoAndField(stationNo, fieldName, StrUtil.isBlank(handleRemark) ? "" : handleRemark);
     }
 
     @Override
