@@ -17,15 +17,15 @@ public interface PlcDeviceMapper extends BaseMapper<PlcDeviceEntity> {
 
     /**
      * 查询点位数据（可选按设备ID过滤）
-     * currentValue值为OFF和ON的记录排在后面
+     * 
      */
     @Select("<script>" +
-            "SELECT display_name AS displayName, current_value AS currentValue FROM plc_data_point" +
+            "SELECT display_name AS displayName, current_value AS currentValue, mark_color AS markColor, sort_order AS sortOrder FROM plc_data_point" +
             "<where>" +
             "<if test='deviceId != null'>AND device_id = #{deviceId}</if>" +
             "</where>" +
             " ORDER BY " +
-            "CASE WHEN current_value IN ('OFF', 'ON') THEN 1 ELSE 0 END, " +
+            "sort_order ASC, " +
             "display_name" +
             "</script>")
     List<Map<String, Object>> selectDataPointsByDeviceId(@Param("deviceId") Long deviceId);

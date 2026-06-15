@@ -21,23 +21,24 @@ import java.util.Map;
  * PLC设备连接信息 Service 实现类
  */
 @Service
-@DS("slave")
 @RequiredArgsConstructor
 public class PlcDeviceServiceImpl extends ServiceImpl<PlcDeviceMapper, PlcDeviceEntity>
         implements PlcDeviceService {
 
     private final PlcDataService plcDataService;
-
+    @DS("slave")
     @Override
     public List<PlcDeviceEntity> listAllDevices() {
-        return list();
+        return list().stream().filter(device->device.getId()!=8L || device.getId()==null).toList();
     }
 
+    @DS("slave")
     @Override
     public List<Map<String, Object>> listDataPointsByDeviceId(Long deviceId) {
         return baseMapper.selectDataPointsByDeviceId(deviceId);
     }
 
+    @DS("slave")
     @Override
     public List<Map<String, Object>> listDevicesWithDataPoints(Long deviceId) {
         // 获取设备信息
@@ -73,7 +74,6 @@ public class PlcDeviceServiceImpl extends ServiceImpl<PlcDeviceMapper, PlcDevice
     }
 
     @Override
-    @DS("slave")
     public boolean updateDevicePhoto(Long deviceId, String photoUrl) {
         PlcDeviceEntity device = getById(deviceId);
         if (device != null) {
@@ -81,5 +81,11 @@ public class PlcDeviceServiceImpl extends ServiceImpl<PlcDeviceMapper, PlcDevice
             return updateById(device);
         }
         return false;
+    }
+
+    @DS("slave")
+    @Override
+    public List<PlcDeviceEntity> listAllDevicesData() {
+        return list();
     }
 }

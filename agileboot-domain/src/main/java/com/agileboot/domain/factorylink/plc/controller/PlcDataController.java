@@ -137,4 +137,9 @@ public class PlcDataController {
                 "devicePhotoUpdated", updated
         ));
     }
+    @Operation(summary = "查询已抓取PLC数据列表")
+    @GetMapping("/deviceData")
+    public ResponseDTO<List<PlcDeviceEntity>> listDevicesData() {
+        return ResponseDTO.ok(plcDeviceService.listAllDevicesData());
+    }
 }

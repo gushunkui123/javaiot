@@ -30,4 +30,6 @@ public interface PlcDeviceService extends IService<PlcDeviceEntity> {
      * 更新设备照片
      */
     boolean updateDevicePhoto(Long deviceId, String photoUrl);
+
+    List<PlcDeviceEntity> listAllDevicesData ();
 }
