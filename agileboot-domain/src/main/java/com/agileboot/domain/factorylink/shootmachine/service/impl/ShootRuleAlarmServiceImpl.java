@@ -16,6 +16,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStation
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -114,10 +115,18 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
 
+
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void handleByStationNoAndField(Integer stationNo, String fieldName, String handleRemark) {
-        baseMapper.updateHandleByStationNoAndField(stationNo, fieldName, StrUtil.isBlank(handleRemark) ? "" : handleRemark);
+    public void batchHandleAlarm(List<Long> alarmIds, String handleRemark) {
+        if (alarmIds == null || alarmIds.isEmpty()) {
+            return;
+        }
+        baseMapper.update(null, new UpdateWrapper<ShootRuleAlarmEntity>()
+                .in("id", alarmIds)
+                .set("handle_status", "true")
+                .set("handle_remark", StrUtil.isBlank(handleRemark) ? "" : handleRemark)
+                .set("updated_at", LocalDateTime.now()));
     }
 
     @Override
