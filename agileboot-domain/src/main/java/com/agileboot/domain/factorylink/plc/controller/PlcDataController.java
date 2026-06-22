@@ -35,7 +35,6 @@ public class PlcDataController {
     private final PlcDeviceService plcDeviceService;
     private final EnvironmentDataService environmentDataService;
 
-    //射出机5号机的设备数据
     @Operation(summary = "查询设备最新一批 PLC 数据（同一时间）")
     @GetMapping("/data/recent")
     public ResponseDTO<List<PlcDataEntity>> recent(
@@ -46,14 +45,12 @@ public class PlcDataController {
         return ResponseDTO.ok(plcDataService.listLatestSameTimestampByDeviceName(deviceName));
     }
 
-    //不包含射出机5号的 设备
     @Operation(summary = "查询 PLC 设备列表")
     @GetMapping("/devices")
     public ResponseDTO<List<PlcDeviceEntity>> listDevices() {
         return ResponseDTO.ok(plcDeviceService.listAllDevices());
     }
 
-    //不包含射出机的点位数据
     @Operation(summary = "查询设备及其点位数据")
     @GetMapping("/dataPoints")
     public ResponseDTO<List<Map<String, Object>>> listDataPoints(
@@ -72,7 +69,6 @@ public class PlcDataController {
         return ResponseDTO.ok(environmentDataService.latestByMac(mac));
     }
 
-    //射出机的点位
     @Operation(summary = "查询 PLC 数据点（按 sort_order 排序）")
     @GetMapping("/data/points/recent")
     public ResponseDTO<List<PlcDataPointEntity>> recentPoints(
@@ -95,7 +91,6 @@ public class PlcDataController {
         return ResponseDTO.ok();
     }
 
-    //阈值页面的解析
     @Operation(summary = "解析 PLC 数据字段中文名称列表")
     @GetMapping("/data/resolveFieldNames")
     public ResponseDTO<List<Map<String, String>>> resolveFieldNames(
@@ -142,7 +137,6 @@ public class PlcDataController {
                 "devicePhotoUpdated", updated
         ));
     }
-    //包含射出机5号的 数据
     @Operation(summary = "查询已抓取PLC数据列表")
     @GetMapping("/deviceData")
     public ResponseDTO<List<PlcDeviceEntity>> listDevicesData() {

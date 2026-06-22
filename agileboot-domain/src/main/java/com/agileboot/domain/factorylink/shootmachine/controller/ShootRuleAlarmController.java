@@ -30,11 +30,13 @@ public class ShootRuleAlarmController {
         return ResponseDTO.ok(shootRuleAlarmService.getDetailByStationNo(stationNo));
     }
 
-
-    @Operation(summary = "批量处理报警")
+    @Operation(summary = "根据站位号和字段名称批量处理报警")
     @PostMapping("/handleByStation")
-    public ResponseDTO<Void> batchHandle(@RequestBody ShootRuleAlarmEntity request) {
-        shootRuleAlarmService.batchHandleAlarm(request.getAlarmIds(), request.getHandleRemark());
+    public ResponseDTO<Void> handleByStation(
+            @RequestParam Integer stationNo,
+            @RequestParam String fieldName,
+            @RequestParam(required = false) String handleRemark) {
+        shootRuleAlarmService.handleByStationNoAndField(stationNo, fieldName, handleRemark);
         return ResponseDTO.ok();
     }
 

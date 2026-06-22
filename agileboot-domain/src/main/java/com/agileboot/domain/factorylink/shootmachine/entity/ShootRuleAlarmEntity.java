@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.Data;
 
 @Data
@@ -85,10 +84,6 @@ public class ShootRuleAlarmEntity implements Serializable {
     /** 模具颜色（非表字段，关联查询时填充） */
     @TableField(exist = false)
     private String moldColor;
-
-    /** 报警ID列表（非表字段，批量处理时传入） */
-    @TableField(exist = false)
-    private List<Long> alarmIds;
 
 
 }
