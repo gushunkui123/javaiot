@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
+import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
+import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
@@ -28,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity> implements PlcDataService {
 
+    private final PlcDataLatestMapper plcDataLatestMapper;
+
     /** PLC 字段名（field_key）最大长度 */
     private static final int KEY_MAX = 100;
     /** PLC 字段值（field_value）最大长度 */
@@ -48,19 +52,37 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         }
         String device = deviceName.trim();
         LocalDateTime ts = LocalDateTime.now();
+
         List<PlcDataEntity> rows = new ArrayList<>(root.size());
+        List<PlcDataLatestEntity> latestRows = new ArrayList<>(root.size());
         for (String key : root.keySet()) {
+            String fk = StrUtil.subPre(key, KEY_MAX);
+            String fv = StrUtil.subPre(Convert.toStr(root.get(key), ""), VAL_MAX);
+
+            // 历史表行
             PlcDataEntity row = new PlcDataEntity();
             row.setMachineId(machineId);
             row.setDeviceName(device);
             row.setDataTimestamp(ts);
-            row.setFieldKey(StrUtil.subPre(key, KEY_MAX));
-            row.setFieldValue(StrUtil.subPre(Convert.toStr(root.get(key), ""), VAL_MAX));
+            row.setFieldKey(fk);
+            row.setFieldValue(fv);
             row.setDeleted(false);
             rows.add(row);
+
+            // 最新表行
+            PlcDataLatestEntity latestRow = new PlcDataLatestEntity();
+            latestRow.setMachineId(machineId);
+            latestRow.setDeviceName(device);
+            latestRow.setDataTimestamp(ts);
+            latestRow.setFieldKey(fk);
+            latestRow.setFieldValue(fv);
+            latestRows.add(latestRow);
         }
         if (!rows.isEmpty()) {
+            // 1. 写入历史表（追加）
             saveBatch(rows, 200);
+            // 2. 写入最新表（upsert：存在则更新，不存在则插入）
+            plcDataLatestMapper.batchUpsert(latestRows);
         }
     }
 
@@ -70,7 +92,8 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (StrUtil.isBlank(deviceName)) {
             return List.of();
         }
-        return enrichDisplayNames(baseMapper.selectListLatestSameTimestampByDeviceName(deviceName.trim()));
+        List<PlcDataLatestEntity> latestRows = plcDataLatestMapper.selectListByDeviceName(deviceName.trim());
+        return enrichDisplayNames(toPlcDataEntities(latestRows));
     }
 
     //根据id查询
@@ -79,7 +102,8 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (machineId == null) {
             return List.of();
         }
-        return enrichDisplayNames(baseMapper.selectListLatestSameTimestampByMachineId(machineId));
+        List<PlcDataLatestEntity> latestRows = plcDataLatestMapper.selectListByMachineId(machineId);
+        return enrichDisplayNames(toPlcDataEntities(latestRows));
     }
 
     //解析显示名称
@@ -101,18 +125,37 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         if (ids.isEmpty()) {
             return Map.of();
         }
-        return baseMapper
+        return plcDataLatestMapper
                 .selectList(
-                        new QueryWrapper<PlcDataEntity>()
+                        new QueryWrapper<PlcDataLatestEntity>()
                                 .select("machine_id AS machineId", "MAX(`timestamp`) AS dataTimestamp")
-                                .eq("deleted", 0)
                                 .in("machine_id", ids)
                                 .groupBy("machine_id"))
                 .stream()
                 .filter(row -> row.getMachineId() != null && row.getDataTimestamp() != null)
                 .collect(Collectors.toMap(
-                        PlcDataEntity::getMachineId,
-                        PlcDataEntity::getDataTimestamp,
+                        PlcDataLatestEntity::getMachineId,
+                        PlcDataLatestEntity::getDataTimestamp,
                         (a, b) -> a));
+    }
+
+    // ===== 转换工具方法 =====
+
+    /** PlcDataLatestEntity → PlcDataEntity */
+    private PlcDataEntity toPlcDataEntity(PlcDataLatestEntity latest) {
+        PlcDataEntity entity = new PlcDataEntity();
+        entity.setId(latest.getId());
+        entity.setDeviceName(latest.getDeviceName());
+        entity.setMachineId(latest.getMachineId());
+        entity.setDataTimestamp(latest.getDataTimestamp());
+        entity.setFieldKey(latest.getFieldKey());
+        entity.setFieldValue(latest.getFieldValue());
+        entity.setCreateTime(latest.getCreateTime());
+        entity.setDeleted(false);
+        return entity;
+    }
+
+    private List<PlcDataEntity> toPlcDataEntities(List<PlcDataLatestEntity> latestRows) {
+        return latestRows.stream().map(this::toPlcDataEntity).toList();
     }
 }

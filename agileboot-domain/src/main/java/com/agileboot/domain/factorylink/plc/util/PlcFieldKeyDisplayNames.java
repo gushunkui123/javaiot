@@ -12,16 +12,34 @@ import java.util.regex.Pattern;
 public final class PlcFieldKeyDisplayNames {
 
     private static final Map<String, String> FIELD_NAME_MAP = Map.ofEntries(
+            // 加硫
             Map.entry("dang_qian_jia_liu_time", "当前加硫时间"),
             Map.entry("she_ding_jia_liu_time", "设定加硫时间"),
+            // 料量
             Map.entry("zuo_mo_she_ding", "左模料量设定"),
             Map.entry("you_mo_she_ding", "右模料量设定"),
             Map.entry("zuo_mo_shi_liang", "左模实时料量"),
             Map.entry("you_mo_shi_liang", "右模实时料量"),
             Map.entry("zuo_mo_time", "左模实时时间"),
             Map.entry("you_mo_time", "右模实时时间"),
+            // 模具动作
             Map.entry("kai_mo", "开模"),
-            Map.entry("zeng_ya", "增压")
+            Map.entry("zeng_ya", "增压"),
+            // 射出速度
+            Map.entry("zuo_mo_she_chu_su_du", "左模射出速度"),
+            Map.entry("you_mo_she_chu_su_du", "右模射出速度"),
+            // 模温（带站号）
+            Map.entry("nei_1_zuo_mo_wen_du", "内1左模温度"),
+            Map.entry("nei_1_you_mo_wen_du", "内1右模温度"),
+            Map.entry("nei_2_zuo_mo_wen_du", "内2左模温度"),
+            Map.entry("nei_2_you_mo_wen_du", "内2右模温度"),
+            // 射腔温度
+            Map.entry("she_qiang_dang_qian_wen_du", "射枪当前温度"),
+            // 合模状态
+            Map.entry("he_mo_zhuang_tai", "合模状态"),
+        
+            // 开模状态
+            Map.entry("kai_mo_zhuang_tai", "开模状态")
     );
 
     private static final Pattern STATION_PATTERN = Pattern.compile("_(\\d+)$");

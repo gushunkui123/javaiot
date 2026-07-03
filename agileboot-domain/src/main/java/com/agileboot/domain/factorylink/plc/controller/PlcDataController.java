@@ -1,6 +1,7 @@
 package com.agileboot.domain.factorylink.plc.controller;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.dto.ResponseDTO;
+import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.domain.factorylink.plc.entity.EnvironmentDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataPointEntity;
@@ -11,16 +12,24 @@ import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
 import com.agileboot.domain.factorylink.plc.util.MinioUploadUtil;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
+import com.agileboot.domain.factorylink.plc.util.SignedRestTemplateUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
+
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "FactoryLink PLC 数据")
@@ -28,13 +37,31 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/factorylink/plc")
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 public class PlcDataController {
 
     private final PlcDataService plcDataService;
     private final PlcDataPointService plcDataPointService;
     private final PlcDeviceService plcDeviceService;
     private final EnvironmentDataService environmentDataService;
+    private final RestTemplate restTemplate;
 
+    @Value("${factory-link.workshop.base-url:http://10.0.100.225}")
+    private String workshopBaseUrl;
+
+    @Value("${factory-link.workshop.plc-device-path:/api/device/queryPlcDataDeviceList}")
+    private String plcDevicePath;
+
+    @Value("${factory-link.workshop.plc-data-point-path:/api/device/queryPlcDataPointList}")
+    private String plcDataPointPath;
+
+    @Value("${factory-link.workshop.api-key:}")
+    private String workshopApiKey;
+
+    @Value("${factory-link.workshop.api-secret:}")
+    private String workshopApiSecret;
+
+    //射出机5号机的设备数据
     @Operation(summary = "查询设备最新一批 PLC 数据（同一时间）")
     @GetMapping("/data/recent")
     public ResponseDTO<List<PlcDataEntity>> recent(
@@ -45,19 +72,65 @@ public class PlcDataController {
         return ResponseDTO.ok(plcDataService.listLatestSameTimestampByDeviceName(deviceName));
     }
 
+    //不包含射出机5号的 设备
     @Operation(summary = "查询 PLC 设备列表")
     @GetMapping("/devices")
     public ResponseDTO<List<PlcDeviceEntity>> listDevices() {
         return ResponseDTO.ok(plcDeviceService.listAllDevices());
     }
 
+    //包含射出机的点位数据
     @Operation(summary = "查询设备及其点位数据")
     @GetMapping("/dataPoints")
-    public ResponseDTO<List<Map<String, Object>>> listDataPoints(
+        public ResponseDTO<List<Map<String, Object>>> listDataPoints(
             @Parameter(description = "设备ID", required = false)
             @RequestParam(value = "deviceId", required = false) Long deviceId) {
         return ResponseDTO.ok(plcDeviceService.listDevicesWithDataPoints(deviceId));
     }
+//    public ResponseDTO<List<Map<String, Object>>> listDataPoints(
+//            @Parameter(description = "设备ID", required = false)
+//            @RequestParam(value = "deviceId", required = false) Long deviceId,
+//            @Parameter(description = "设备编码", required = false)
+//            @RequestParam(value = "deviceCode", required = false) String deviceCode) {
+//
+//        log.info("调用外部PLC数据点接口: {}{}", workshopBaseUrl, plcDataPointPath);
+//
+//        Map<String, String> businessParams = new HashMap<>();
+//        if (deviceId != null) {
+//            businessParams.put("deviceId", deviceId.toString());
+//        }
+//        if (deviceCode != null && !deviceCode.isEmpty()) {
+//            businessParams.put("deviceCode", deviceCode);
+//        }
+//
+//        SignedRestTemplateUtil signedRestTemplate = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
+//        ResponseEntity<Map<String, Object>> response = signedRestTemplate.get(workshopBaseUrl, plcDataPointPath, businessParams, new ParameterizedTypeReference<Map<String, Object>>() {});
+//
+//        Map<String, Object> result = response.getBody();
+//        List<Map<String, Object>> data = (List<Map<String, Object>>) result.get("data");
+//
+//        Map<Long, Map<String, Object>> deviceMap = new HashMap<>();
+//        for (Map<String, Object> point : data) {
+//            Long devId = point.get("deviceId") instanceof Number ? ((Number) point.get("deviceId")).longValue() : null;
+//            String devName = (String) point.get("deviceName");
+//
+//            Map<String, Object> device = deviceMap.computeIfAbsent(devId, k -> {
+//                Map<String, Object> d = new HashMap<>();
+//                d.put("deviceId", devId);
+//                d.put("deviceName", devName);
+//                d.put("dataPoints", new ArrayList<>());
+//                return d;
+//            });
+//
+//            Map<String, Object> pointData = new HashMap<>(point);
+//            pointData.remove("deviceId");
+//            pointData.remove("deviceName");
+//            ((List<Map<String, Object>>) device.get("dataPoints")).add(pointData);
+//        }
+//
+//        List<Map<String, Object>> groupedResult = new ArrayList<>(deviceMap.values());
+//        return ResponseDTO.ok(groupedResult);
+//    }
 
     @Operation(summary = "查询环境数据最新一条")
     @GetMapping("/environment")
@@ -69,6 +142,7 @@ public class PlcDataController {
         return ResponseDTO.ok(environmentDataService.latestByMac(mac));
     }
 
+    //射出机的点位
     @Operation(summary = "查询 PLC 数据点（按 sort_order 排序）")
     @GetMapping("/data/points/recent")
     public ResponseDTO<List<PlcDataPointEntity>> recentPoints(
@@ -91,6 +165,7 @@ public class PlcDataController {
         return ResponseDTO.ok();
     }
 
+    //阈值页面的解析
     @Operation(summary = "解析 PLC 数据字段中文名称列表")
     @GetMapping("/data/resolveFieldNames")
     public ResponseDTO<List<Map<String, String>>> resolveFieldNames(
@@ -137,9 +212,20 @@ public class PlcDataController {
                 "devicePhotoUpdated", updated
         ));
     }
+    //包含射出机5号的 数据
     @Operation(summary = "查询已抓取PLC数据列表")
     @GetMapping("/deviceData")
-    public ResponseDTO<List<PlcDeviceEntity>> listDevicesData() {
+      public ResponseDTO<List<PlcDeviceEntity>> listDevicesData() {
         return ResponseDTO.ok(plcDeviceService.listAllDevicesData());
     }
+//    public ResponseDTO<List<PlcDeviceEntity>> listDevicesData() {
+//        log.info("调用外部PLC设备接口: {}{}", workshopBaseUrl, plcDevicePath);
+//
+//        SignedRestTemplateUtil signedRestTemplate = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
+//        ResponseEntity<Map<String, Object>> response = signedRestTemplate.get(workshopBaseUrl, plcDevicePath, null, new ParameterizedTypeReference<Map<String, Object>>() {});
+//
+//        Map<String, Object> result = response.getBody();
+//        List<PlcDeviceEntity> data = (List<PlcDeviceEntity>) result.get("data");
+//        return ResponseDTO.ok(data);
+//    }
 }

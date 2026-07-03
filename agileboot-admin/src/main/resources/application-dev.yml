@@ -1,5 +1,34 @@
+# 外部接口配置
+factory-link:
+    workshop:
+        base-url: http://10.0.100.225:8088
+        plc-device-path: /api/device/queryPlcDataDeviceList
+        plc-data-point-path: /api/device/queryPlcDataPointList
+        api-key: 19e3f535-7fde-4dcc-b552-cfdd9dd92661
+        api-secret: ZU6yq7S4u3JoSBivcdfq5NOj2pRolpT-ExjBbcU3BWY
+    emqx:
+        enabled: true
+        broker-url: tcp://10.0.100.26:1883
+        client-id:  agileboot-client
+        username: test01
+        password: 123456asd
+        inbound-topics:
+            - plc_data
+            - HWY01
+        completion-timeout: 5000
+        inbound-qos: 1
+        plc-data-topic: plc_data
+        environment-data-topic: HWY01
+        email:
+            from: ftihb-it03@ficinjection.com
+            to: ftihb-it04@ficinjection.com
+
 # 数据源配置
 spring:
+    servlet:
+        multipart:
+            max-file-size: 20MB
+            max-request-size: 50MB
     datasource:
         type: com.alibaba.druid.pool.DruidDataSource
         driverClassName: com.mysql.cj.jdbc.Driver
@@ -66,6 +95,10 @@ spring:
                     url: jdbc:mysql://10.0.100.27:3306/pythoniot?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
                     username: root
                     password: QWEasdZXC456456
+                data_center:
+                    url: jdbc:mysql://10.0.100.27:3306/iot_data_center?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+                    username: root
+                    password: QWEasdZXC456456
 
     # redis 配置
     data:
@@ -92,9 +125,30 @@ spring:
                     # #连接池最大阻塞等待时间（使用负值表示没有限制）
                     max-wait: -1ms
 
+    # 邮件配置
+    mail:
+        host: smtp.ficinjection.com
+        port: 587
+        username: ftihb-it03@ficinjection.com
+        password: L4mWTP0a
+        properties:
+            mail:
+                smtp:
+                    auth: true
+                    starttls:
+                        enable: true
+
 logging:
     file:
-        path: D:/logs/agileboot-dev
+        path: /var/logs/agileboot
+    pattern:
+        file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    logback:
+        rollingpolicy:
+            file-name-pattern: /var/logs/agileboot/spring-%d{yyyy-MM-dd}.%i.log
+            max-file-size: 100MB
+            max-history: 30
+            total-size-cap: 1GB
 
 
 springdoc:
@@ -105,19 +159,7 @@ springdoc:
 
 
 # 自建 EMQX（dev；与边缘网关约定 Topic 后可将 enabled 设为 true）
-factory-link:
-    emqx:
-        enabled: true
-        broker-url: tcp://10.0.100.26:1883
-        client-id:  agileboot-client
-        username: test01
-        password: 123456asd
-        inbound-topics:
-            - plc_data
-        completion-timeout: 5000
-        inbound-qos: 1
-        plc-data-topic: plc_data
-        plc-data-device-name: 射出机五号机
+# 生产环境配置示例（启用时取消注释并注释上方 emqx 配置）
 #factory-link:
 #    emqx:
 #        enabled: true
