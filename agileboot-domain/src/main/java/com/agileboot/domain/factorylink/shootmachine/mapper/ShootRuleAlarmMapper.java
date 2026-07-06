@@ -132,12 +132,12 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("stationId") Long stationId);
 
     /**
-     * 批量自动处理超过指定秒数的黄色报警（基于updated_at判断）
+     * 批量自动处理超过指定秒数的黄色报警（基于updated_at判断，使用数据库NOW()避免时间不同步）
      */
     @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '超时自动取消' "
             + "WHERE deleted = 0 AND alarm_level = 'yellow' AND handle_status = 'false' "
-            + "AND updated_at < #{expireTime}")
-    int handleExpiredYellowAlarms(@Param("expireTime") LocalDateTime expireTime);
+            + "AND updated_at < DATE_SUB(NOW(), INTERVAL #{expireSeconds} SECOND)")
+    int handleExpiredYellowAlarms(@Param("expireSeconds") int expireSeconds);
 
     /**
      * 查询指定规则的未处理红色报警数量

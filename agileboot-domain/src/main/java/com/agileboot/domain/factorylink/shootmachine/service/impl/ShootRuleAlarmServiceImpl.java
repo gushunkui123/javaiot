@@ -76,13 +76,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 定时任务：每2秒自动处理超过10秒的黄色报警（基于updated_at判断）
-     * 从查询方法中分离出来，避免管理页面查询时误删黄色报警
+     * 定时任务：每2秒自动处理超过10秒的黄色报警（基于updated_at判断，使用数据库时间）
      */
     @org.springframework.scheduling.annotation.Scheduled(fixedRate = 2000)
     public void autoHandleExpiredYellowAlarms() {
-        LocalDateTime expireTime = LocalDateTime.now().minusSeconds(10);
-        int handledCount = baseMapper.handleExpiredYellowAlarms(expireTime);
+        int handledCount = baseMapper.handleExpiredYellowAlarms(10);
         if (handledCount > 0) {
             log.info("自动取消{}条超时黄色报警", handledCount);
         }
