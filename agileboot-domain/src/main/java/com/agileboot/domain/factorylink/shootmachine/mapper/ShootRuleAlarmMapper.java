@@ -2,6 +2,8 @@ package com.agileboot.domain.factorylink.shootmachine.mapper;
 
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +140,19 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             + "WHERE deleted = 0 AND alarm_level = 'yellow' AND handle_status = 'false' "
             + "AND updated_at < DATE_SUB(NOW(), INTERVAL #{expireSeconds} SECOND)")
     int handleExpiredYellowAlarms(@Param("expireSeconds") int expireSeconds);
+
+    /**
+     * 插入红色报警
+     */
+    @Insert("INSERT INTO shoot_rule_alarm (machine_id, station_id, mold_id, rule_id, field_code, field_name, " +
+            "min_value, max_value, current_value, alarm_level, alarm_time, handle_status, deleted, created_at, updated_at) " +
+            "VALUES (#{machineId}, #{stationId}, #{moldId}, #{ruleId}, #{fieldCode}, #{fieldName}, " +
+            "#{minValue}, #{maxValue}, #{currentValue}, 'red', NOW(), 'false', 0, NOW(), NOW())")
+    int insertRedAlarm(@Param("machineId") Long machineId, @Param("stationId") Long stationId,
+                       @Param("moldId") Long moldId, @Param("ruleId") Long ruleId,
+                       @Param("fieldCode") String fieldCode, @Param("fieldName") String fieldName,
+                       @Param("minValue") BigDecimal minValue, @Param("maxValue") BigDecimal maxValue,
+                       @Param("currentValue") BigDecimal currentValue);
 
     /**
      * 查询指定规则的未处理红色报警数量

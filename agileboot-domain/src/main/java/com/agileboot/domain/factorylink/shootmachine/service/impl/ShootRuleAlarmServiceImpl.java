@@ -291,26 +291,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     private void createAlarmFromDetection(Long machineId, Long stationId, ShootMoldRuleEntity rule, BigDecimal currentValue) {
-        ShootRuleAlarmEntity alarm = new ShootRuleAlarmEntity();
-        alarm.setMachineId(machineId);
-        alarm.setStationId(stationId);
-        alarm.setMoldId(rule.getMoldId());
-        alarm.setRuleId(rule.getId());
-        alarm.setFieldCode(rule.getFieldCode());
-        alarm.setFieldName(rule.getFieldName());
-        alarm.setMinValue(rule.getMinValue());
-        alarm.setMaxValue(rule.getMaxValue());
-        alarm.setCurrentValue(currentValue);
-        alarm.setAlarmTime(LocalDateTime.now());
-        alarm.setHandleStatus("false");
-        alarm.setCreatedAt(LocalDateTime.now());
-        alarm.setUpdatedAt(LocalDateTime.now());
         try {
-            ShootRuleAlarmEntity createdAlarm = create(alarm);
-            if (createdAlarm != null) {
-                // 发送告警邮件
-//                sendAlarmEmail(createdAlarm);
-            }
+            baseMapper.insertRedAlarm(machineId, stationId, rule.getMoldId(), rule.getId(),
+                    rule.getFieldCode(), rule.getFieldName(), rule.getMinValue(), rule.getMaxValue(), currentValue);
         } catch (Exception e) {
             log.error("Create alarm failed: machineId={}, stationId={}, ruleId={}, fieldCode={}",
                     machineId, stationId, rule.getId(), rule.getFieldCode(), e);
