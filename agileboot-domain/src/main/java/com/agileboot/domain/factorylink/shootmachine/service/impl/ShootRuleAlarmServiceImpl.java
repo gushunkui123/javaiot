@@ -292,8 +292,18 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     private void createAlarmFromDetection(Long machineId, Long stationId, ShootMoldRuleEntity rule, BigDecimal currentValue) {
         try {
+            // 去重：检查1分钟内是否有相同的红色报警
+            LocalDateTime sinceTime = LocalDateTime.now().minusMinutes(ALARM_DEDUP_MINUTES);
+            long count = baseMapper.countRecentSameRedAlarm(machineId, stationId, rule.getId(), sinceTime);
+            if (count > 0) {
+                return;
+            }
+
             baseMapper.insertRedAlarm(machineId, stationId, rule.getMoldId(), rule.getId(),
                     rule.getFieldCode(), rule.getFieldName(), rule.getMinValue(), rule.getMaxValue(), currentValue);
+            
+            log.info("创建红色报警: machineId={}, stationId={}, ruleId={}, fieldCode={}, currentValue={}",
+                    machineId, stationId, rule.getId(), rule.getFieldCode(), currentValue);
         } catch (Exception e) {
             log.error("Create alarm failed: machineId={}, stationId={}, ruleId={}, fieldCode={}",
                     machineId, stationId, rule.getId(), rule.getFieldCode(), e);

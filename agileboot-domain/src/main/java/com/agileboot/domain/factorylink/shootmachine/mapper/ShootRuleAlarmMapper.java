@@ -166,6 +166,19 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("ruleId") Long ruleId);
 
     /**
+     * 查询最近是否有相同的红色报警（去重用）
+     */
+    @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false' "
+            + "AND alarm_time >= #{sinceTime}")
+    long countRecentSameRedAlarm(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("ruleId") Long ruleId,
+            @Param("sinceTime") LocalDateTime sinceTime);
+
+    /**
      * 自动取消指定规则的红色报警（参数恢复正常时）
      */
     @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消' "
