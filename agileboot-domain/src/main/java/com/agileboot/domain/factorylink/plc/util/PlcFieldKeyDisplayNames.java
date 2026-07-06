@@ -37,12 +37,25 @@ public final class PlcFieldKeyDisplayNames {
             Map.entry("she_qiang_dang_qian_wen_du", "射枪当前温度"),
             // 合模状态
             Map.entry("he_mo_zhuang_tai", "合模状态"),
-        
             // 开模状态
-            Map.entry("kai_mo_zhuang_tai", "开模状态")
+            Map.entry("kai_mo_zhuang_tai", "开模状态"),
+            // 站台温度（zt格式）
+            Map.entry("r_tr1", "右模实时温度1"),
+            Map.entry("r_tr2", "右模实时温度2"),
+            Map.entry("l_tr1", "左模实时温度1"),
+            Map.entry("l_tr2", "左模实时温度2"),
+            Map.entry("r_ts1", "右模设定温度1"),
+            Map.entry("r_ts2", "右模设定温度2"),
+            Map.entry("l_ts1", "左模设定温度1"),
+            Map.entry("l_ts2", "左模设定温度2"),
+            // 站台开合模状态（zt格式）
+            Map.entry("open", "开模状态"),
+            Map.entry("close", "合模状态")
     );
 
     private static final Pattern STATION_PATTERN = Pattern.compile("_(\\d+)$");
+    // 新格式：zt8_r_tr1，站位号在开头
+    private static final Pattern ZT_STATION_PATTERN = Pattern.compile("^zt(\\d+)_");
 
     private PlcFieldKeyDisplayNames() {}
 
@@ -85,13 +98,21 @@ public final class PlcFieldKeyDisplayNames {
 
     /**
      * 解析站位号，解析失败返回 null
+     * 例：zt8_r_tr1 -> 8（优先匹配新格式）
      * 例：dang_qian_jia_liu_time_1 -> 1
      */
     public static Integer parseStationNo(String fieldKey) {
         if (StrUtil.isBlank(fieldKey)) {
             return null;
         }
-        Matcher matcher = STATION_PATTERN.matcher(fieldKey.trim().toLowerCase());
+        String trimmedKey = fieldKey.trim().toLowerCase();
+        // 优先匹配新格式 zt8_r_tr1
+        Matcher ztMatcher = ZT_STATION_PATTERN.matcher(trimmedKey);
+        if (ztMatcher.find()) {
+            return Integer.valueOf(ztMatcher.group(1));
+        }
+        // 兜底匹配旧格式 xxx_1
+        Matcher matcher = STATION_PATTERN.matcher(trimmedKey);
         return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
     }
 
@@ -111,7 +132,8 @@ public final class PlcFieldKeyDisplayNames {
     }
 
     /**
-     * 提取基础字段名（去掉末尾的站位号）
+     * 提取基础字段名（去掉站位号部分）
+     * 例：zt8_r_tr1 -> r_tr1（去掉zt8_前缀）
      * 例：dang_qian_jia_liu_time_1 -> dang_qian_jia_liu_time
      */
     public static String extractBaseKey(String fieldKey) {
@@ -119,6 +141,12 @@ public final class PlcFieldKeyDisplayNames {
             return "";
         }
         String trimmedKey = fieldKey.trim().toLowerCase();
+        // 优先处理新格式 zt8_r_tr1 -> r_tr1
+        Matcher ztMatcher = ZT_STATION_PATTERN.matcher(trimmedKey);
+        if (ztMatcher.find()) {
+            return ztMatcher.replaceFirst("");
+        }
+        // 兜底处理旧格式 xxx_1 -> xxx
         Matcher matcher = STATION_PATTERN.matcher(trimmedKey);
         return matcher.find() ? matcher.replaceAll("") : trimmedKey;
     }

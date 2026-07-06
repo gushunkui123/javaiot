@@ -29,6 +29,8 @@ public class ShootRuleAlarmController {
     
     // 报警级别列索引
     private static final int COLUMN_ALARM_LEVEL = 3;
+    // 处理状态列索引
+    private static final int COLUMN_HANDLE_STATUS = 8;
 
     @Operation(summary = "查询所有未处理的报警")
     @GetMapping("/unhandled")
@@ -72,6 +74,7 @@ public class ShootRuleAlarmController {
                 configureExcelWriter(writer);
                 writer.write(exportList, true);
                 applyAlarmLevelColors(writer, exportList.size());
+                applyHandleStatusColors(writer, exportList.size());
                 writer.flush(response.getOutputStream(), true);
             }
         } catch (Exception e) {
@@ -135,6 +138,42 @@ public class ShootRuleAlarmController {
                         cell.setCellStyle(yellowStyle);
                     } else if ("红色".equals(alarmLevel)) {
                         cell.setCellStyle(redStyle);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 为处理状态列应用颜色样式
+     */
+    private void applyHandleStatusColors(ExcelWriter writer, int rowCount) {
+        if (rowCount == 0) {
+            return;
+        }
+        
+        org.apache.poi.ss.usermodel.Sheet sheet = writer.getSheet();
+        
+        // 创建一次样式，循环中复用
+        CellStyle handledStyle = writer.getWorkbook().createCellStyle();
+        handledStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
+        handledStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        
+        CellStyle unhandledStyle = writer.getWorkbook().createCellStyle();
+        unhandledStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        unhandledStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        
+        // 遍历数据行（从第2行开始，第1行是表头）
+        for (int i = 1; i <= rowCount; i++) {
+            org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+            if (row != null) {
+                org.apache.poi.ss.usermodel.Cell cell = row.getCell(COLUMN_HANDLE_STATUS);
+                if (cell != null) {
+                    String handleStatus = cell.getStringCellValue();
+                    if ("已处理".equals(handleStatus)) {
+                        cell.setCellStyle(handledStyle);
+                    } else if ("未处理".equals(handleStatus)) {
+                        cell.setCellStyle(unhandledStyle);
                     }
                 }
             }

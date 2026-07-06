@@ -106,9 +106,12 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         return enrichDisplayNames(toPlcDataEntities(latestRows));
     }
 
-    //解析显示名称
+    //解析显示名称和站位号
     private List<PlcDataEntity> enrichDisplayNames(List<PlcDataEntity> rows) {
-        rows.forEach(row -> row.setName(PlcFieldKeyDisplayNames.resolve(row.getFieldKey())));
+        rows.forEach(row -> {
+            row.setName(PlcFieldKeyDisplayNames.resolve(row.getFieldKey()));
+            row.setStationNo(PlcFieldKeyDisplayNames.parseStationNo(row.getFieldKey()));
+        });
         return rows;
     }
 

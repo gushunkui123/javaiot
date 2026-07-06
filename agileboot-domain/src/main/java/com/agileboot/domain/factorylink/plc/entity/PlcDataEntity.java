@@ -39,6 +39,10 @@ public class PlcDataEntity implements Serializable {
     @TableField(exist = false)
     private String name;
 
+    /** 站位号，从 fieldKey 中解析，非表字段。 */
+    @TableField(exist = false)
+    private Integer stationNo;
+
     @TableField("field_value")
     private String fieldValue;
 
