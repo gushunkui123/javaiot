@@ -93,12 +93,13 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
         "</script>")
     List<Map<String, Object>> selectAlarmDetailGroupByField(@Param("stationNo") Integer stationNo);
 
-    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = #{handleRemark} "
-            + "WHERE deleted = 0 AND field_name = #{fieldName} "
-            + "AND station_id IN (SELECT id FROM shoot_machine_station WHERE station_no = #{stationNo} AND deleted = 0)")
-    void updateHandleByStationNoAndField(
-            @Param("stationNo") Integer stationNo,
-            @Param("fieldName") String fieldName,
+    @Update("<script>" +
+            "UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = #{handleRemark} " +
+            "WHERE deleted = 0 AND id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
+            "</script>")
+    void updateHandleByStationIdAndField(
+            @Param("ids") List<Long> ids,
             @Param("handleRemark") String handleRemark);
 
     /**

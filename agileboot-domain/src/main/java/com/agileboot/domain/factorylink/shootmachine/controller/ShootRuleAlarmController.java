@@ -3,6 +3,7 @@ package com.agileboot.domain.factorylink.shootmachine.controller;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Internal;
+import com.agileboot.domain.factorylink.shootmachine.dto.BatchHandleAlarmDTO;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmExportDTO;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
@@ -44,13 +45,10 @@ public class ShootRuleAlarmController {
         return ResponseDTO.ok(shootRuleAlarmService.getDetailByStationNo(stationNo));
     }
 
-    @Operation(summary = "根据站位号和字段名称批量处理报警")
+    @Operation(summary = "根据报警ID列表批量处理报警")
     @PostMapping("/handleByStation")
-    public ResponseDTO<Void> handleByStation(
-            @RequestParam Integer stationNo,
-            @RequestParam String fieldName,
-            @RequestParam(required = false) String handleRemark) {
-        shootRuleAlarmService.handleByStationNoAndField(stationNo, fieldName, handleRemark);
+    public ResponseDTO<Void> handleByStation(@RequestBody BatchHandleAlarmDTO dto) {
+        shootRuleAlarmService.handleByStationIdAndField(dto.getIds(), dto.getHandleRemark());
         return ResponseDTO.ok();
     }
 

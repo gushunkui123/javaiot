@@ -93,8 +93,8 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        requireExists(id);
-        deleteValidator.assertNoAlarm(null, null, id, null);
+        ShootStationScheduleEntity schedule = requireExists(id);
+        deleteValidator.assertNoAlarm(null, null, schedule.getStationId(), null);
         removeById(id);
     }
 

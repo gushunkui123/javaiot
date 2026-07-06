@@ -155,8 +155,8 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void handleByStationNoAndField(Integer stationNo, String fieldName, String handleRemark) {
-        baseMapper.updateHandleByStationNoAndField(stationNo, fieldName, StrUtil.isBlank(handleRemark) ? "" : handleRemark);
+    public void handleByStationIdAndField(List<Long> ids, String handleRemark) {
+        baseMapper.updateHandleByStationIdAndField(ids, StrUtil.isBlank(handleRemark) ? "" : handleRemark);
     }
 
     @Override

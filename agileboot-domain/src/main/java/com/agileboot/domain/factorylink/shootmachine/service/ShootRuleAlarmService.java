@@ -24,8 +24,8 @@ public interface ShootRuleAlarmService extends IService<ShootRuleAlarmEntity> {
     ShootRuleAlarmEntity create(ShootRuleAlarmEntity entity);
 
 
-    /** 根据站位号和字段名称批量处理报警 */
-    void handleByStationNoAndField(Integer stationNo, String fieldName, String handleRemark);
+    /** 根据报警ID列表批量处理报警 */
+    void handleByStationIdAndField(List<Long> ids, String handleRemark);
 
     /** 统计概览：返回总数和报警数 */
     Map<String, Long> getStatisticsOverview(Long machineId);
