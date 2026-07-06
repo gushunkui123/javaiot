@@ -57,6 +57,10 @@ public class ShootRuleAlarmEntity implements Serializable {
     @TableField("handle_remark")
     private String handleRemark;
 
+    /** 报警级别：red-红色报警，yellow-黄色报警 */
+    @TableField("alarm_level")
+    private String alarmLevel;
+
     @TableField("created_at")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

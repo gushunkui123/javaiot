@@ -8,6 +8,8 @@ import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.common.mail.EmailService;
+import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
+import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.shootmachine.entity.*;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
@@ -19,6 +21,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootStationSchedul
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,16 +38,54 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         implements ShootRuleAlarmService {
 
     private static final int ALARM_DEDUP_MINUTES = 1;
+    private static final int STOP_TIME_THRESHOLD_SECONDS = 900; // 停机阈值：900秒 = 15分钟
 
     private final ShootStationScheduleService shootStationScheduleService;
     private final ShootMoldRuleService shootMoldRuleService;
     private final ShootMachineService shootMachineService;
     private final ShootMachineStationService shootMachineStationService;
     private final EmailService emailService;
+    private final PlcDataLatestMapper plcDataLatestMapper;
 
     @Override
     public List<ShootRuleAlarmEntity> listUnhandledWithRelation(Long machineId) {
+        // 直接查询未处理报警（自动取消逻辑已移至定时任务）
         return baseMapper.selectUnhandledListWithRelation(machineId);
+    }
+
+    @Override
+    public List<ShootRuleAlarmExportDTO> listAllForExport(Long machineId, Integer days) {
+        List<ShootRuleAlarmEntity> alarms = baseMapper.selectAllWithRelation(machineId, days);
+        List<ShootRuleAlarmExportDTO> exportList = new ArrayList<>();
+        for (ShootRuleAlarmEntity alarm : alarms) {
+            ShootRuleAlarmExportDTO dto = new ShootRuleAlarmExportDTO();
+            dto.setMachineName(alarm.getMachineName());
+            dto.setStationName(alarm.getStationName());
+            dto.setFieldName(alarm.getFieldName());
+            dto.setAlarmLevel("yellow".equals(alarm.getAlarmLevel()) ? "黄色" : "红色");
+            dto.setMinValue(alarm.getMinValue() != null ? alarm.getMinValue().toString() : "");
+            dto.setCurrentValue(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
+            dto.setMaxValue(alarm.getMaxValue() != null ? alarm.getMaxValue().toString() : "");
+            dto.setAlarmTime(alarm.getAlarmTime() != null ? alarm.getAlarmTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
+            dto.setHandleStatus("true".equals(alarm.getHandleStatus()) ? "已处理" : "未处理");
+            dto.setMoldModel(alarm.getMoldModel());
+            dto.setMoldColor(alarm.getMoldColor());
+            exportList.add(dto);
+        }
+        return exportList;
+    }
+
+    /**
+     * 定时任务：每2秒自动处理超过10秒的黄色报警（基于updated_at判断）
+     * 从查询方法中分离出来，避免管理页面查询时误删黄色报警
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 2000)
+    public void autoHandleExpiredYellowAlarms() {
+        LocalDateTime expireTime = LocalDateTime.now().minusSeconds(10);
+        int handledCount = baseMapper.handleExpiredYellowAlarms(expireTime);
+        if (handledCount > 0) {
+            log.info("自动取消{}条超时黄色报警", handledCount);
+        }
     }
 
     @Override
@@ -149,6 +190,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 checkRuleAndCreateAlarm(machineId, schedule.getStationId(), schedule.getStationNo(), rule, root);
             }
         }
+
+        // 检测停机状态（黄色报警）
+        detectStopAlarm(machineId, schedules, root);
     }
 
     private JSONObject parseJson(String json) {
@@ -157,6 +201,64 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         } catch (Exception e) {
             log.warn("PLC JSON parse failed: {}", e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * 检测停机状态：当 dang_qian_jia_liu_time 字段数据更新时间超过15分钟未更新时触发黄色报警
+     */
+    private void detectStopAlarm(Long machineId, List<ShootStationScheduleEntity> schedules, JSONObject root) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime thresholdTime = now.minusMinutes(15); // 15分钟阈值
+        
+        for (ShootStationScheduleEntity schedule : schedules) {
+            if (schedule.getStationId() == null || schedule.getStationNo() == null) {
+                continue;
+            }
+
+            // 查找当前加硫时间字段
+            String timeFieldKey = "dang_qian_jia_liu_time_" + schedule.getStationNo();
+            
+            // 从数据库查询该字段的最新更新时间
+            PlcDataLatestEntity latestData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKey(machineId, timeFieldKey);
+            
+            if (latestData == null) {
+                // 没有数据，跳过
+                continue;
+            }
+            
+            // 使用create_time作为数据更新时间
+            LocalDateTime dataUpdateTime = latestData.getCreateTime();
+            if (dataUpdateTime == null) {
+                dataUpdateTime = latestData.getDataTimestamp();
+            }
+            
+            if (dataUpdateTime == null) {
+                continue;
+            }
+            
+            // 判断数据是否超过15分钟未更新
+            boolean isStale = dataUpdateTime.isBefore(thresholdTime);
+            
+            // 查询当前站位是否有未处理的黄色报警
+            long yellowAlarmCount = baseMapper.countRecentYellowAlarm(
+                    machineId,
+                    schedule.getStationId(),
+                    now.minusMinutes(ALARM_DEDUP_MINUTES));
+
+            if (isStale && yellowAlarmCount == 0) {
+                // 数据超过15分钟未更新，创建黄色报警
+                // 从数据库获取最新的字段值
+                String fieldValueStr = latestData.getFieldValue();
+                BigDecimal fieldValue = Convert.toBigDecimal(fieldValueStr, null);
+                long currentValue = fieldValue != null ? fieldValue.longValue() : 0;
+                
+                baseMapper.insertYellowAlarm(machineId, schedule.getStationId(), currentValue);
+                log.info("创建数据超时黄色报警: machineId={}, stationId={}, lastUpdateTime={}", machineId, schedule.getStationId(), dataUpdateTime);
+            } else if (!isStale && yellowAlarmCount > 0) {
+                // 数据恢复正常更新，自动处理黄色报警
+                baseMapper.handleYellowAlarms(machineId, schedule.getStationId());
+            }
         }
     }
 
@@ -182,7 +284,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
                 || currentValue.compareTo(rule.getMaxValue()) > 0;
         if (isOutOfRange) {
+            // 值超出范围，创建报警
             createAlarmFromDetection(machineId, stationId, rule, currentValue);
+        } else {
+            // 值恢复正常，自动取消该规则的红色报警
+            autoCancelRedAlarmWhenNormal(machineId, stationId, rule);
         }
     }
 
@@ -209,6 +315,27 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             }
         } catch (Exception e) {
             log.error("Create alarm failed: machineId={}, stationId={}, ruleId={}, fieldCode={}",
+                    machineId, stationId, rule.getId(), rule.getFieldCode(), e);
+        }
+    }
+
+    /**
+     * 当参数恢复正常时，自动取消该规则的红色报警
+     */
+    private void autoCancelRedAlarmWhenNormal(Long machineId, Long stationId, ShootMoldRuleEntity rule) {
+        try {
+            // 查询是否有未处理的红色报警
+            long unhandledCount = baseMapper.countUnhandledRedAlarms(machineId, stationId, rule.getId());
+            if (unhandledCount > 0) {
+                // 自动取消红色报警
+                int cancelledCount = baseMapper.autoCancelRedAlarms(machineId, stationId, rule.getId());
+                if (cancelledCount > 0) {
+                    log.info("参数恢复正常，自动取消{}条红色报警: machineId={}, stationId={}, ruleId={}, fieldCode={}",
+                            cancelledCount, machineId, stationId, rule.getId(), rule.getFieldCode());
+                }
+            }
+        } catch (Exception e) {
+            log.error("自动取消红色报警失败: machineId={}, stationId={}, ruleId={}, fieldCode={}",
                     machineId, stationId, rule.getId(), rule.getFieldCode(), e);
         }
     }

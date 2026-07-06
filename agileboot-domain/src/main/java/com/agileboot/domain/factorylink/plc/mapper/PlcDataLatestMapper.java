@@ -46,4 +46,14 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
                     + "WHERE machine_id = #{machineId} "
                     + "ORDER BY id ASC")
     List<PlcDataLatestEntity> selectListByMachineId(@Param("machineId") Long machineId);
+
+    /**
+     * 查询指定机器的特定字段的最新更新时间
+     */
+    @Select(
+            "SELECT `timestamp` AS dataTimestamp, create_time AS createTime "
+                    + "FROM plc_data_latest "
+                    + "WHERE machine_id = #{machineId} AND field_key = #{fieldKey} "
+                    + "ORDER BY create_time DESC LIMIT 1")
+    PlcDataLatestEntity selectLatestByMachineIdAndFieldKey(@Param("machineId") Long machineId, @Param("fieldKey") String fieldKey);
 }

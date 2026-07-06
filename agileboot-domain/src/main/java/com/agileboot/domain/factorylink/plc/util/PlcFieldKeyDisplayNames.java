@@ -20,15 +20,15 @@ public final class PlcFieldKeyDisplayNames {
             Map.entry("you_mo_she_ding", "右模料量设定"),
             Map.entry("zuo_mo_shi_liang", "左模实时料量"),
             Map.entry("you_mo_shi_liang", "右模实时料量"),
-            Map.entry("zuo_mo_time", "左模实时时间"),
-            Map.entry("you_mo_time", "右模实时时间"),
+            Map.entry("zuo_mo_time", "左模实射时间"),
+            Map.entry("you_mo_time", "右模实射时间"),
             // 模具动作
             Map.entry("kai_mo", "开模"),
             Map.entry("zeng_ya", "增压"),
             // 射出速度
             Map.entry("zuo_mo_she_chu_su_du", "左模射出速度"),
             Map.entry("you_mo_she_chu_su_du", "右模射出速度"),
-            // 模温（带站号）
+            // 模温
             Map.entry("nei_1_zuo_mo_wen_du", "内1左模温度"),
             Map.entry("nei_1_you_mo_wen_du", "内1右模温度"),
             Map.entry("nei_2_zuo_mo_wen_du", "内2左模温度"),
