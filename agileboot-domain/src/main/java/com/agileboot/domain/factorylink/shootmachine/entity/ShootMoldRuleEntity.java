@@ -70,4 +70,8 @@ public class ShootMoldRuleEntity implements Serializable {
     /** 站位名称（非表字段，按机台查询规则时填充） */
     @TableField(exist = false)
     private String stationName;
+
+    /** 全局规则站位编号（数据库字段） */
+    @TableField("station_no")
+    private Integer globalStationNo;
 }

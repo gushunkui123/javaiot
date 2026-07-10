@@ -35,6 +35,15 @@ public final class PlcFieldKeyDisplayNames {
             Map.entry("nei_2_you_mo_wen_du", "内2右模温度"),
             // 射腔温度
             Map.entry("she_qiang_dang_qian_wen_du", "射枪当前温度"),
+            // 射枪温度（8个测点）
+            Map.entry("she_qiang_1_zuo_shang_wen_du", "射枪1左上当前温度"),
+            Map.entry("she_qiang_1_zuo_xia_wen_du", "射枪1左下当前温度"),
+            Map.entry("she_qiang_1_you_shang_wen_du", "射枪1右上当前温度"),
+            Map.entry("she_qiang_1_you_xia_wen_du", "射枪1右下当前温度"),
+            Map.entry("she_qiang_2_zuo_shang_wen_du", "射枪2左上当前温度"),
+            Map.entry("she_qiang_2_zuo_xia_wen_du", "射枪2左下当前温度"),
+            Map.entry("she_qiang_2_you_shang_wen_du", "射枪2右上当前温度"),
+            Map.entry("she_qiang_2_you_xia_wen_du", "射枪2右下当前温度"),
             // 合模状态
             Map.entry("he_mo_zhuang_tai", "合模状态"),
             // 开模状态

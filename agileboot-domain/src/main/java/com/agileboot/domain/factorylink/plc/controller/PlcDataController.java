@@ -1,18 +1,23 @@
 package com.agileboot.domain.factorylink.plc.controller;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.dto.ResponseDTO;
-import com.agileboot.common.core.page.PageDTO;
+
 import com.agileboot.domain.factorylink.plc.entity.EnvironmentDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
+import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataPointEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDeviceEntity;
 import com.agileboot.domain.factorylink.plc.service.EnvironmentDataService;
+import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
+import com.agileboot.domain.factorylink.plc.service.ExternalPlcAuthService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataPointService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
+import com.agileboot.domain.factorylink.plc.service.PlcDataSyncService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
 import com.agileboot.domain.factorylink.plc.util.MinioUploadUtil;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.plc.util.SignedRestTemplateUtil;
+import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,9 +29,7 @@ import java.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -43,8 +46,12 @@ public class PlcDataController {
     private final PlcDataService plcDataService;
     private final PlcDataPointService plcDataPointService;
     private final PlcDeviceService plcDeviceService;
+    private final PlcDataLatestMapper plcDataLatestMapper;
+    private final PlcDataSyncService plcDataSyncService;
     private final EnvironmentDataService environmentDataService;
     private final RestTemplate restTemplate;
+    private final ExternalPlcAuthService externalPlcAuthService;
+    private final ShootRuleAlarmService shootRuleAlarmService;
 
     @Value("${factory-link.workshop.base-url:http://10.0.100.225}")
     private String workshopBaseUrl;
@@ -61,15 +68,29 @@ public class PlcDataController {
     @Value("${factory-link.workshop.api-secret:}")
     private String workshopApiSecret;
 
-    //射出机5号机的设备数据
-    @Operation(summary = "查询设备最新一批 PLC 数据（同一时间）")
+    @Value("${factory-link.external-plc.base-url:http://10.0.100.225:8088}")
+    private String externalPlcBaseUrl;
+
+    //射出机5号机的设备数据 - 返回 field_key 不包含"当前"或"实时"的数据
+    @Operation(summary = "查询设备 PLC 数据（排除当前/实时）")
     @GetMapping("/data/recent")
-    public ResponseDTO<List<PlcDataEntity>> recent(
+    public ResponseDTO<List<PlcDataLatestEntity>> recent(
             @Parameter(description = "设备名称", required = true, example = "射出机五号机")
             @RequestParam("deviceName")
             @NotBlank
             String deviceName) {
-        return ResponseDTO.ok(plcDataService.listLatestSameTimestampByDeviceName(deviceName));
+        return ResponseDTO.ok(plcDataLatestMapper.selectExcludeCurrentOrRealtimeByDeviceName(deviceName));
+    }
+
+    //射出机设备数据 - 返回所有数据（包含"当前"和"实时"），用于大屏展示
+    @Operation(summary = "查询设备 PLC 数据（包含所有字段）")
+    @GetMapping("/data/all")
+    public ResponseDTO<List<PlcDataLatestEntity>> all(
+            @Parameter(description = "设备名称", required = true, example = "射出机五号机")
+            @RequestParam("deviceName")
+            @NotBlank
+            String deviceName) {
+        return ResponseDTO.ok(plcDataLatestMapper.selectAllByDeviceName(deviceName));
     }
 
     //不包含射出机5号的 设备
@@ -228,4 +249,35 @@ public class PlcDataController {
 //        List<PlcDeviceEntity> data = (List<PlcDeviceEntity>) result.get("data");
 //        return ResponseDTO.ok(data);
 //    }
+
+    @Operation(summary = "查询外部 PLC 数据点")
+    @GetMapping("/external/plcDataPoint")
+    public ResponseDTO<?> listExternalPlcDataPoint() {
+        String token = externalPlcAuthService.login();
+        if (token == null) {
+            return ResponseDTO.build(null, 500, "外部PLC登录失败");
+        }
+
+        String url = externalPlcBaseUrl + "/workshopconfig/plcdatapoint/listByFactoryAndDevice";
+        Map<String, Object> result = externalPlcAuthService.getJsonMapWithBearerToken(token, url);
+        if (result == null) {
+            return ResponseDTO.build(null, 500, "调用外部PLC接口失败");
+        }
+
+        return ResponseDTO.ok(result);
+    }
+
+    @Operation(summary = "手动触发报警检测（测试用）")
+    @PostMapping("/alarm/detect")
+    public ResponseDTO<String> detectAlarms(
+            @Parameter(description = "机台ID", required = true, example = "5")
+            @RequestParam("machineId") Long machineId) {
+        try {
+            shootRuleAlarmService.detectAlarmsByPlcData(machineId);
+            return ResponseDTO.ok("报警检测完成，machineId=" + machineId);
+        } catch (Exception e) {
+            log.error("手动触发报警检测失败: machineId={}", machineId, e);
+            return ResponseDTO.build(null, 500, "报警检测失败: " + e.getMessage());
+        }
+    }
 }

@@ -6,6 +6,15 @@ factory-link:
         plc-data-point-path: /api/device/queryPlcDataPointList
         api-key: 19e3f535-7fde-4dcc-b552-cfdd9dd92661
         api-secret: ZU6yq7S4u3JoSBivcdfq5NOj2pRolpT-ExjBbcU3BWY
+    external-plc:
+         base-url: http://10.0.100.28:33011
+         login-url: http://10.0.100.28:33011/login
+#        base-url: http://10.0.100.225:8088
+#        login-url: http://10.0.100.225:8088/login
+         username: admin
+         password: admin123
+    sync:
+        enabled: true
     emqx:
         enabled: true
         broker-url: tcp://10.0.100.26:1883
@@ -13,11 +22,11 @@ factory-link:
         username: test01
         password: 123456asd
         inbound-topics:
-            - plc_data
+            - factory/shechu/plc_data/data
             - HWY01
         completion-timeout: 5000
         inbound-qos: 1
-        plc-data-topic: plc_data
+        plc-data-topic: factory/shechu/plc_data/data
         environment-data-topic: HWY01
         email:
             from: ftihb-it03@ficinjection.com

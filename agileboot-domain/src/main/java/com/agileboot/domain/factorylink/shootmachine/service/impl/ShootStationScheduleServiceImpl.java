@@ -64,7 +64,6 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
             entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
         }
         entity.setDeleted(false);
-        assertNoOverlap(entity.getStationId(), entity.getStartTime(), entity.getEndTime(), null);
         save(entity);
         return entity;
     }
@@ -85,7 +84,6 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         if (StrUtil.isBlank(entity.getStatus())) {
             entity.setStatus(existing.getStatus());
         }
-        assertNoOverlap(existing.getStationId(), entity.getStartTime(), entity.getEndTime(), id);
         updateById(entity);
         return entity;
     }
@@ -138,24 +136,6 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         }
         if (!entity.getStartTime().isBefore(entity.getEndTime())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "结束时间必须晚于开始时间");
-        }
-    }
-
-    /** 同一站位下时间段不能重叠（已取消的生产计划不参与校验）。 */
-    private void assertNoOverlap(Long stationId, LocalDateTime start, LocalDateTime end, Long excludeId) {
-        long overlapCount =
-                lambdaQuery()
-                        .eq(ShootStationScheduleEntity::getStationId, stationId)
-                        .ne(
-                                ShootStationScheduleEntity::getStatus,
-                                ShootStationScheduleEntity.STATUS_CANCELLED)
-                        .lt(ShootStationScheduleEntity::getStartTime, end)
-                        .gt(ShootStationScheduleEntity::getEndTime, start)
-                        .ne(excludeId != null, ShootStationScheduleEntity::getId, excludeId)
-                        .count();
-        if (overlapCount > 0) {
-            throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "该站位在该时间段已有生产计划，不能重叠");
         }
     }
 }

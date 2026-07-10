@@ -32,6 +32,9 @@ public class ShootMoldEntity implements Serializable {
     @TableField("remark")
     private String remark;
 
+    @TableField("mold_side")
+    private String moldSide;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

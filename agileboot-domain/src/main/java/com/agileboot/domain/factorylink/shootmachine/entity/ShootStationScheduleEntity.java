@@ -70,4 +70,8 @@ public class ShootStationScheduleEntity implements Serializable {
     /** 模具颜色（非表字段，查询时关联 shoot_mold 填充） */
     @TableField(exist = false)
     private String color;
+
+    /** 模具模向 LEFT 左模 / RIGHT 右模（非表字段，查询时关联 shoot_mold 填充） */
+    @TableField(exist = false)
+    private String moldSide;
 }

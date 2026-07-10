@@ -38,7 +38,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         implements ShootRuleAlarmService {
 
     private static final int ALARM_DEDUP_MINUTES = 1;
-    private static final int STOP_TIME_THRESHOLD_SECONDS = 900; // 停机阈值：900秒 = 15分钟
+
+    // ====== 报警阈值常量 ======
+    private static final int DATA_STALE_MINUTES = 15;       // 数据超时停机：15分钟未更新
+    private static final int MOLD_TIMEOUT_SECONDS = 60;     // 操作超时：开模止=ON后60秒未合模
+    private static final int MOLD_STOP_MINUTES = 5;         // 停机报警：开模止=ON后5分钟未合模
 
     private final ShootStationScheduleService shootStationScheduleService;
     private final ShootMoldRuleService shootMoldRuleService;
@@ -76,9 +80,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 定时任务：每2秒自动处理超过10秒的黄色报警（基于updated_at判断，使用数据库时间）
+     * 定时任务：每5秒自动处理超过10秒的黄色报警（基于updated_at判断，使用数据库时间）
      */
-    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 2000)
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 5000)
     public void autoHandleExpiredYellowAlarms() {
         int handledCount = baseMapper.handleExpiredYellowAlarms(10);
         if (handledCount > 0) {
@@ -189,8 +193,79 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             }
         }
 
-        // 检测停机状态（黄色报警）
-        detectStopAlarm(machineId, schedules, root);
+        // 检测停机/操作超时状态（黄色+红色报警）
+        detectYellowAndStopAlarms(machineId, schedules);
+    }
+
+    /**
+     * 根据 plc_data_latest 表数据检测黄色/红色报警
+     * 第三方接口同步 PLC 数据后调用，无需 JSON 参数
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void detectAlarmsByPlcData(Long machineId) {
+        List<ShootStationScheduleEntity> schedules =
+                shootStationScheduleService.listCurrentByMachineId(machineId);
+        detectYellowAndStopAlarms(machineId, schedules);
+        
+        // 从PLC数据检测红色报警（基于规则值范围，含射枪温度等全局字段）
+        detectRedAlarmsFromPlcData(machineId, schedules);
+    }
+    
+
+    /**
+     * 从plc_data_latest表检测红色报警（基于规则值范围）
+     */
+    private void detectRedAlarmsFromPlcData(Long machineId, List<ShootStationScheduleEntity> schedules) {
+        for (ShootStationScheduleEntity schedule : schedules) {
+            Long stationId = schedule.getStationId();
+            Integer stationNo = schedule.getStationNo();
+            Long moldId = schedule.getMoldId();
+            if (stationId == null || stationNo == null || moldId == null) {
+                continue;
+            }
+            
+
+            // 获取该模具的规则
+            List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(moldId);
+            for (ShootMoldRuleEntity rule : rules) {
+                if (Boolean.FALSE.equals(rule.getEnabled())) {
+                    continue;
+                }
+
+                // plc_data_latest.field_key 存中文名，需将规则 fieldCode 转为中文名再查
+                String fieldKey = PlcFieldKeyDisplayNames.resolveOrCode(rule.getFieldCode());
+
+                // 先按站台分类查；查不到（如射枪温度等无站位字段）回退到全局查询
+                PlcDataLatestEntity fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
+                        machineId, fieldKey, "站台" + stationNo);
+                if (fieldData == null) {
+                    fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
+                }
+
+                if (fieldData == null) {
+                    continue;
+                }
+                
+                String fieldValue = fieldData.getFieldValue();
+                BigDecimal currentValue = Convert.toBigDecimal(fieldValue, null);
+                if (currentValue == null) {
+                    continue;
+                }
+                
+                // 检查值是否超出范围
+                boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
+                        || currentValue.compareTo(rule.getMaxValue()) > 0;
+                
+                if (isOutOfRange) {
+                    // 创建红色报警
+                    createAlarmFromDetection(machineId, stationId, rule, currentValue);
+                } else {
+                    // 值恢复正常，自动取消红色报警
+                    autoCancelRedAlarmWhenNormal(machineId, stationId, rule);
+                }
+            }
+        }
     }
 
     private JSONObject parseJson(String json) {
@@ -203,60 +278,150 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 检测停机状态：当 dang_qian_jia_liu_time 字段数据更新时间超过15分钟未更新时触发黄色报警
+     * 统一检测：数据超时停机 + 操作超时 + 5分钟未合模停机
+     * 遍历一次 schedules，对每个站位完成所有黄色/红色报警检测
      */
-    private void detectStopAlarm(Long machineId, List<ShootStationScheduleEntity> schedules, JSONObject root) {
+    private void detectYellowAndStopAlarms(Long machineId, List<ShootStationScheduleEntity> schedules) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime thresholdTime = now.minusMinutes(15); // 15分钟阈值
-        
+        LocalDateTime staleThreshold = now.minusMinutes(DATA_STALE_MINUTES);
+        LocalDateTime dedupSince = now.minusMinutes(ALARM_DEDUP_MINUTES);
+
         for (ShootStationScheduleEntity schedule : schedules) {
-            if (schedule.getStationId() == null || schedule.getStationNo() == null) {
+            Long stationId = schedule.getStationId();
+            Integer stationNo = schedule.getStationNo();
+            Long moldId = schedule.getMoldId();
+            if (stationId == null || stationNo == null || moldId == null) {
                 continue;
             }
 
-            // 查找当前加硫时间字段
-            String timeFieldKey = "dang_qian_jia_liu_time_" + schedule.getStationNo();
-            
-            // 从数据库查询该字段的最新更新时间
-            PlcDataLatestEntity latestData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKey(machineId, timeFieldKey);
-            
-            if (latestData == null) {
-                // 没有数据，跳过
-                continue;
-            }
-            
-            // 使用create_time作为数据更新时间
-            LocalDateTime dataUpdateTime = latestData.getCreateTime();
-            if (dataUpdateTime == null) {
-                dataUpdateTime = latestData.getDataTimestamp();
-            }
-            
-            if (dataUpdateTime == null) {
-                continue;
-            }
-            
-            // 判断数据是否超过15分钟未更新
-            boolean isStale = dataUpdateTime.isBefore(thresholdTime);
-            
-            // 查询当前站位是否有未处理的黄色报警
-            long yellowAlarmCount = baseMapper.countRecentYellowAlarm(
-                    machineId,
-                    schedule.getStationId(),
-                    now.minusMinutes(ALARM_DEDUP_MINUTES));
+            String categoryName = "站台" + stationNo;
 
-            if (isStale && yellowAlarmCount == 0) {
-                // 数据超过15分钟未更新，创建黄色报警
-                // 从数据库获取最新的字段值
-                String fieldValueStr = latestData.getFieldValue();
-                BigDecimal fieldValue = Convert.toBigDecimal(fieldValueStr, null);
-                long currentValue = fieldValue != null ? fieldValue.longValue() : 0;
-                
-                baseMapper.insertYellowAlarm(machineId, schedule.getStationId(), currentValue);
-                log.info("创建数据超时黄色报警: machineId={}, stationId={}, lastUpdateTime={}", machineId, schedule.getStationId(), dataUpdateTime);
-            } else if (!isStale && yellowAlarmCount > 0) {
-                // 数据恢复正常更新，自动处理黄色报警
-                baseMapper.handleYellowAlarms(machineId, schedule.getStationId());
+            // 查询该模具的规则列表，构建 field_code -> rule_id 映射
+            Map<String, Long> fieldCodeToRuleIdMap = new java.util.HashMap<>();
+            log.info("开始查询模具规则: moldId={}", moldId);
+            List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(moldId);
+            log.info("查询到模具规则数量: {}, moldId={}", rules.size(), moldId);
+            for (ShootMoldRuleEntity rule : rules) {
+                log.info("规则详情: id={}, fieldCode={}, fieldName={}, enabled={}, moldId={}",
+                        rule.getId(), rule.getFieldCode(), rule.getFieldName(), rule.getEnabled(), rule.getMoldId());
+                if (Boolean.TRUE.equals(rule.getEnabled())) {
+                    fieldCodeToRuleIdMap.put(rule.getFieldCode(), rule.getId());
+                }
             }
+            log.info("fieldCodeToRuleIdMap: {}", fieldCodeToRuleIdMap);
+
+            // 一次查出该站位需要的3个字段
+            PlcDataLatestEntity settingTimeData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
+                    machineId, "设定加硫时间", categoryName);
+            PlcDataLatestEntity kaiMoData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
+                    machineId, "开模止", categoryName);
+            PlcDataLatestEntity heMoData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
+                    machineId, "合模止", categoryName);
+
+            // 查询该站位已有的未处理黄色报警（复用）
+            long yellowAlarmCount = baseMapper.countRecentYellowAlarm(machineId, stationId, dedupSince);
+
+            // ====== 1. 数据超时停机：设定加硫时间 15分钟未更新 → 黄色报警 ======
+            detectDataStaleAlarm(machineId, stationId, stationNo, categoryName, moldId, fieldCodeToRuleIdMap, settingTimeData, staleThreshold, yellowAlarmCount, now);
+
+            // ====== 2. 操作超时 & 5分钟未合模：开模止/合模止状态检测 ======
+            detectMoldStateAlarms(machineId, stationId, stationNo, categoryName, moldId, fieldCodeToRuleIdMap, kaiMoData, heMoData, yellowAlarmCount, now, dedupSince);
+        }
+    }
+
+    /**
+     * 检测数据超时：设定加硫时间超过15分钟未更新 → 黄色报警（15分钟未加硫停机）
+     */
+    private void detectDataStaleAlarm(Long machineId, Long stationId, Integer stationNo, String categoryName,
+                                      Long moldId, Map<String, Long> fieldCodeToRuleIdMap,
+                                      PlcDataLatestEntity latestData, LocalDateTime staleThreshold,
+                                      long yellowAlarmCount, LocalDateTime now) {
+        if (latestData == null) {
+            return;
+        }
+
+        LocalDateTime updateTime = latestData.getCreateTime() != null ? latestData.getCreateTime() : latestData.getDataTimestamp();
+        if (updateTime == null) {
+            return;
+        }
+
+        boolean isStale = updateTime.isBefore(staleThreshold);
+
+        if (isStale && yellowAlarmCount == 0) {
+            BigDecimal fieldValue = Convert.toBigDecimal(latestData.getFieldValue(), null);
+            long currentValue = fieldValue != null ? fieldValue.longValue() : 0;
+            String fieldCode = "she_ding_jia_liu_time";
+            Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
+            if (ruleId == null) {
+                log.error("未找到数据超时规则! moldId={}, fieldCode={}, fieldCodeToRuleIdMap={}", moldId, fieldCode, fieldCodeToRuleIdMap);
+                return;
+            }
+            baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId, fieldCode, "15分钟未加硫停机", currentValue);
+            log.info("创建数据超时黄色报警: machineId={}, stationId={}, ruleId={}, categoryName={}, lastUpdateTime={}",
+                    machineId, stationId, ruleId, categoryName, updateTime);
+        } else if (!isStale && yellowAlarmCount > 0) {
+            baseMapper.handleYellowAlarms(machineId, stationId);
+        }
+    }
+
+    /**
+     * 检测模具状态：
+     * - 开模止=ON 且合模止≠ON 持续≥60秒 → 黄色报警（操作超时，10秒自动关闭）
+     * - 开模止=ON 且合模止≠ON 持续≥5分钟 → 红色报警（停机）
+     * - 状态恢复正常 → 自动取消黄色报警
+     */
+    private void detectMoldStateAlarms(Long machineId, Long stationId, Integer stationNo, String categoryName,
+                                       Long moldId, Map<String, Long> fieldCodeToRuleIdMap,
+                                       PlcDataLatestEntity kaiMoData, PlcDataLatestEntity heMoData,
+                                       long yellowAlarmCount, LocalDateTime now, LocalDateTime dedupSince) {
+        if (kaiMoData == null || heMoData == null) {
+            return;
+        }
+
+        String kaiMoValue = kaiMoData.getFieldValue();
+        String heMoValue = heMoData.getFieldValue();
+        LocalDateTime kaiMoTime = kaiMoData.getCreateTime() != null ? kaiMoData.getCreateTime() : kaiMoData.getDataTimestamp();
+
+        if (kaiMoTime == null) {
+            return;
+        }
+
+        boolean isOpenAndNotClosed = "ON".equalsIgnoreCase(kaiMoValue) && !"ON".equalsIgnoreCase(heMoValue);
+
+        if (isOpenAndNotClosed) {
+            long elapsedSeconds = java.time.Duration.between(kaiMoTime, now).getSeconds();
+
+            // 60秒操作超时 → 黄色报警
+            if (elapsedSeconds >= MOLD_TIMEOUT_SECONDS && yellowAlarmCount == 0) {
+                String fieldCode = "operation_timeout";
+                Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
+                if (ruleId == null) {
+                    log.error("未找到操作超时规则! moldId={}, fieldCode={}, fieldCodeToRuleIdMap={}", moldId, fieldCode, fieldCodeToRuleIdMap);
+                    return;
+                }
+                baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId, fieldCode, "操作超时", 0L);
+                log.info("创建操作超时黄色报警: stationId={}, stationNo={}, ruleId={}, 已过{}秒", stationId, stationNo, ruleId, elapsedSeconds);
+            }
+
+            // 5分钟未合模 → 停机黄色报警
+            if (elapsedSeconds >= MOLD_STOP_MINUTES * 60) {
+                String fieldCode = "stop_no_mold_close";
+                Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
+                if (ruleId == null) {
+                    log.error("未找到停机规则! moldId={}, fieldCode={}, fieldCodeToRuleIdMap={}", moldId, fieldCode, fieldCodeToRuleIdMap);
+                    return;
+                }
+                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarm(machineId, stationId, ruleId, dedupSince);
+                if (sameYellowAlarmCount == 0) {
+                    baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId,
+                            fieldCode, "5分钟未合模停机", 0L);
+                    log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, ruleId={}, 已过{}秒",
+                            stationId, stationNo, ruleId, elapsedSeconds);
+                }
+            }
+        } else if (yellowAlarmCount > 0) {
+            // 状态恢复正常，自动取消黄色报警
+            baseMapper.handleYellowAlarms(machineId, stationId);
         }
     }
 

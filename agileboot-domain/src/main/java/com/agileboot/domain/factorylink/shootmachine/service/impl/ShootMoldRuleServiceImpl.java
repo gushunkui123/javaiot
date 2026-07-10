@@ -11,7 +11,6 @@ import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +56,10 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ShootMoldRuleEntity create(ShootMoldRuleEntity entity) {
-        shootMoldService.getByIdOrThrow(entity.getMoldId());
+        // 全局规则（moldId = 0）不需要验证模具是否存在
+        if (entity.getMoldId() != null && entity.getMoldId() != 0) {
+            shootMoldService.getByIdOrThrow(entity.getMoldId());
+        }
         fillRule(entity);
         entity.setDeleted(false);
         try {
@@ -91,7 +93,8 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
     @Transactional(rollbackFor = Exception.class)
     public void saveByMoldId(Long moldId, List<ShootMoldRuleEntity> rules) {
         shootMoldService.getByIdOrThrow(moldId);
-        remove(Wrappers.<ShootMoldRuleEntity>lambdaQuery().eq(ShootMoldRuleEntity::getMoldId, moldId));
+        // 物理删除：绕过 @TableLogic 软删除，避免唯一键冲突
+        baseMapper.hardDeleteByMoldId(moldId);
         if (CollUtil.isEmpty(rules)) {
             return;
         }
@@ -105,8 +108,13 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
     }
 
     private void fillRule(ShootMoldRuleEntity entity) {
-        if (entity.getMoldId() == null || StrUtil.isBlank(entity.getFieldCode())) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具ID和字段不能为空");
+        // 全局规则（moldId = 0）不需要验证模具ID
+        boolean isGlobalRule = entity.getMoldId() != null && entity.getMoldId() == 0;
+        if (!isGlobalRule && entity.getMoldId() == null) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具ID不能为空");
+        }
+        if (StrUtil.isBlank(entity.getFieldCode())) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "字段不能为空");
         }
         if (entity.getMinValue() == null || entity.getMaxValue() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值和最大值不能为空");

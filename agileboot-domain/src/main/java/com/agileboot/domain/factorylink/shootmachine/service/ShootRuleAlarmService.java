@@ -30,6 +30,9 @@ public interface ShootRuleAlarmService extends IService<ShootRuleAlarmEntity> {
     /** 统计概览：返回总数和报警数 */
     Map<String, Long> getStatisticsOverview(Long machineId);
 
-    /** 根据 PLC 数据检测并创建报警 */
+    /** 根据 PLC 数据检测并创建报警（MQTT推送时调用，含模具规则检测） */
     void detectAndCreateAlarms(Long machineId, String jsonPayload);
+
+    /** 根据 plc_data_latest 表数据检测黄色/红色报警（第三方接口同步后调用） */
+    void detectAlarmsByPlcData(Long machineId);
 }

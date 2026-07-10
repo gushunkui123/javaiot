@@ -41,6 +41,10 @@ public class PlcDataLatestEntity implements Serializable {
     @TableField("field_value")
     private String fieldValue;
 
+    /** 分类名称（站位） */
+    @TableField("category_name")
+    private String categoryName;
+
     @TableField("create_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

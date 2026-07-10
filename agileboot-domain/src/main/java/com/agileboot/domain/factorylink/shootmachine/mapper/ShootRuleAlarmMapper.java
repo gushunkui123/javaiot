@@ -103,14 +103,16 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("handleRemark") String handleRemark);
 
     /**
-     * 插入停机黄色报警
+     * 插入黄色报警（数据超时/操作超时，关联模具和规则）
      */
     @Insert("<script>" +
-            "INSERT INTO shoot_rule_alarm (machine_id, station_id, field_code, field_name, min_value, max_value, current_value, alarm_level, alarm_time, handle_status, deleted, created_at, updated_at) " +
-            "VALUES (#{machineId}, #{stationId}, 'dang_qian_jia_liu_time', '当前加硫时间', 0, 900, #{currentValue}, 'yellow', NOW(), 'false', 0, NOW(), NOW()) " +
+            "INSERT INTO shoot_rule_alarm (machine_id, station_id, mold_id, rule_id, field_code, field_name, min_value, max_value, current_value, alarm_level, alarm_time, handle_status, deleted, created_at, updated_at) " +
+            "VALUES (#{machineId}, #{stationId}, #{moldId}, #{ruleId}, #{fieldCode}, #{fieldName}, 0, 900, #{currentValue}, 'yellow', NOW(), 'false', 0, NOW(), NOW()) " +
             "</script>")
-    @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insertYellowAlarm(@Param("machineId") Long machineId, @Param("stationId") Long stationId, @Param("currentValue") Long currentValue);
+    int insertYellowAlarm(@Param("machineId") Long machineId, @Param("stationId") Long stationId,
+                          @Param("moldId") Long moldId, @Param("ruleId") Long ruleId,
+                          @Param("fieldCode") String fieldCode, @Param("fieldName") String fieldName,
+                          @Param("currentValue") Long currentValue);
 
     /**
      * 查询最近是否有未处理的黄色报警
@@ -122,6 +124,19 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     long countRecentYellowAlarm(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
+            @Param("sinceTime") LocalDateTime sinceTime);
+
+    /**
+     * 查询最近是否有相同的黄色报警（按规则去重）
+     */
+    @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND rule_id = #{ruleId} AND alarm_level = 'yellow' AND handle_status = 'false' "
+            + "AND alarm_time >= #{sinceTime}")
+    long countRecentSameYellowAlarm(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("ruleId") Long ruleId,
             @Param("sinceTime") LocalDateTime sinceTime);
 
     /**
@@ -210,4 +225,6 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
                     + "ORDER BY a.alarm_time DESC" +
             "</script>")
     List<ShootRuleAlarmEntity> selectAllWithRelation(@Param("machineId") Long machineId, @Param("days") Integer days);
+
+
 }
