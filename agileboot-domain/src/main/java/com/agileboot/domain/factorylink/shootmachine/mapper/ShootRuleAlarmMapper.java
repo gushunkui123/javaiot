@@ -45,7 +45,7 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     @Select(
             "<script>" +
             "SELECT COUNT(1) FROM shoot_rule_alarm "
-                    + "WHERE deleted = 0 "
+                    + "WHERE deleted = 0 AND handle_status = 'false' "
                     + "<if test='machineId != null'>AND machine_id = #{machineId}</if> "
                     + "<if test='moldId != null'>AND mold_id = #{moldId}</if> "
                     + "<if test='stationId != null'>AND station_id = #{stationId}</if> "

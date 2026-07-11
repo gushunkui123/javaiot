@@ -34,11 +34,8 @@ public class ShootMoldController {
             int pageNum,
             @Parameter(description = "每页数量", example = "20")
             @RequestParam(value = "pageSize", defaultValue = "20")
-            int pageSize,
-            @Parameter(description = "模向：LEFT 左模 / RIGHT 右模")
-            @RequestParam(value = "moldSide", required = false)
-            String moldSide) {
-        return ResponseDTO.ok(shootMoldService.list(pageNum, pageSize, moldSide));
+            int pageSize) {
+        return ResponseDTO.ok(shootMoldService.list(pageNum, pageSize));
     }
 
     @Operation(summary = "查询模具详情")

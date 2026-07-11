@@ -6,8 +6,6 @@ factory-link:
         plc-data-point-path: /api/device/queryPlcDataPointList
         api-key: 19e3f535-7fde-4dcc-b552-cfdd9dd92661
         api-secret: ZU6yq7S4u3JoSBivcdfq5NOj2pRolpT-ExjBbcU3BWY
-    external-plc:
-        base-url: http://10.0.100.225:8088
     sync:
         enabled: true
     emqx:

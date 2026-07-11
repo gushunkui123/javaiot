@@ -16,7 +16,7 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
 
     /**
      * 批量 upsert：存在则更新值和时间戳，不存在则插入。
-     * 唯一索引：uk_device_data_code (device_name, data_code)
+     * 唯一索引：data_code（库表唯一约束列，冲突时按最新值覆盖）
      */
     @Insert(
             "<script>"
@@ -26,7 +26,6 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
                     + "</foreach>"
                     + "ON DUPLICATE KEY UPDATE "
                     + "machine_id = VALUES(machine_id), "
-                    + "data_code = VALUES(data_code), "
                     + "`timestamp` = VALUES(`timestamp`), "
                     + "field_key = VALUES(field_key), "
                     + "field_value = VALUES(field_value), "

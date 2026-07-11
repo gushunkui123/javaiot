@@ -7,6 +7,7 @@ import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -21,14 +22,12 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
         implements ShootMoldService {
 
     private final ShootDeleteValidator deleteValidator;
+    private final ShootMoldRuleMapper moldRuleMapper;
 
     @Override
-    public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, String moldSide) {
+    public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize) {
         Page<ShootMoldEntity> page = new Page<>(pageNum, pageSize);
         var query = lambdaQuery().orderByDesc(ShootMoldEntity::getUpdatedAt);
-        if (StrUtil.isNotBlank(moldSide)) {
-            query.eq(ShootMoldEntity::getMoldSide, moldSide);
-        }
         Page<ShootMoldEntity> result = query.page(page);
         return new PageDTO<>(result.getRecords(), result.getTotal());
     }
@@ -68,7 +67,8 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
-        deleteValidator.assertNoMoldRules(id);
+        // 删除模具时直接连带删除其阈值规则，不再因存在规则而拦截
+        moldRuleMapper.hardDeleteByMoldId(id);
         deleteValidator.assertNoMoldActiveSchedule(id);
         deleteValidator.assertNoAlarm(null, id, null, null);
         removeById(id);

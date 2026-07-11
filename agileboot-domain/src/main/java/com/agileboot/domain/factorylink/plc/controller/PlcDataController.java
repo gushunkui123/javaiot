@@ -1,7 +1,6 @@
 package com.agileboot.domain.factorylink.plc.controller;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.dto.ResponseDTO;
-
 import com.agileboot.domain.factorylink.plc.entity.EnvironmentDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
@@ -34,9 +33,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.HashMap;
 
 @Tag(name = "FactoryLink PLC 数据")
 @RestController
@@ -70,7 +69,7 @@ public class PlcDataController {
     @Value("${factory-link.workshop.api-secret:}")
     private String workshopApiSecret;
 
-    @Value("${factory-link.external-plc.base-url:http://10.0.100.225:8088}")
+    @Value("${factory-link.workshop.base-url:http://10.0.100.225:8088}")
     private String externalPlcBaseUrl;
 
     //射出机5号机的设备数据 - 返回 field_key 不包含"当前"或"实时"的数据
@@ -252,30 +251,6 @@ public class PlcDataController {
 //        return ResponseDTO.ok(data);
 //    }
 
-    @Operation(summary = "查询外部 PLC 数据点")
-    @GetMapping("/external/plcDataPoint")
-    public ResponseDTO<?> listExternalPlcDataPoint() {
-        SignedRestTemplateUtil signedUtil = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
-        try {
-            ResponseEntity<Map<String, Object>> response = signedUtil.get(externalPlcBaseUrl,
-                    "/api/device/listByFactoryAndDevice", new HashMap<>(),
-                    new ParameterizedTypeReference<Map<String, Object>>() {});
-            Map<String, Object> result = response.getBody();
-            if (result == null) {
-                return ResponseDTO.build(null, 500, "调用外部PLC接口返回为空");
-            }
-            Object dataObj = result.get("data");
-            if (!(dataObj instanceof List<?> rows)) {
-                return ResponseDTO.build(null, 500, "外部PLC接口返回数据格式异常");
-            }
-            // 前端按 {total, rows} 结构解析
-            return ResponseDTO.ok(Map.of("total", rows.size(), "rows", rows));
-        } catch (Exception e) {
-            log.error("调用外部PLC接口失败", e);
-            return ResponseDTO.build(null, 500, "调用外部PLC接口失败: " + e.getMessage());
-        }
-    }
-
     @Operation(summary = "手动触发报警检测（测试用）")
     @PostMapping("/alarm/detect")
     public ResponseDTO<String> detectAlarms(
@@ -289,4 +264,5 @@ public class PlcDataController {
             return ResponseDTO.build(null, 500, "报警检测失败: " + e.getMessage());
         }
     }
+
 }

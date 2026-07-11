@@ -11,9 +11,12 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidato
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
+import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleRequest;
+import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleResult;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,6 +105,70 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         ShootStationScheduleEntity entity = requireExists(id);
         entity.setStatus(ShootStationScheduleEntity.STATUS_CANCELLED);
         updateById(entity);
+    }
+
+    @Override
+    public BatchCreateStationScheduleResult batchCreate(BatchCreateStationScheduleRequest request) {
+        if (request.getMoldId() == null) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "请选择模具");
+        }
+        if (request.getStartTime() == null || request.getEndTime() == null) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "开始时间和结束时间不能为空");
+        }
+        if (!request.getStartTime().isBefore(request.getEndTime())) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "结束时间必须晚于开始时间");
+        }
+        List<BatchCreateStationScheduleRequest.Item> items = request.getItems();
+        if (items == null || items.isEmpty()) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "请至少选择一个站位模向");
+        }
+        shootMoldService.getByIdOrThrow(request.getMoldId());
+
+        List<ShootStationScheduleEntity> successItems = new ArrayList<>();
+        List<BatchCreateStationScheduleResult.Failure> failures = new ArrayList<>();
+
+        // 每条独立提交，互不回滚；冲突或异常的项记入 failures 后继续
+        for (BatchCreateStationScheduleRequest.Item item : items) {
+            try {
+                ShootMachineStationEntity station = getStationOrThrow(item.getStationId());
+                boolean conflict = lambdaQuery()
+                        .eq(ShootStationScheduleEntity::getStationId, item.getStationId())
+                        .eq(ShootStationScheduleEntity::getMoldSide, item.getMoldSide())
+                        .ne(ShootStationScheduleEntity::getStatus, ShootStationScheduleEntity.STATUS_CANCELLED)
+                        .exists();
+                if (conflict) {
+                    failures.add(buildFailure(item, "该站位该模向已存在未取消的生产计划"));
+                    continue;
+                }
+                ShootStationScheduleEntity entity = new ShootStationScheduleEntity();
+                entity.setMoldId(request.getMoldId());
+                entity.setStartTime(request.getStartTime());
+                entity.setEndTime(request.getEndTime());
+                entity.setRemark(request.getRemark());
+                entity.setMoldSide(item.getMoldSide());
+                entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
+                entity.setDeleted(false);
+                fillFromStation(entity, station);
+                save(entity);
+                successItems.add(entity);
+            } catch (ApiException e) {
+                failures.add(buildFailure(item, e.getMessage()));
+            }
+        }
+
+        BatchCreateStationScheduleResult result = new BatchCreateStationScheduleResult();
+        result.setSuccessItems(successItems);
+        result.setFailures(failures);
+        return result;
+    }
+
+    private BatchCreateStationScheduleResult.Failure buildFailure(
+            BatchCreateStationScheduleRequest.Item item, String reason) {
+        BatchCreateStationScheduleResult.Failure failure = new BatchCreateStationScheduleResult.Failure();
+        failure.setStationId(item.getStationId());
+        failure.setMoldSide(item.getMoldSide());
+        failure.setReason(reason);
+        return failure;
     }
 
     // 获取站位信息

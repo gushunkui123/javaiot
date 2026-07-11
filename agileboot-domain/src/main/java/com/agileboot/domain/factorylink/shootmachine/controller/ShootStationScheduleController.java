@@ -1,6 +1,8 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
+import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleRequest;
+import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleResult;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +49,13 @@ public class ShootStationScheduleController {
     @PostMapping("/create")
     public ResponseDTO<ShootStationScheduleEntity> create(@RequestBody ShootStationScheduleEntity entity) {
         return ResponseDTO.ok(shootStationScheduleService.create(entity));
+    }
+
+    @Operation(summary = "批量新增生产记录")
+    @PostMapping("/batch")
+    public ResponseDTO<BatchCreateStationScheduleResult> batchCreate(
+            @RequestBody BatchCreateStationScheduleRequest request) {
+        return ResponseDTO.ok(shootStationScheduleService.batchCreate(request));
     }
 
     @Operation(summary = "编辑生产记录")

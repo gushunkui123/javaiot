@@ -15,6 +15,8 @@ public interface ShootStationScheduleService extends IService<ShootStationSchedu
 
     ShootStationScheduleEntity create(ShootStationScheduleEntity entity);
 
+    BatchCreateStationScheduleResult batchCreate(BatchCreateStationScheduleRequest request);
+
     ShootStationScheduleEntity update(Long id, ShootStationScheduleEntity entity);
 
     void delete(Long id);

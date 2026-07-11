@@ -77,7 +77,7 @@ public class ShootDeleteValidator {
         long count = ruleAlarmMapper.countAlarms(machineId, moldId, stationId, ruleId);
         if (count > 0) {
             throw new ApiException(
-                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "存在报警记录，请先删除报警后再删除");
+                    Client.COMMON_REQUEST_PARAMETERS_INVALID, "存在未处理报警记录，请先处理报警后再删除");
         }
     }
 }
