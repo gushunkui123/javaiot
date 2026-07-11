@@ -183,27 +183,35 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
 
     /**
      * 查询最近是否有相同的红色报警（去重用）
+     * fieldCode 为空时仅按 ruleId 去重；非空时按 ruleId + fieldCode 去重（支持同规则多阶段各自独立报警）
      */
-    @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
+    @Select("<script>SELECT COUNT(1) FROM shoot_rule_alarm "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
             + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false' "
-            + "AND alarm_time >= #{sinceTime}")
+            + "AND alarm_time >= #{sinceTime}"
+            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
+            + "</script>")
     long countRecentSameRedAlarm(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
             @Param("ruleId") Long ruleId,
+            @Param("fieldCode") String fieldCode,
             @Param("sinceTime") LocalDateTime sinceTime);
 
     /**
      * 自动取消指定规则的红色报警（参数恢复正常时）
+     * fieldCode 为空时取消该规则全部红色报警；非空时仅取消该 fieldCode 对应的报警
      */
-    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消' "
+    @Update("<script>UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消' "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false'")
+            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false'"
+            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
+            + "</script>")
     int autoCancelRedAlarms(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
-            @Param("ruleId") Long ruleId);
+            @Param("ruleId") Long ruleId,
+            @Param("fieldCode") String fieldCode);
 
     /**
      * 查询所有报警（包含已处理和未处理），用于导出Excel

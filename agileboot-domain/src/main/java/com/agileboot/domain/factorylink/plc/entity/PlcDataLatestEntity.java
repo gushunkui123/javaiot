@@ -34,6 +34,10 @@ public class PlcDataLatestEntity implements Serializable {
     @TableField("field_key")
     private String fieldKey;
 
+    /** 点位编码 dataCode，作为 upsert 的唯一标识 */
+    @TableField("data_code")
+    private String dataCode;
+
     /** 展示用中文名，非表字段。 */
     @TableField(exist = false)
     private String name;

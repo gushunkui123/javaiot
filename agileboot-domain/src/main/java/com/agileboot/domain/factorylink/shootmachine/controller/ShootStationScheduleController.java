@@ -24,8 +24,9 @@ public class ShootStationScheduleController {
     public ResponseDTO<List<ShootStationScheduleEntity>> listByStation(
             @Parameter(description = "站位ID", required = true) @RequestParam Long stationId,
             @Parameter(description = "开始时间") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
-            @Parameter(description = "结束时间") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
-        return ResponseDTO.ok(shootStationScheduleService.listByStationId(stationId, startDate, endDate));
+            @Parameter(description = "结束时间") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate,
+            @Parameter(description = "模向：LEFT 左模 / RIGHT 右模") @RequestParam(required = false) String moldSide) {
+        return ResponseDTO.ok(shootStationScheduleService.listByStationId(stationId, startDate, endDate, moldSide));
     }
 
     @Operation(summary = "查询机台当前时刻各站位生效中的生产记录")

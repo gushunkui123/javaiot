@@ -16,17 +16,19 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
 
     /**
      * 批量 upsert：存在则更新值和时间戳，不存在则插入。
-     * 唯一索引：uk_device_field (device_name, field_key)
+     * 唯一索引：uk_device_data_code (device_name, data_code)
      */
     @Insert(
             "<script>"
-                    + "INSERT INTO plc_data_latest (device_name, machine_id, `timestamp`, field_key, field_value, category_name, create_time) VALUES "
+                    + "INSERT INTO plc_data_latest (device_name, machine_id, `timestamp`, data_code, field_key, field_value, category_name, create_time) VALUES "
                     + "<foreach collection='rows' item='row' separator=','>"
-                    + "(#{row.deviceName}, #{row.machineId}, #{row.dataTimestamp}, #{row.fieldKey}, #{row.fieldValue}, #{row.categoryName}, #{row.createTime})"
+                    + "(#{row.deviceName}, #{row.machineId}, #{row.dataTimestamp}, #{row.dataCode}, #{row.fieldKey}, #{row.fieldValue}, #{row.categoryName}, #{row.createTime})"
                     + "</foreach>"
                     + "ON DUPLICATE KEY UPDATE "
                     + "machine_id = VALUES(machine_id), "
+                    + "data_code = VALUES(data_code), "
                     + "`timestamp` = VALUES(`timestamp`), "
+                    + "field_key = VALUES(field_key), "
                     + "field_value = VALUES(field_value), "
                     + "category_name = VALUES(category_name), "
                     + "create_time = VALUES(create_time)"

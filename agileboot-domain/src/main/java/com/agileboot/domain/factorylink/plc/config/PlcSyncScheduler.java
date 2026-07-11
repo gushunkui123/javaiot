@@ -1,6 +1,6 @@
 package com.agileboot.domain.factorylink.plc.config;
 
-import com.agileboot.domain.factorylink.plc.service.PlcDataSyncService;
+import com.agileboot.domain.factorylink.plc.util.PlcDataSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

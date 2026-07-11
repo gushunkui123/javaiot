@@ -7,14 +7,11 @@ import cn.hutool.json.JSONUtil;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
-import com.agileboot.common.mail.EmailService;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.shootmachine.entity.*;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
-import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
-import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
@@ -46,9 +43,6 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     private final ShootStationScheduleService shootStationScheduleService;
     private final ShootMoldRuleService shootMoldRuleService;
-    private final ShootMachineService shootMachineService;
-    private final ShootMachineStationService shootMachineStationService;
-    private final EmailService emailService;
     private final PlcDataLatestMapper plcDataLatestMapper;
 
     @Override
@@ -215,16 +209,20 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     /**
      * 从plc_data_latest表检测红色报警（基于规则值范围）
+     * 通过 PlcFieldKeyDisplayNames 将规则 fieldCode 解析为 PLC 实际字段名（可能多个，如射出压力→5个阶段），逐条比对。
      */
     private void detectRedAlarmsFromPlcData(Long machineId, List<ShootStationScheduleEntity> schedules) {
         for (ShootStationScheduleEntity schedule : schedules) {
             Long stationId = schedule.getStationId();
             Integer stationNo = schedule.getStationNo();
             Long moldId = schedule.getMoldId();
+            String moldSide = schedule.getMoldSide();
             if (stationId == null || stationNo == null || moldId == null) {
                 continue;
             }
-            
+
+            String categoryName = "站台" + stationNo;
+            String sidePrefix = "LEFT".equalsIgnoreCase(moldSide) ? "左模" : "右模";
 
             // 获取该模具的规则
             List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(moldId);
@@ -233,39 +231,47 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                     continue;
                 }
 
-                // plc_data_latest.field_key 存中文名，需将规则 fieldCode 转为中文名再查
-                String fieldKey = PlcFieldKeyDisplayNames.resolveOrCode(rule.getFieldCode());
-
-                // 先按站台分类查；查不到（如射枪温度等无站位字段）回退到全局查询
-                PlcDataLatestEntity fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
-                        machineId, fieldKey, "站台" + stationNo);
-                if (fieldData == null) {
-                    fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
+                // fieldCode + 模侧 → PLC 实际字段名列表（如："射出压力" → 5个阶段字段）
+                List<String> plcFieldKeys = PlcFieldKeyDisplayNames.resolvePlcFieldKeys(
+                        rule.getFieldCode(), moldSide);
+                if (plcFieldKeys.isEmpty()) {
+                    // 未命中映射的自定义字段，回退到原拼接逻辑
+                    plcFieldKeys = new ArrayList<>(List.of(sidePrefix + rule.getFieldCode(), rule.getFieldCode()));
                 }
 
-                if (fieldData == null) {
-                    continue;
-                }
-                
-                String fieldValue = fieldData.getFieldValue();
-                BigDecimal currentValue = Convert.toBigDecimal(fieldValue, null);
-                if (currentValue == null) {
-                    continue;
-                }
-                
-                // 检查值是否超出范围
-                boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
-                        || currentValue.compareTo(rule.getMaxValue()) > 0;
-                
-                if (isOutOfRange) {
-                    // 创建红色报警
-                    createAlarmFromDetection(machineId, stationId, rule, currentValue);
-                } else {
-                    // 值恢复正常，自动取消红色报警
-                    autoCancelRedAlarmWhenNormal(machineId, stationId, rule);
+                for (String plcFieldKey : plcFieldKeys) {
+                    PlcDataLatestEntity fieldData = queryPlcFieldByCategory(machineId, categoryName, plcFieldKey);
+                    if (fieldData == null) {
+                        continue;
+                    }
+
+                    BigDecimal currentValue = Convert.toBigDecimal(fieldData.getFieldValue(), null);
+                    if (currentValue == null) {
+                        continue;
+                    }
+
+                    // 检查值是否超出范围
+                    boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
+                            || currentValue.compareTo(rule.getMaxValue()) > 0;
+
+                    if (isOutOfRange) {
+                        createAlarmFromDetection(machineId, stationId, rule, currentValue, plcFieldKey);
+                    } else {
+                        autoCancelRedAlarmWhenNormal(machineId, stationId, rule, plcFieldKey);
+                    }
                 }
             }
         }
+    }
+
+    /** 先按分类（站台X）查，再回退到全局（不按分类，用于射枪温度等跨站位字段） */
+    private PlcDataLatestEntity queryPlcFieldByCategory(Long machineId, String categoryName, String fieldKey) {
+        PlcDataLatestEntity fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
+                machineId, fieldKey, categoryName);
+        if (fieldData == null) {
+            fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
+        }
+        return fieldData;
     }
 
     private JSONObject parseJson(String json) {
@@ -448,27 +454,30 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 || currentValue.compareTo(rule.getMaxValue()) > 0;
         if (isOutOfRange) {
             // 值超出范围，创建报警
-            createAlarmFromDetection(machineId, stationId, rule, currentValue);
+            createAlarmFromDetection(machineId, stationId, rule, currentValue, null);
         } else {
             // 值恢复正常，自动取消该规则的红色报警
-            autoCancelRedAlarmWhenNormal(machineId, stationId, rule);
+            autoCancelRedAlarmWhenNormal(machineId, stationId, rule, null);
         }
     }
 
-    private void createAlarmFromDetection(Long machineId, Long stationId, ShootMoldRuleEntity rule, BigDecimal currentValue) {
+    private void createAlarmFromDetection(Long machineId, Long stationId, ShootMoldRuleEntity rule,
+                                          BigDecimal currentValue, String plcFieldKey) {
         try {
-            // 去重：检查1分钟内是否有相同的红色报警
+            // 去重：检查1分钟内是否有相同的红色报警（按 ruleId + plcFieldKey 去重，支持同规则多阶段各自独立）
             LocalDateTime sinceTime = LocalDateTime.now().minusMinutes(ALARM_DEDUP_MINUTES);
-            long count = baseMapper.countRecentSameRedAlarm(machineId, stationId, rule.getId(), sinceTime);
+            long count = baseMapper.countRecentSameRedAlarm(machineId, stationId, rule.getId(), plcFieldKey, sinceTime);
             if (count > 0) {
                 return;
             }
 
+            String alarmFieldCode = StrUtil.isNotBlank(plcFieldKey) ? plcFieldKey : rule.getFieldCode();
+            String alarmFieldName = StrUtil.isNotBlank(plcFieldKey) ? plcFieldKey : rule.getFieldName();
             baseMapper.insertRedAlarm(machineId, stationId, rule.getMoldId(), rule.getId(),
-                    rule.getFieldCode(), rule.getFieldName(), rule.getMinValue(), rule.getMaxValue(), currentValue);
-            
+                    alarmFieldCode, alarmFieldName, rule.getMinValue(), rule.getMaxValue(), currentValue);
+
             log.info("创建红色报警: machineId={}, stationId={}, ruleId={}, fieldCode={}, currentValue={}",
-                    machineId, stationId, rule.getId(), rule.getFieldCode(), currentValue);
+                    machineId, stationId, rule.getId(), alarmFieldCode, currentValue);
         } catch (Exception e) {
             log.error("Create alarm failed: machineId={}, stationId={}, ruleId={}, fieldCode={}",
                     machineId, stationId, rule.getId(), rule.getFieldCode(), e);
@@ -476,18 +485,18 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 当参数恢复正常时，自动取消该规则的红色报警
+     * 当参数恢复正常时，自动取消该规则（或具体字段）的红色报警
      */
-    private void autoCancelRedAlarmWhenNormal(Long machineId, Long stationId, ShootMoldRuleEntity rule) {
+    private void autoCancelRedAlarmWhenNormal(Long machineId, Long stationId, ShootMoldRuleEntity rule, String plcFieldKey) {
         try {
             // 查询是否有未处理的红色报警
             long unhandledCount = baseMapper.countUnhandledRedAlarms(machineId, stationId, rule.getId());
             if (unhandledCount > 0) {
-                // 自动取消红色报警
-                int cancelledCount = baseMapper.autoCancelRedAlarms(machineId, stationId, rule.getId());
+                // 自动取消红色报警（plcFieldKey 为空取消该规则全部，非空仅取消该字段）
+                int cancelledCount = baseMapper.autoCancelRedAlarms(machineId, stationId, rule.getId(), plcFieldKey);
                 if (cancelledCount > 0) {
                     log.info("参数恢复正常，自动取消{}条红色报警: machineId={}, stationId={}, ruleId={}, fieldCode={}",
-                            cancelledCount, machineId, stationId, rule.getId(), rule.getFieldCode());
+                            cancelledCount, machineId, stationId, rule.getId(), plcFieldKey);
                 }
             }
         } catch (Exception e) {
@@ -514,33 +523,6 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
         if (entity.getCurrentValue() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "当前值不能为空");
-        }
-    }
-
-    private void sendAlarmEmail(ShootRuleAlarmEntity alarm) {
-        try {
-            // 查询设备名和站位名
-            String machineName = String.valueOf(alarm.getMachineId());
-            String stationName = String.valueOf(alarm.getStationId());
-            ShootMachineEntity machine = shootMachineService.getById(alarm.getMachineId());
-            if (machine != null) {
-                machineName = machine.getMachineName();
-            }
-            ShootMachineStationEntity station = shootMachineStationService.getById(alarm.getStationId());
-            if (station != null) {
-                stationName = station.getStationName();
-            }
-            
-            String alarmTitle = "设备告警通知 - " + alarm.getFieldName();
-            String alarmContent = String.format(
-                "设备名: %s<br>站位号: %s<br>字段名称: %s<br>当前值: %s<br>正常范围: [%s, %s]<br>告警时间: %s",
-                machineName, stationName, alarm.getFieldName(),
-                alarm.getCurrentValue(), alarm.getMinValue(), alarm.getMaxValue(),
-                alarm.getAlarmTime());
-            emailService.sendAlarmEmail(alarmTitle, alarmContent);
-            log.info("告警邮件发送成功: machineId={}, fieldCode={}", alarm.getMachineId(), alarm.getFieldCode());
-        } catch (Exception e) {
-            log.error("告警邮件发送失败: machineId={}, fieldCode={}", alarm.getMachineId(), alarm.getFieldCode(), e);
         }
     }
 }

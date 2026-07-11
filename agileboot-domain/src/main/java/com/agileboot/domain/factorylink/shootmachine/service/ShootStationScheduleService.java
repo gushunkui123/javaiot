@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface ShootStationScheduleService extends IService<ShootStationScheduleEntity> {
 
-    List<ShootStationScheduleEntity> listByStationId(Long stationId, LocalDateTime startDate, LocalDateTime endDate);
+    List<ShootStationScheduleEntity> listByStationId(Long stationId, LocalDateTime startDate, LocalDateTime endDate, String moldSide);
 
     List<ShootStationScheduleEntity> listCurrentByMachineId(Long machineId);
 

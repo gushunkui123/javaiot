@@ -9,10 +9,9 @@ import com.agileboot.domain.factorylink.plc.entity.PlcDataPointEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDeviceEntity;
 import com.agileboot.domain.factorylink.plc.service.EnvironmentDataService;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
-import com.agileboot.domain.factorylink.plc.service.ExternalPlcAuthService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataPointService;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
-import com.agileboot.domain.factorylink.plc.service.PlcDataSyncService;
+import com.agileboot.domain.factorylink.plc.util.PlcDataSyncService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
 import com.agileboot.domain.factorylink.plc.util.MinioUploadUtil;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
@@ -33,7 +32,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
 
 @Tag(name = "FactoryLink PLC 数据")
 @RestController
@@ -50,7 +53,6 @@ public class PlcDataController {
     private final PlcDataSyncService plcDataSyncService;
     private final EnvironmentDataService environmentDataService;
     private final RestTemplate restTemplate;
-    private final ExternalPlcAuthService externalPlcAuthService;
     private final ShootRuleAlarmService shootRuleAlarmService;
 
     @Value("${factory-link.workshop.base-url:http://10.0.100.225}")
@@ -253,18 +255,25 @@ public class PlcDataController {
     @Operation(summary = "查询外部 PLC 数据点")
     @GetMapping("/external/plcDataPoint")
     public ResponseDTO<?> listExternalPlcDataPoint() {
-        String token = externalPlcAuthService.login();
-        if (token == null) {
-            return ResponseDTO.build(null, 500, "外部PLC登录失败");
+        SignedRestTemplateUtil signedUtil = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
+        try {
+            ResponseEntity<Map<String, Object>> response = signedUtil.get(externalPlcBaseUrl,
+                    "/api/device/listByFactoryAndDevice", new HashMap<>(),
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            Map<String, Object> result = response.getBody();
+            if (result == null) {
+                return ResponseDTO.build(null, 500, "调用外部PLC接口返回为空");
+            }
+            Object dataObj = result.get("data");
+            if (!(dataObj instanceof List<?> rows)) {
+                return ResponseDTO.build(null, 500, "外部PLC接口返回数据格式异常");
+            }
+            // 前端按 {total, rows} 结构解析
+            return ResponseDTO.ok(Map.of("total", rows.size(), "rows", rows));
+        } catch (Exception e) {
+            log.error("调用外部PLC接口失败", e);
+            return ResponseDTO.build(null, 500, "调用外部PLC接口失败: " + e.getMessage());
         }
-
-        String url = externalPlcBaseUrl + "/workshopconfig/plcdatapoint/listByFactoryAndDevice";
-        Map<String, Object> result = externalPlcAuthService.getJsonMapWithBearerToken(token, url);
-        if (result == null) {
-            return ResponseDTO.build(null, 500, "调用外部PLC接口失败");
-        }
-
-        return ResponseDTO.ok(result);
     }
 
     @Operation(summary = "手动触发报警检测（测试用）")

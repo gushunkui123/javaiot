@@ -23,10 +23,13 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     private final ShootDeleteValidator deleteValidator;
 
     @Override
-    public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize) {
+    public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, String moldSide) {
         Page<ShootMoldEntity> page = new Page<>(pageNum, pageSize);
-        Page<ShootMoldEntity> result =
-                lambdaQuery().orderByDesc(ShootMoldEntity::getUpdatedAt).page(page);
+        var query = lambdaQuery().orderByDesc(ShootMoldEntity::getUpdatedAt);
+        if (StrUtil.isNotBlank(moldSide)) {
+            query.eq(ShootMoldEntity::getMoldSide, moldSide);
+        }
+        Page<ShootMoldEntity> result = query.page(page);
         return new PageDTO<>(result.getRecords(), result.getTotal());
     }
 

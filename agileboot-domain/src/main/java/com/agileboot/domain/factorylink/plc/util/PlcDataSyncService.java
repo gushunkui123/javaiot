@@ -1,4 +1,4 @@
-package com.agileboot.domain.factorylink.plc.service;
+package com.agileboot.domain.factorylink.plc.util;
 
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
@@ -7,10 +7,14 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmServi
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,36 +23,44 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PlcDataSyncService {
 
-    private final ExternalPlcAuthService externalPlcAuthService;
     private final PlcDataLatestMapper plcDataLatestMapper;
     private final ShootRuleAlarmService shootRuleAlarmService;
+    private final RestTemplate restTemplate;
 
     @Value("${factory-link.external-plc.base-url:http://10.0.100.225:8088}")
     private String externalPlcBaseUrl;
+
+    @Value("${factory-link.workshop.api-key:}")
+    private String workshopApiKey;
+
+    @Value("${factory-link.workshop.api-secret:}")
+    private String workshopApiSecret;
 
     /**
      * 同步外部 PLC 数据点到本地（saveOrUpdate）
      * @return 同步的记录数
      */
     public int syncPlcDataPoints() {
-        // 1. 登录
-        String token = externalPlcAuthService.login();
-        if (token == null) {
-            log.warn("外部PLC登录失败，跳过同步");
+        // 1. 调用外部 PLC 接口（apiKey + secret 签名鉴权，无需登录）
+        SignedRestTemplateUtil signedUtil = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
+        ResponseEntity<Map<String, Object>> response;
+        try {
+            response = signedUtil.get(externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
+                    new HashMap<>(), new ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.error("调用外部PLC接口失败", e);
             return 0;
         }
 
-        // 2. 获取数据点
-        String url = externalPlcBaseUrl + "/workshopconfig/plcdatapoint/listByFactoryAndDevice";
-        Map<String, Object> result = externalPlcAuthService.getJsonMapWithBearerToken(token, url);
+        Map<String, Object> result = response.getBody();
         if (result == null) {
-            log.warn("调用外部PLC接口失败，跳过同步");
+            log.warn("调用外部PLC接口返回为空，跳过同步");
             return 0;
         }
 
-        // 3. 提取 rows
-        Object rowsObj = result.get("rows");
-        if (!(rowsObj instanceof List<?> rows)) {
+        // 2. 提取 data
+        Object dataObj = result.get("data");
+        if (!(dataObj instanceof List<?> rows)) {
             log.warn("数据格式异常，跳过同步");
             return 0;
         }
@@ -85,6 +97,7 @@ public class PlcDataSyncService {
 
         int skippedRemark = 0;
         int skippedNotMap = 0;
+        int skippedNoDataCode = 0;
 
         for (Object item : rows) {
             if (!(item instanceof Map<?, ?> map)) {
@@ -93,10 +106,17 @@ public class PlcDataSyncService {
             }
 
             String remark = getStr(map, "remark");
+            String dataCode = getStr(map, "dataCode");
 
             // remark 为空则跳过
             if (StrUtil.isBlank(remark)) {
                 skippedRemark++;
+                continue;
+            }
+
+            // dataCode 为空则跳过，避免唯一键为 NULL 导致重复插入
+            if (StrUtil.isBlank(dataCode)) {
+                skippedNoDataCode++;
                 continue;
             }
 
@@ -113,14 +133,15 @@ public class PlcDataSyncService {
             entity.setMachineId(machineId);
             entity.setDataTimestamp(now);
             entity.setFieldKey(StrUtil.subPre(remark, 100));
+            entity.setDataCode(dataCode);
             entity.setFieldValue(StrUtil.subPre(currentValue, 500));
             entity.setCategoryName(StrUtil.subPre(categoryName, 100));
             entity.setCreateTime(now);
             entities.add(entity);
         }
 
-        log.info("总条数={}, 有效={}, 如果 remark 为空={}, 非Map跳过={}",
-                rows.size(), entities.size(), skippedRemark, skippedNotMap);
+        log.info("总条数={}, 有效={}, 如果 remark 为空={}, dataCode 为空={}, 非Map跳过={}",
+                rows.size(), entities.size(), skippedRemark, skippedNoDataCode, skippedNotMap);
 
         return entities;
     }

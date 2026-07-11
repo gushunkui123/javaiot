@@ -1,7 +1,9 @@
 package com.agileboot.domain.factorylink.plc.util;
 
 import cn.hutool.core.util.StrUtil;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -65,6 +67,38 @@ public final class PlcFieldKeyDisplayNames {
     private static final Pattern STATION_PATTERN = Pattern.compile("_(\\d+)$");
     // 新格式：zt8_r_tr1，站位号在开头
     private static final Pattern ZT_STATION_PATTERN = Pattern.compile("^zt(\\d+)_");
+
+    // ====== fieldCode（展示文字）→ PLC字段中文名模式映射 ======
+    // 左右字段：前缀 "左模" / "右模"，根据 moldSide 动态替换
+    private static final Map<String, List<String>> LEFT_RIGHT_FIELDS = Map.of(
+            "设定温度", List.of("左模设定温度1", "左模设定温度2"),
+            "射出压力", List.of("左模第一阶段 射出压力", "左模第二阶段 射出压力", "左模第三阶段 射出压力", "左模第四阶段 射出压力", "左模第五阶段 射出压力"),
+            "第一阶段 射出速度", List.of("左模第一阶段 射出速度"),
+            "第二阶段 射出速度", List.of("左模第二阶段 射出速度"),
+            "第三阶段 射出速度", List.of("左模第三阶段 射出速度"),
+            "第四阶段 射出速度", List.of("左模第四阶段 射出速度")
+    );
+
+    // 右模对应的字段名（用于 RIGHT 方向）
+    private static final Map<String, List<String>> RIGHT_FIELDS = Map.of(
+            "设定温度", List.of("右模设定温度1", "右模设定温度2"),
+            "射出压力", List.of("右模第一阶段 射出压力", "右模第二阶段 射出压力", "右模第三阶段 射出压力", "右模第四阶段 射出压力", "右模第五阶段 射出压力"),
+            "第一阶段 射出速度", List.of("右模第一阶段 射出速度"),
+            "第二阶段 射出速度", List.of("右模第二阶段 射出速度"),
+            "第三阶段 射出速度", List.of("右模第三阶段 射出速度"),
+            "第四阶段 射出速度", List.of("右模第四阶段 射出速度")
+    );
+
+    // 全局字段（不区分左右）
+    private static final Map<String, List<String>> GLOBAL_FIELDS = Map.of(
+            "设定加硫时间", List.of("设定加硫时间"),
+            "射枪温度", List.of(
+                    "射枪1左上当前温度", "射枪1左下当前温度",
+                    "射枪1右上当前温度", "射枪1右下当前温度",
+                    "射枪2左上当前温度", "射枪2左下当前温度",
+                    "射枪2右上当前温度", "射枪2右下当前温度"
+            )
+    );
 
     private PlcFieldKeyDisplayNames() {}
 
@@ -158,5 +192,37 @@ public final class PlcFieldKeyDisplayNames {
         // 兜底处理旧格式 xxx_1 -> xxx
         Matcher matcher = STATION_PATTERN.matcher(trimmedKey);
         return matcher.find() ? matcher.replaceAll("") : trimmedKey;
+    }
+
+    /**
+     * 根据 fieldCode（展示文字）和 moldSide 返回需要比对的 PLC 字段中文名列表。
+     * moldSide 为 "LEFT" 或 "RIGHT"；全局字段忽略 moldSide。
+     *
+     * 示例：
+     *   resolvePlcFieldKeys("设定温度", "LEFT")  → ["左模设定温度1", "左模设定温度2"]
+     *   resolvePlcFieldKeys("射出压力", "RIGHT") → ["右模第一阶段射出压力", ..., "右模第五阶段射出压力"]
+     *   resolvePlcFieldKeys("设定加硫时间", "LEFT") → ["设定加硫时间"]
+     */
+    public static List<String> resolvePlcFieldKeys(String fieldCode, String moldSide) {
+        if (StrUtil.isBlank(fieldCode)) {
+            return List.of();
+        }
+
+        // 1. 全局字段优先
+        List<String> globalFields = GLOBAL_FIELDS.get(fieldCode);
+        if (globalFields != null) {
+            return globalFields;
+        }
+
+        // 2. 左右字段根据 moldSide 选择
+        boolean isRight = "RIGHT".equalsIgnoreCase(moldSide);
+        Map<String, List<String>> source = isRight ? RIGHT_FIELDS : LEFT_RIGHT_FIELDS;
+        List<String> fields = source.get(fieldCode);
+        if (fields != null) {
+            return fields;
+        }
+
+        // 3. 未匹配到映射，返回空列表（报警检测时跳过该规则）
+        return List.of();
     }
 }
