@@ -74,4 +74,8 @@ public class ShootStationScheduleEntity implements Serializable {
     /** 模具模向 LEFT 左模 / RIGHT 右模（投产计划自身的模向维度） */
     @TableField("mold_side")
     private String moldSide;
+
+    /** 射枪编号（计划级选枪，用于射枪温度等按枪比较的工艺参数校验，如 1枪/2枪...） */
+    @TableField("gun_no")
+    private Integer gunNo;
 }

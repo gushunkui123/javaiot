@@ -7,7 +7,6 @@ import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
-import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
@@ -33,7 +32,6 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     private final ShootMachineStationService shootMachineStationService;
 
     private final ShootMoldService shootMoldService;
-    private final ShootDeleteValidator deleteValidator;
 
     @Override
     public List<ShootStationScheduleEntity> listByStationId(Long stationId, LocalDateTime startDate, LocalDateTime endDate, String moldSide) {
@@ -94,8 +92,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        ShootStationScheduleEntity schedule = requireExists(id);
-        deleteValidator.assertNoAlarm(null, null, schedule.getStationId(), null);
+        requireExists(id);
         removeById(id);
     }
 
@@ -134,10 +131,11 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
                 boolean conflict = lambdaQuery()
                         .eq(ShootStationScheduleEntity::getStationId, item.getStationId())
                         .eq(ShootStationScheduleEntity::getMoldSide, item.getMoldSide())
+                        .eq(ShootStationScheduleEntity::getGunNo, item.getGunNo())
                         .ne(ShootStationScheduleEntity::getStatus, ShootStationScheduleEntity.STATUS_CANCELLED)
                         .exists();
                 if (conflict) {
-                    failures.add(buildFailure(item, "该站位该模向已存在未取消的生产计划"));
+                    failures.add(buildFailure(item, "该站位该模向该射枪已存在未取消的生产计划"));
                     continue;
                 }
                 ShootStationScheduleEntity entity = new ShootStationScheduleEntity();
@@ -146,6 +144,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
                 entity.setEndTime(request.getEndTime());
                 entity.setRemark(request.getRemark());
                 entity.setMoldSide(item.getMoldSide());
+                entity.setGunNo(item.getGunNo());
                 entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
                 entity.setDeleted(false);
                 fillFromStation(entity, station);

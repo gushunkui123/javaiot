@@ -35,10 +35,13 @@ public class ShootMachineStationServiceImpl
     @Override
     public List<ShootMachineStationEntity> listByMachineId(Long machineId) {
         shootMachineService.getByIdOrThrow(machineId);
-        return lambdaQuery()
+        List<ShootMachineStationEntity> list = lambdaQuery()
                 .eq(ShootMachineStationEntity::getMachineId, machineId)
                 .orderByAsc(ShootMachineStationEntity::getStationNo)
                 .list();
+        int gunCount = ShootMachineStationEntity.resolveGunCount(list.size());
+        list.forEach(s -> s.setGunCount(gunCount));
+        return list;
     }
 
     @Override

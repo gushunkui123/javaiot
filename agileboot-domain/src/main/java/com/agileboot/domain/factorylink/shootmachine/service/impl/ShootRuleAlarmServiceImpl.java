@@ -13,6 +13,7 @@ import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.shootmachine.dto.AlarmPageResponse;
 import com.agileboot.domain.factorylink.shootmachine.entity.*;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
+import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
@@ -43,6 +44,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     private static final int MOLD_STOP_MINUTES = 5;         // 停机报警：开模止=ON后5分钟未合模
 
     private final ShootStationScheduleService shootStationScheduleService;
+    private final ShootMachineStationService shootMachineStationService;
     private final ShootMoldRuleService shootMoldRuleService;
     private final PlcDataLatestMapper plcDataLatestMapper;
 
@@ -229,17 +231,25 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
      * 通过 PlcFieldKeyDisplayNames 将规则 fieldCode 解析为 PLC 实际字段名（可能多个，如射出压力→5个阶段），逐条比对。
      */
     private void detectRedAlarmsFromPlcData(Long machineId, List<ShootStationScheduleEntity> schedules) {
+        // 获取机器站位数，推导枪数
+        long stationCount = shootMachineStationService.lambdaQuery()
+                .eq(ShootMachineStationEntity::getMachineId, machineId)
+                .count();
+        int gunCount = ShootMachineStationEntity.resolveGunCount((int) stationCount);
+
         for (ShootStationScheduleEntity schedule : schedules) {
             Long stationId = schedule.getStationId();
             Integer stationNo = schedule.getStationNo();
             Long moldId = schedule.getMoldId();
             String moldSide = schedule.getMoldSide();
+            Integer gunNo = schedule.getGunNo();
             if (stationId == null || stationNo == null || moldId == null) {
                 continue;
             }
+            log.info("检测红色报警: schedule stationId={}, stationNo={}, moldId={}, moldSide={}, gunNo={}, gunCount={}",
+                    stationId, stationNo, moldId, moldSide, gunNo, gunCount);
 
             String categoryName = "站台" + stationNo;
-            String sidePrefix = "LEFT".equalsIgnoreCase(moldSide) ? "左模" : "右模";
 
             // 获取该模具的规则
             List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(moldId);
@@ -248,16 +258,12 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                     continue;
                 }
 
-                // fieldCode + 模侧 → PLC 实际字段名列表（如："射出压力" → 5个阶段字段）
-                List<String> plcFieldKeys = PlcFieldKeyDisplayNames.resolvePlcFieldKeys(
-                        rule.getFieldCode(), moldSide);
-                if (plcFieldKeys.isEmpty()) {
-                    // 未命中映射的自定义字段，回退到原拼接逻辑
-                    plcFieldKeys = new ArrayList<>(List.of(sidePrefix + rule.getFieldCode(), rule.getFieldCode()));
-                }
+                String[] result = resolveFieldKeysAndCategory(rule, moldSide, gunCount, gunNo, categoryName);
+                List<String> plcFieldKeys = List.of(result[0].split(","));
+                String queryCategoryName = result[1];
 
                 for (String plcFieldKey : plcFieldKeys) {
-                    PlcDataLatestEntity fieldData = queryPlcFieldByCategory(machineId, categoryName, plcFieldKey);
+                    PlcDataLatestEntity fieldData = queryPlcFieldByCategory(machineId, queryCategoryName, plcFieldKey);
                     if (fieldData == null) {
                         continue;
                     }
@@ -289,6 +295,43 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
         }
         return fieldData;
+    }
+
+    /**
+     * 根据规则解析PLC字段名列表和查询用的category_name
+     * @return String[]{fieldKeysCsv, categoryName}
+     */
+    private String[] resolveFieldKeysAndCategory(ShootMoldRuleEntity rule, String moldSide, int gunCount, Integer gunNo, String defaultCategoryName) {
+        String fieldCode = rule.getFieldCode();
+        String normalizedFieldCode = fieldCode.replaceAll("\\s+", "");
+        log.info("解析规则字段: ruleId={}, fieldCode='{}', normalized='{}', gunCount={}, gunNo={}", rule.getId(), fieldCode, normalizedFieldCode, gunCount, gunNo);
+        
+        if ("射枪温度".equals(normalizedFieldCode)) {
+            List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeysForGunTemperature(fieldCode, gunCount, gunNo);
+            String categoryName = PlcFieldKeyDisplayNames.resolveGunTemperatureCategoryName(gunCount);
+            log.info("射枪温度规则匹配: ruleId={}, keys={}, categoryName={}", rule.getId(), keys, categoryName);
+            return new String[]{String.join(",", keys), categoryName};
+        }
+        
+        // 阶段特定的射枪温度规则，如 "第一阶段 射枪温度"
+        Integer stageNo = PlcFieldKeyDisplayNames.parseGunTemperatureStage(fieldCode);
+        log.info("阶段射枪温度解析: ruleId={}, fieldCode='{}', stageNo={}", rule.getId(), fieldCode, stageNo);
+        
+        if (stageNo != null) {
+            List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeysForGunTemperatureByStage(stageNo, gunCount, gunNo);
+            String categoryName = PlcFieldKeyDisplayNames.resolveGunTemperatureCategoryName(gunCount);
+            log.info("阶段射枪温度规则匹配: ruleId={}, stageNo={}, keys={}, categoryName={}", rule.getId(), stageNo, keys, categoryName);
+            return new String[]{String.join(",", keys), categoryName};
+        }
+        
+        // 其他字段：使用原有逻辑
+        String sidePrefix = "LEFT".equalsIgnoreCase(moldSide) ? "左模" : "右模";
+        List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeys(fieldCode, moldSide);
+        if (keys.isEmpty()) {
+            keys = new ArrayList<>(List.of(sidePrefix + fieldCode, fieldCode));
+        }
+        log.info("其他字段规则: ruleId={}, keys={}, categoryName={}", rule.getId(), keys, defaultCategoryName);
+        return new String[]{String.join(",", keys), defaultCategoryName};
     }
 
     private JSONObject parseJson(String json) {

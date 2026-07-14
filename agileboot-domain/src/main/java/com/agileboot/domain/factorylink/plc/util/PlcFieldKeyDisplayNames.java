@@ -225,4 +225,76 @@ public final class PlcFieldKeyDisplayNames {
         // 3. 未匹配到映射，返回空列表（报警检测时跳过该规则）
         return List.of();
     }
+
+    /**
+     * 根据 fieldCode、gunCount、gunNo 返回射枪温度阶段字段列表
+     * 用于新格式 PLC 数据：category_name 为 "4枪温度" 或 "2枪温度"，field_key 为 "射枪温度X第Y阶段"
+     *
+     * @param fieldCode 规则字段编码（如 "射枪温度"）
+     * @param gunCount  该机器的射枪数量（4 或 2）
+     * @param gunNo     生产计划选择的枪号（1-4 或 1-2），为 null 时返回所有枪号的字段
+     * @return 需要比对的 PLC 字段名列表
+     */
+    public static List<String> resolvePlcFieldKeysForGunTemperature(String fieldCode, int gunCount, Integer gunNo) {
+        if (!"射枪温度".equals(fieldCode) || gunCount < 1) {
+            return List.of();
+        }
+
+        List<String> fieldKeys = new ArrayList<>();
+        int startGun = (gunNo != null && gunNo >= 1 && gunNo <= gunCount) ? gunNo : 1;
+        int endGun = (gunNo != null && gunNo >= 1 && gunNo <= gunCount) ? gunNo : gunCount;
+
+        // 生成字段名：射枪温度{gunNo}{中文数字}阶段，匹配 PLC 实际 field_key
+        for (int g = startGun; g <= endGun; g++) {
+            for (int stage = 1; stage <= 4; stage++) {
+                fieldKeys.add("射枪温度" + g + STAGE_CHINESE[stage - 1] + "阶段");
+            }
+        }
+        return fieldKeys;
+    }
+
+    private static final String[] STAGE_CHINESE = {"一", "二", "三", "四"};
+
+    /**
+     * 判断 fieldCode 是否为按阶段的射枪温度规则，如 "第一阶段 射枪温度"、"第四阶段射枪温度"
+     * 忽略空格差异，支持 "第一阶段 射枪温度"、"第一阶段  射枪温度"、"第一阶段射枪温度" 等格式
+     * @return 阶段号（1-4），非射枪温度阶段规则返回 null
+     */
+    public static Integer parseGunTemperatureStage(String fieldCode) {
+        if (StrUtil.isBlank(fieldCode)) {
+            return null;
+        }
+        String normalized = fieldCode.replaceAll("\\s+", "");
+        for (int i = 0; i < STAGE_CHINESE.length; i++) {
+            if (normalized.equals("第" + STAGE_CHINESE[i] + "阶段射枪温度")) {
+                return i + 1;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 根据阶段号返回该阶段的射枪温度字段列表
+     * 例如 stage=1, gunCount=2, gunNo=null → ["射枪温度1第一阶段", "射枪温度2第一阶段"]
+     */
+    public static List<String> resolvePlcFieldKeysForGunTemperatureByStage(int stage, int gunCount, Integer gunNo) {
+        List<String> fieldKeys = new ArrayList<>();
+        int startGun = (gunNo != null && gunNo >= 1 && gunNo <= gunCount) ? gunNo : 1;
+        int endGun = (gunNo != null && gunNo >= 1 && gunNo <= gunCount) ? gunNo : gunCount;
+
+        String stageName = "第" + STAGE_CHINESE[stage - 1] + "阶段";
+        for (int g = startGun; g <= endGun; g++) {
+            fieldKeys.add("射枪温度" + g + stageName);
+        }
+        return fieldKeys;
+    }
+
+    /**
+     * 根据射枪数量返回对应的 category_name
+     * @param gunCount 射枪数量（4 或 2）
+     * @return "4枪温度" 或 "2枪温度"
+     */
+    public static String resolveGunTemperatureCategoryName(int gunCount) {
+        return gunCount + "枪温度";
+    }
 }

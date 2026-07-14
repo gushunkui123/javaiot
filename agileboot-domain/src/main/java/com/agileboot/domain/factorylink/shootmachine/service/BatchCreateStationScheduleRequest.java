@@ -30,5 +30,7 @@ public class BatchCreateStationScheduleRequest implements Serializable {
     public static class Item implements Serializable {
         private Long stationId;
         private String moldSide;
+        /** 射枪编号（计划级选枪，1枪/2枪...），用于射枪温度等按枪比较 */
+        private Integer gunNo;
     }
 }
