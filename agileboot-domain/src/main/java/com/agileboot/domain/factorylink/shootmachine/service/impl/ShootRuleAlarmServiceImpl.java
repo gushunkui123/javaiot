@@ -10,6 +10,7 @@ import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
+import com.agileboot.domain.factorylink.shootmachine.dto.AlarmPageResponse;
 import com.agileboot.domain.factorylink.shootmachine.entity.*;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
@@ -49,6 +50,22 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     public List<ShootRuleAlarmEntity> listUnhandledWithRelation(Long machineId) {
         // 直接查询未处理报警（自动取消逻辑已移至定时任务）
         return baseMapper.selectUnhandledListWithRelation(machineId);
+    }
+
+    @Override
+    public List<Map<String, Object>> listUnhandledSummary(Long machineId) {
+        return baseMapper.selectUnhandledSummary(machineId);
+    }
+
+    @Override
+    public AlarmPageResponse listUnhandledPaged(Long machineId, Long stationId, long page, long pageSize) {
+        long offset = (page - 1) * pageSize;
+        List<ShootRuleAlarmEntity> items = baseMapper.selectUnhandledPaged(machineId, stationId, offset, pageSize);
+        long total = baseMapper.countUnhandled(machineId, stationId);
+        AlarmPageResponse response = new AlarmPageResponse();
+        response.setItems(items);
+        response.setTotal(total);
+        return response;
     }
 
     @Override

@@ -94,6 +94,8 @@ public class PlcDataSyncService {
      * 单次调用外部 PLC 接口，只带一个 dataCodes（或 null 表示全量）
      */
     private List<?> callOnce(SignedRestTemplateUtil signedUtil, String dataCode) {
+        // 临时调试：打印实际调用的地址和 apiKey，确认配置是否生效
+        log.info("PLC调用实际配置: base-url={}, apiKey={}", externalPlcBaseUrl, workshopApiKey);
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         if (dataCode != null) {
             // 第三方参数名为 dataCode（camelCase 单数）
@@ -101,7 +103,8 @@ public class PlcDataSyncService {
         }
         try {
             ResponseEntity<Map<String, Object>> response = signedUtil.get(
-                    externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
+//                    externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
+                    externalPlcBaseUrl, "/prod-api/api/device/listByFactoryAndDevice",
                     params, new ParameterizedTypeReference<Map<String, Object>>() {});
             Map<String, Object> result = response.getBody();
             if (result == null) {

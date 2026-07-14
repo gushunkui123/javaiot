@@ -31,6 +31,61 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             "</script>")
     List<ShootRuleAlarmEntity> selectUnhandledListWithRelation(@Param("machineId") Long machineId);
 
+    /**
+     * 聚合查询未处理报警：按机器+站位分组，统计红/黄数量（首屏看板用，数据量极小）
+     */
+    @Select("<script>" +
+            "SELECT a.machine_id AS machineId, m.machine_name AS machineName, " +
+            "a.station_id AS stationId, s.station_name AS stationName, " +
+            "SUM(CASE WHEN a.alarm_level = 'red' THEN 1 ELSE 0 END) AS redCount, " +
+            "SUM(CASE WHEN a.alarm_level = 'yellow' THEN 1 ELSE 0 END) AS yellowCount " +
+            "FROM shoot_rule_alarm a " +
+            "LEFT JOIN shoot_machine m ON a.machine_id = m.id AND m.deleted = 0 " +
+            "LEFT JOIN shoot_machine_station s ON a.station_id = s.id AND s.deleted = 0 " +
+            "WHERE a.deleted = 0 AND a.handle_status = 'false' " +
+            "<if test='machineId != null'>AND a.machine_id = #{machineId}</if> " +
+            "GROUP BY a.machine_id, a.station_id, m.machine_name, s.station_name " +
+            "ORDER BY a.machine_id, a.station_id" +
+            "</script>")
+    List<Map<String, Object>> selectUnhandledSummary(@Param("machineId") Long machineId);
+
+    /**
+     * 分页查询未处理报警明细（按机器+站位过滤），用于点开站位后按需加载
+     */
+    @Select("<script>" +
+            "SELECT a.id, a.machine_id AS machineId, a.station_id AS stationId, a.mold_id AS moldId, a.rule_id AS ruleId, " +
+            "a.field_code AS fieldCode, a.field_name AS fieldName, a.min_value AS `minValue`, a.max_value AS `maxValue`, " +
+            "a.current_value AS currentValue, a.alarm_level AS alarmLevel, a.alarm_time AS alarmTime, " +
+            "a.handle_status AS handleStatus, a.handle_remark AS handleRemark, a.created_at AS createdAt, " +
+            "a.updated_at AS updatedAt, a.deleted, " +
+            "m.machine_name AS machineName, s.station_name AS stationName, mo.mold_model AS moldModel, mo.color AS moldColor " +
+            "FROM shoot_rule_alarm a " +
+            "LEFT JOIN shoot_machine m ON a.machine_id = m.id AND m.deleted = 0 " +
+            "LEFT JOIN shoot_machine_station s ON a.station_id = s.id AND s.deleted = 0 " +
+            "LEFT JOIN shoot_mold mo ON a.mold_id = mo.id AND mo.deleted = 0 " +
+            "WHERE a.deleted = 0 AND a.handle_status = 'false' " +
+            "<if test='machineId != null'>AND a.machine_id = #{machineId}</if> " +
+            "<if test='stationId != null'>AND a.station_id = #{stationId}</if> " +
+            "ORDER BY a.alarm_time DESC " +
+            "LIMIT #{offset}, #{pageSize}" +
+            "</script>")
+    List<ShootRuleAlarmEntity> selectUnhandledPaged(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("offset") long offset,
+            @Param("pageSize") long pageSize);
+
+    /**
+     * 统计未处理报警总数（配合分页使用）
+     */
+    @Select("<script>" +
+            "SELECT COUNT(1) FROM shoot_rule_alarm a " +
+            "WHERE a.deleted = 0 AND a.handle_status = 'false' " +
+            "<if test='machineId != null'>AND a.machine_id = #{machineId}</if> " +
+            "<if test='stationId != null'>AND a.station_id = #{stationId}</if> " +
+            "</script>")
+    long countUnhandled(@Param("machineId") Long machineId, @Param("stationId") Long stationId);
+
     @Select(
             "SELECT COUNT(1) FROM shoot_rule_alarm "
                     + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
