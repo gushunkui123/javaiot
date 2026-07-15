@@ -46,14 +46,13 @@ public class ShootMachineStationEntity implements Serializable {
     @TableLogic
     private Boolean deleted;
 
-    /** 射枪数量（非表字段，按机台站位总数推导：10站位机台=4枪，8站位机台=2枪） */
+    /** 射枪数量（非表字段，按机台站位总数推导：10站位=4枪，6/8站位=2枪） */
     @TableField(exist = false)
     private Integer gunCount;
 
-    /** 按机台站位总数推导射枪数量：10站位机台4枪、8站位机台2枪，其余默认2枪 */
+    /** 按机台站位总数推导射枪数量：10站位4枪，6/8站位2枪 */
     public static int resolveGunCount(int stationCount) {
         if (stationCount == 10) return 4;
-        if (stationCount == 8) return 2;
         return 2;
     }
 }

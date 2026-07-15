@@ -251,18 +251,4 @@ public class PlcDataController {
 //        return ResponseDTO.ok(data);
 //    }
 
-    @Operation(summary = "手动触发报警检测（测试用）")
-    @PostMapping("/alarm/detect")
-    public ResponseDTO<String> detectAlarms(
-            @Parameter(description = "机台ID", required = true, example = "5")
-            @RequestParam("machineId") Long machineId) {
-        try {
-            shootRuleAlarmService.detectAlarmsByPlcData(machineId);
-            return ResponseDTO.ok("报警检测完成，machineId=" + machineId);
-        } catch (Exception e) {
-            log.error("手动触发报警检测失败: machineId={}", machineId, e);
-            return ResponseDTO.build(null, 500, "报警检测失败: " + e.getMessage());
-        }
-    }
-
 }

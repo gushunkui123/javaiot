@@ -26,7 +26,7 @@ import java.util.Map;
 public class PlcDataSyncService {
 
     private static final Long MACHINE_ID = 5L;
-    private static final String DEVICE_NAME = "射出机五号机";
+    private static final String DEVICE_NAME = "射出机九号机";
     private static final List<String> DEFAULT_DATA_CODES = List.of("kkb756", "7JTAVe");
 
     private final PlcDataLatestMapper plcDataLatestMapper;

@@ -6,7 +6,6 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
-import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
 import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
@@ -143,31 +142,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         return detail;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public ShootRuleAlarmEntity create(ShootRuleAlarmEntity entity) {
-        validateAlarm(entity);
 
-        // 检查是否重复报警，一分钟内不允许重复创建同一个站位的同一规则的报警
-        LocalDateTime sinceTime = LocalDateTime.now().minusMinutes(ALARM_DEDUP_MINUTES);
-        // 查询最近1分钟内是否有相同报警记录
-        long count = baseMapper.countRecentSameAlarm(
-                entity.getMachineId(),
-                entity.getStationId(),
-                entity.getRuleId(),
-                sinceTime);
-        
-        if (count > 0) {
-            return null;
-        }
-
-        entity.setAlarmTime(entity.getAlarmTime() != null ? entity.getAlarmTime() : LocalDateTime.now());
-        entity.setHandleStatus("false");
-        entity.setHandleRemark(null);
-        entity.setDeleted(false);
-        save(entity);
-        return entity;
-    }
 
 
     @Override
@@ -192,21 +167,8 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         List<ShootStationScheduleEntity> schedules =
                 shootStationScheduleService.listCurrentByMachineId(machineId);
 
-        for (ShootStationScheduleEntity schedule : schedules) {
-            if (schedule.getMoldId() == null || schedule.getStationId() == null) {
-                continue;
-            }
-            // 获取模具规则信息
-            List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(schedule.getMoldId());
-            for (ShootMoldRuleEntity rule : rules) {
-                if (Boolean.FALSE.equals(rule.getEnabled())) {
-                    continue;
-                }
-                checkRuleAndCreateAlarm(machineId, schedule.getStationId(), schedule.getStationNo(), rule, root);
-            }
-        }
-
-        // 检测停机/操作超时状态（黄色+红色报警）
+        // 红色报警检测已统一由 detectAlarmsByPlcData → detectRedAlarmsFromPlcData 处理
+        // 此处仅保留黄色报警检测
         detectYellowAndStopAlarms(machineId, schedules);
     }
 
@@ -220,7 +182,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         List<ShootStationScheduleEntity> schedules =
                 shootStationScheduleService.listCurrentByMachineId(machineId);
         detectYellowAndStopAlarms(machineId, schedules);
-        
+
         // 从PLC数据检测红色报警（基于规则值范围，含射枪温度等全局字段）
         detectRedAlarmsFromPlcData(machineId, schedules);
     }
@@ -236,6 +198,10 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 .eq(ShootMachineStationEntity::getMachineId, machineId)
                 .count();
         int gunCount = ShootMachineStationEntity.resolveGunCount((int) stationCount);
+
+        // 内存去重：同一事务内相同的 (stationId, ruleId, fieldCode, currentValue) 只插入一次，
+        // 解决同站位多 schedule（多枪别）时 DB 去重看不见未提交 INSERT 的问题
+        java.util.Set<String> insertedKeys = new java.util.HashSet<>();
 
         for (ShootStationScheduleEntity schedule : schedules) {
             Long stationId = schedule.getStationId();
@@ -278,7 +244,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                             || currentValue.compareTo(rule.getMaxValue()) > 0;
 
                     if (isOutOfRange) {
-                        createAlarmFromDetection(machineId, stationId, rule, currentValue, plcFieldKey);
+                        // 内存去重：同一事务内相同 (stationId, ruleId, fieldCode, currentValue) 已插入则跳过
+                        String dedupKey = stationId + "_" + rule.getId() + "_" + plcFieldKey + "_" + currentValue;
+                        if (insertedKeys.add(dedupKey)) {
+                            createAlarmFromDetection(machineId, stationId, rule, currentValue, plcFieldKey);
+                        }
                     } else {
                         autoCancelRedAlarmWhenNormal(machineId, stationId, rule, plcFieldKey);
                     }
@@ -491,51 +461,22 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
     }
 
-    private void checkRuleAndCreateAlarm(Long machineId, Long stationId, Integer stationNo, ShootMoldRuleEntity rule, JSONObject root) {
-        // PLC 字段带站位号后缀（如 kai_mo_1），规则 fieldCode 是基础名（如 kai_mo），需要匹配
-        String targetBaseKey = rule.getFieldCode();
-        String matchedValue = root.keySet().stream()
-                .filter(key -> PlcFieldKeyDisplayNames.extractBaseKey(key).equals(targetBaseKey))
-                .filter(key -> stationNo == null || stationNo.equals(PlcFieldKeyDisplayNames.parseStationNo(key)))
-                .map(root::getStr)
-                .filter(StrUtil::isNotBlank)
-                .findFirst()
-                .orElse(null);
-        if (matchedValue == null) {
-            return;
-        }
-        String fieldValue = matchedValue;
-        BigDecimal currentValue = Convert.toBigDecimal(fieldValue, null);
-        if (currentValue == null) {
-            log.warn("Field value convert failed: fieldCode={}, value={}", rule.getFieldCode(), fieldValue);
-            return;
-        }
-        boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
-                || currentValue.compareTo(rule.getMaxValue()) > 0;
-        if (isOutOfRange) {
-            // 值超出范围，创建报警
-            createAlarmFromDetection(machineId, stationId, rule, currentValue, null);
-        } else {
-            // 值恢复正常，自动取消该规则的红色报警
-            autoCancelRedAlarmWhenNormal(machineId, stationId, rule, null);
-        }
-    }
-
     private void createAlarmFromDetection(Long machineId, Long stationId, ShootMoldRuleEntity rule,
                                           BigDecimal currentValue, String plcFieldKey) {
         try {
-            // 去重：检查1分钟内是否有相同的红色报警（按 ruleId + plcFieldKey 去重，支持同规则多阶段各自独立）
-            LocalDateTime sinceTime = LocalDateTime.now().minusMinutes(ALARM_DEDUP_MINUTES);
-            long count = baseMapper.countRecentSameRedAlarm(machineId, stationId, rule.getId(), plcFieldKey, sinceTime);
-            if (count > 0) {
+            String alarmFieldCode = StrUtil.isNotBlank(plcFieldKey) ? plcFieldKey : rule.getFieldCode();
+
+            // 去重：同机器+站位+规则(+字段) 已存在未处理且当前值相等的红色报警时，不再重复插入。
+            // 即同一超标值只报一次；值变化（如60→70）才新增一条；已报过的值不再重复报。
+            long existingCount = baseMapper.existsUnhandledRedAlarmWithValue(
+                    machineId, stationId, rule.getId(), plcFieldKey, currentValue);
+            if (existingCount > 0) {
                 return;
             }
 
-            String alarmFieldCode = StrUtil.isNotBlank(plcFieldKey) ? plcFieldKey : rule.getFieldCode();
             String alarmFieldName = StrUtil.isNotBlank(plcFieldKey) ? plcFieldKey : rule.getFieldName();
             baseMapper.insertRedAlarm(machineId, stationId, rule.getMoldId(), rule.getId(),
                     alarmFieldCode, alarmFieldName, rule.getMinValue(), rule.getMaxValue(), currentValue);
-
             log.info("创建红色报警: machineId={}, stationId={}, ruleId={}, fieldCode={}, currentValue={}",
                     machineId, stationId, rule.getId(), alarmFieldCode, currentValue);
         } catch (Exception e) {
@@ -549,7 +490,6 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
      */
     private void autoCancelRedAlarmWhenNormal(Long machineId, Long stationId, ShootMoldRuleEntity rule, String plcFieldKey) {
         try {
-            // 查询是否有未处理的红色报警
             long unhandledCount = baseMapper.countUnhandledRedAlarms(machineId, stationId, rule.getId());
             if (unhandledCount > 0) {
                 // 自动取消红色报警（plcFieldKey 为空取消该规则全部，非空仅取消该字段）
@@ -565,24 +505,4 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
     }
 
-    private void validateAlarm(ShootRuleAlarmEntity entity) {
-        if (entity.getMachineId() == null) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "机器ID不能为空");
-        }
-        if (entity.getStationId() == null) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "站位ID不能为空");
-        }
-        if (entity.getMoldId() == null) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具ID不能为空");
-        }
-        if (entity.getRuleId() == null) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "规则ID不能为空");
-        }
-        if (StrUtil.isBlank(entity.getFieldCode())) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "字段编码不能为空");
-        }
-        if (entity.getCurrentValue() == null) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "当前值不能为空");
-        }
-    }
 }

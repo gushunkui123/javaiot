@@ -8,7 +8,9 @@ import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
+import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineStationMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -27,9 +29,11 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         implements ShootMachineService {
 
     private static final int PLC_STOP_MINUTES = 2;
+    private static final int DEFAULT_STATION_COUNT = 10;
 
     private final PlcDataService plcDataService;
     private final ShootDeleteValidator deleteValidator;
+    private final ShootMachineStationMapper shootMachineStationMapper;
 
     @Override
     public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize) {
@@ -56,18 +60,42 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         if (entity.getEnabled() == null) {
             entity.setEnabled(true);
         }
+        if (entity.getStationCount() == null || entity.getStationCount() < 1) {
+            entity.setStationCount(DEFAULT_STATION_COUNT);
+        }
         entity.setDeleted(false);
         save(entity);
+
+        // 自动生成站位：站位名称格式 = "{机台名称}-站位{编号}"
+        String machineName = entity.getMachineName();
+        for (int i = 1; i <= entity.getStationCount(); i++) {
+            ShootMachineStationEntity station = new ShootMachineStationEntity();
+            station.setMachineId(entity.getId());
+            station.setStationNo(i);
+            station.setStationName(machineName + "-站位" + i);
+            station.setEnabled(true);
+            station.setDeleted(false);
+            station.setCreatedAt(LocalDateTime.now());
+            station.setUpdatedAt(LocalDateTime.now());
+            shootMachineStationMapper.insert(station);
+        }
         return entity;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ShootMachineEntity update(Long id, ShootMachineEntity entity) {
-        getByIdOrThrow(id);
+        ShootMachineEntity old = getByIdOrThrow(id);
         validateMachineName(entity.getMachineName());
         entity.setId(id);
         updateById(entity);
+
+        // 名称变更时，同步更新站位名称
+        String oldName = old.getMachineName();
+        String newName = entity.getMachineName();
+        if (oldName != null && !oldName.equals(newName)) {
+            shootMachineStationMapper.updateStationName(id, oldName, newName);
+        }
         return entity;
     }
 

@@ -29,6 +29,10 @@ public class ShootMachineEntity implements Serializable {
     @TableField("remark")
     private String remark;
 
+    /** 站位数量，新增机台时前端输入，后端自动生成对应站位记录 */
+    @TableField("station_count")
+    private Integer stationCount;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

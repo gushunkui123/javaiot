@@ -137,7 +137,7 @@ public class SecurityConfig {
                 // 注意： 当携带token请求以下这几个接口时 会返回403的错误
                 .requestMatchers("/login", "/register", "/getConfig").anonymous()
                 // 报警、PLC数据、机器列表和站点接口允许所有访问（匿名和已认证）
-                .requestMatchers(HttpMethod.GET, "/api/shoot/machines", "/api/shoot/stations/{machineId}", "/api/shoot/alarm/unhandled", "/factorylink/plc/data/recent").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/shoot/machines", "/api/shoot/stations/{machineId}", "/api/shoot/alarm/**", "/factorylink/plc/**").permitAll()
                 // 射出机管理接口需要认证
                 .requestMatchers("/api/shoot/machines/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/", "/*.html", "/*.css", "/*.js",

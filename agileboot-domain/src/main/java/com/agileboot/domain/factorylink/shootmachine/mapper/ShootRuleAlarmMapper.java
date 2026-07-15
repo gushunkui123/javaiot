@@ -87,17 +87,6 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     long countUnhandled(@Param("machineId") Long machineId, @Param("stationId") Long stationId);
 
     @Select(
-            "SELECT COUNT(1) FROM shoot_rule_alarm "
-                    + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-                    + "AND rule_id = #{ruleId} AND handle_status = 'false' "
-                    + "AND alarm_time >= #{sinceTime}")
-    long countRecentSameAlarm(
-            @Param("machineId") Long machineId,
-            @Param("stationId") Long stationId,
-            @Param("ruleId") Long ruleId,
-            @Param("sinceTime") LocalDateTime sinceTime);
-
-    @Select(
             "<script>" +
             "SELECT COUNT(1) FROM shoot_rule_alarm "
                     + "WHERE deleted = 0 AND handle_status = 'false' "
@@ -237,21 +226,22 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("ruleId") Long ruleId);
 
     /**
-     * 查询最近是否有相同的红色报警（去重用）
-     * fieldCode 为空时仅按 ruleId 去重；非空时按 ruleId + fieldCode 去重（支持同规则多阶段各自独立报警）
+     * 判断是否存在同条件、未处理且当前值相等的红色报警（去重用）
+     * 用于「同一超标值不重复报警」：值60报过且未恢复就不再报，值变为70再报，回到60也不报。
+     * fieldCode 为空时仅按 ruleId 判定；非空时按 ruleId + fieldCode 判定（支持同规则多阶段各自独立）
      */
     @Select("<script>SELECT COUNT(1) FROM shoot_rule_alarm "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
             + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false' "
-            + "AND alarm_time >= #{sinceTime}"
+            + "AND current_value = #{currentValue}"
             + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
             + "</script>")
-    long countRecentSameRedAlarm(
+    long existsUnhandledRedAlarmWithValue(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
             @Param("ruleId") Long ruleId,
             @Param("fieldCode") String fieldCode,
-            @Param("sinceTime") LocalDateTime sinceTime);
+            @Param("currentValue") BigDecimal currentValue);
 
     /**
      * 自动取消指定规则的红色报警（参数恢复正常时）
