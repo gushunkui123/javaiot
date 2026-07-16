@@ -69,36 +69,46 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     @Override
-    public List<ShootRuleAlarmExportDTO> listAllForExport(Long machineId, Integer days) {
+    public AlarmExportResult listAllForExport(Long machineId, Integer days) {
         List<ShootRuleAlarmEntity> alarms = baseMapper.selectAllWithRelation(machineId, days);
-        List<ShootRuleAlarmExportDTO> exportList = new ArrayList<>();
+        List<ShootRuleAlarmExportDTO> redList = new ArrayList<>();
+        List<ShootRuleAlarmExportDTO> yellowList = new ArrayList<>();
         for (ShootRuleAlarmEntity alarm : alarms) {
-            ShootRuleAlarmExportDTO dto = new ShootRuleAlarmExportDTO();
             boolean isYellow = "yellow".equals(alarm.getAlarmLevel());
-            dto.setMachineName(alarm.getMachineName());
-            dto.setStationName(alarm.getStationName());
-            dto.setFieldName(alarm.getFieldName());
-            dto.setAlarmLevel(isYellow ? "黄色" : "红色");
-            // 黄色报警（操作超时/停机）：不显示阈值，显示超时时间
-            if (isYellow) {
-                dto.setMinValue("");
-                dto.setCurrentValue("");
-                dto.setMaxValue("");
-                dto.setTimeoutSeconds(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
-            } else {
-                // 红色报警（阈值超标）：显示阈值，不显示超时时间
-                dto.setMinValue(alarm.getMinValue() != null ? alarm.getMinValue().toString() : "");
-                dto.setCurrentValue(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
-                dto.setMaxValue(alarm.getMaxValue() != null ? alarm.getMaxValue().toString() : "");
-                dto.setTimeoutSeconds("");
-            }
-            dto.setAlarmTime(alarm.getAlarmTime() != null ? alarm.getAlarmTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
-            dto.setHandleStatus("true".equals(alarm.getHandleStatus()) ? "已处理" : "未处理");
+            ShootRuleAlarmExportDTO dto = convertToExportDto(alarm, isYellow);
+            (isYellow ? yellowList : redList).add(dto);
+        }
+        return new AlarmExportResult(redList, yellowList);
+    }
+
+    /**
+     * 单个报警转导出 DTO：黄色报警显示超时时间不显示阈值，红色报警显示阈值不显示超时时间
+     */
+    private ShootRuleAlarmExportDTO convertToExportDto(ShootRuleAlarmEntity alarm, boolean isYellow) {
+        ShootRuleAlarmExportDTO dto = new ShootRuleAlarmExportDTO();
+        dto.setMachineName(alarm.getMachineName());
+        dto.setStationName(alarm.getStationName());
+        dto.setFieldName(alarm.getFieldName());
+        dto.setAlarmLevel(isYellow ? "黄色" : "红色");
+        if (isYellow) {
+            // 黄色报警（操作超时/停机）：不显示阈值、当前值与模具信息，仅显示超时时间
+            dto.setMinValue("");
+            dto.setMaxValue("");
+            dto.setTimeoutSeconds(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
+            dto.setMoldModel("");
+            dto.setMoldColor("");
+        } else {
+            // 红色报警（阈值超标）：显示阈值与模具信息，不显示超时时间
+            dto.setMinValue(alarm.getMinValue() != null ? alarm.getMinValue().toString() : "");
+            dto.setCurrentValue(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
+            dto.setMaxValue(alarm.getMaxValue() != null ? alarm.getMaxValue().toString() : "");
+            dto.setTimeoutSeconds("");
             dto.setMoldModel(alarm.getMoldModel());
             dto.setMoldColor(alarm.getMoldColor());
-            exportList.add(dto);
         }
-        return exportList;
+        dto.setAlarmTime(alarm.getAlarmTime() != null ? alarm.getAlarmTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
+        dto.setHandleStatus("true".equals(alarm.getHandleStatus()) ? "已处理" : "未处理");
+        return dto;
     }
 
     @Override

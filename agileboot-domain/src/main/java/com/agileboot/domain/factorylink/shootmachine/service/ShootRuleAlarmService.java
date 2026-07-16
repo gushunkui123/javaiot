@@ -2,7 +2,7 @@ package com.agileboot.domain.factorylink.shootmachine.service;
 
 import com.agileboot.domain.factorylink.shootmachine.dto.AlarmPageResponse;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity;
-import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmExportDTO;
+import com.agileboot.domain.factorylink.shootmachine.entity.AlarmExportResult;
 import com.baomidou.mybatisplus.extension.service.IService;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +18,8 @@ public interface ShootRuleAlarmService extends IService<ShootRuleAlarmEntity> {
     /** 分页查询未处理报警明细（可按机器+站位过滤） */
     AlarmPageResponse listUnhandledPaged(Long machineId, Long stationId, long page, long pageSize);
 
-    /** 查询所有报警（包含已处理和未处理），用于导出Excel */
-    List<ShootRuleAlarmExportDTO> listAllForExport(Long machineId, Integer days);
+    /** 查询所有报警（包含已处理和未处理），用于导出Excel；按红/黄分成两部分 */
+    AlarmExportResult listAllForExport(Long machineId, Integer days);
 
     /** 按ID查询报警 */
     ShootRuleAlarmEntity getByIdOrThrow(Long id);
