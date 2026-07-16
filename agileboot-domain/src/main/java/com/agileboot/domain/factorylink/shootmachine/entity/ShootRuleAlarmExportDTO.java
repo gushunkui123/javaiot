@@ -30,6 +30,9 @@ public class ShootRuleAlarmExportDTO {
     @ExcelColumn(name = "最大阈值")
     private String maxValue;
 
+    @ExcelColumn(name = "超时时间(秒)")
+    private String timeoutSeconds;
+
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ExcelColumn(name = "报警时间")
     private String alarmTime;

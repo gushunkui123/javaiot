@@ -74,13 +74,24 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         List<ShootRuleAlarmExportDTO> exportList = new ArrayList<>();
         for (ShootRuleAlarmEntity alarm : alarms) {
             ShootRuleAlarmExportDTO dto = new ShootRuleAlarmExportDTO();
+            boolean isYellow = "yellow".equals(alarm.getAlarmLevel());
             dto.setMachineName(alarm.getMachineName());
             dto.setStationName(alarm.getStationName());
             dto.setFieldName(alarm.getFieldName());
-            dto.setAlarmLevel("yellow".equals(alarm.getAlarmLevel()) ? "黄色" : "红色");
-            dto.setMinValue(alarm.getMinValue() != null ? alarm.getMinValue().toString() : "");
-            dto.setCurrentValue(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
-            dto.setMaxValue(alarm.getMaxValue() != null ? alarm.getMaxValue().toString() : "");
+            dto.setAlarmLevel(isYellow ? "黄色" : "红色");
+            // 黄色报警（操作超时/停机）：不显示阈值，显示超时时间
+            if (isYellow) {
+                dto.setMinValue("");
+                dto.setCurrentValue("");
+                dto.setMaxValue("");
+                dto.setTimeoutSeconds(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
+            } else {
+                // 红色报警（阈值超标）：显示阈值，不显示超时时间
+                dto.setMinValue(alarm.getMinValue() != null ? alarm.getMinValue().toString() : "");
+                dto.setCurrentValue(alarm.getCurrentValue() != null ? alarm.getCurrentValue().toString() : "");
+                dto.setMaxValue(alarm.getMaxValue() != null ? alarm.getMaxValue().toString() : "");
+                dto.setTimeoutSeconds("");
+            }
             dto.setAlarmTime(alarm.getAlarmTime() != null ? alarm.getAlarmTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
             dto.setHandleStatus("true".equals(alarm.getHandleStatus()) ? "已处理" : "未处理");
             dto.setMoldModel(alarm.getMoldModel());
@@ -253,11 +264,16 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
     }
 
-    /** 先按分类（站台X）查，再回退到全局（不按分类，用于射枪温度等跨站位字段） */
+    /**
+     * 按分类（categoryName）查询PLC数据
+     * 射枪温度字段：严格按指定温度组查询，不回退到全局（避免4射枪温度组数据污染2射枪温度组）
+     * 其他字段：先按分类查，查不到再回退到全局（用于站台级别字段）
+     */
     private PlcDataLatestEntity queryPlcFieldByCategory(Long machineId, String categoryName, String fieldKey) {
         PlcDataLatestEntity fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
                 machineId, fieldKey, categoryName);
-        if (fieldData == null) {
+        // 射枪温度字段不回退到全局查询，严格按指定温度组匹配
+        if (fieldData == null && !categoryName.contains("射枪温度")) {
             fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
         }
         return fieldData;
@@ -487,40 +503,47 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 continue;
             }
 
+            long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
+
+            // 每次都先处理超过AUTO_HANDLE_SECONDS秒的旧报警（不管合模止是什么状态）
+            int handledTimeout = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "operation_timeout", AUTO_HANDLE_SECONDS);
+            int handledStop = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "stop_no_mold_close", AUTO_HANDLE_SECONDS);
+            if (handledTimeout > 0 || handledStop > 0) {
+                log.info("自动处理过期报警: stationId={}, operationTimeout={}, stop={}", stationId, handledTimeout, handledStop);
+            }
+
             // 合模止=OFF 表示在生产
             boolean isProducing = "OFF".equalsIgnoreCase(heMoValue);
             if (!isProducing) {
+                log.info("合模止非OFF，跳过报警创建: stationId={}, heMoValue={}", stationId, heMoValue);
                 continue;
             }
 
-            long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
+            log.info("操作超时检测: stationId={}, stationNo={}, heMoValue={}, heMoTime={}, elapsedSeconds={}, MOLD_TIMEOUT_SECONDS={}",
+                    stationId, stationNo, heMoValue, heMoTime, elapsedSeconds, MOLD_TIMEOUT_SECONDS);
 
-            // 60秒操作超时 → 黄色报警
+            // 操作超时 → 黄色报警
             if (elapsedSeconds >= MOLD_TIMEOUT_SECONDS) {
-                // 先处理超过10秒的同fieldCode旧报警
-                int handled = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "operation_timeout", AUTO_HANDLE_SECONDS);
-                if (handled > 0) {
-                    log.info("自动处理{}条过期操作超时报警: stationId={}", handled, stationId);
-                }
                 // 去重：1分钟内已创建过相同报警则跳过
                 long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "operation_timeout", dedupSince);
+                log.info("去重检查: stationId={}, sameYellowAlarmCount={}, dedupSince={}", stationId, sameYellowAlarmCount, dedupSince);
                 if (sameYellowAlarmCount == 0) {
-                    baseMapper.insertYellowAlarm(machineId, stationId, null, null, "operation_timeout", "操作超时", 0L);
-                    log.info("PLC直接检测: 创建操作超时黄色报警 stationId={}, stationNo={}, 已过{}秒", stationId, stationNo, elapsedSeconds);
+                    baseMapper.insertYellowAlarm(machineId, stationId, null, null, "operation_timeout", "操作超时", elapsedSeconds);
+                    log.info("创建操作超时黄色报警: stationId={}, stationNo={}, elapsedSeconds={}", stationId, stationNo, elapsedSeconds);
+                } else {
+                    log.info("跳过创建操作超时报警(去重): stationId={}, stationNo={}", stationId, stationNo);
                 }
             }
 
             // 5分钟未合模 → 停机黄色报警
-            if (elapsedSeconds >= MOLD_STOP_MINUTES * 60) {
-                // 先处理超过10秒的同fieldCode旧报警
-                int handled = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "stop_no_mold_close", AUTO_HANDLE_SECONDS);
-                if (handled > 0) {
-                    log.info("自动处理{}条过期停机报警: stationId={}", handled, stationId);
-                }
+            long stopThreshold = MOLD_STOP_MINUTES * 60;
+            if (elapsedSeconds >= stopThreshold) {
                 long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "stop_no_mold_close", dedupSince);
                 if (sameYellowAlarmCount == 0) {
-                    baseMapper.insertYellowAlarm(machineId, stationId, null, null, "stop_no_mold_close", "5分钟未合模停机", 0L);
-                    log.info("PLC直接检测: 创建5分钟未合模停机黄色报警 stationId={}, stationNo={}, 已过{}秒", stationId, stationNo, elapsedSeconds);
+                    baseMapper.insertYellowAlarm(machineId, stationId, null, null, "stop_no_mold_close", "5分钟未合模停机", elapsedSeconds);
+                    log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, elapsedSeconds={}", stationId, stationNo, elapsedSeconds);
+                } else {
+                    log.info("跳过创建停机报警(去重): stationId={}, stationNo={}", stationId, stationNo);
                 }
             }
         }

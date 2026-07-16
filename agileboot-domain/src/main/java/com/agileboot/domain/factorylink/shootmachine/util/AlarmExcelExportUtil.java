@@ -16,7 +16,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 public final class AlarmExcelExportUtil {
 
     private static final int COLUMN_ALARM_LEVEL = 3;
-    private static final int COLUMN_HANDLE_STATUS = 8;
+    private static final int COLUMN_HANDLE_STATUS = 9;
 
     private AlarmExcelExportUtil() {
     }
@@ -33,7 +33,7 @@ public final class AlarmExcelExportUtil {
     }
 
     private static void configureWriter(ExcelWriter writer) {
-        int[] columnWidths = {20, 25, 15, 10, 12, 12, 12, 20, 10, 15, 10};
+        int[] columnWidths = {20, 25, 15, 10, 12, 12, 12, 12, 20, 10, 15, 10};
         for (int i = 0; i < columnWidths.length; i++) {
             writer.setColumnWidth(i, columnWidths[i]);
         }
@@ -44,6 +44,7 @@ public final class AlarmExcelExportUtil {
         writer.addHeaderAlias("minValue", "最小阈值");
         writer.addHeaderAlias("currentValue", "当前值");
         writer.addHeaderAlias("maxValue", "最大阈值");
+        writer.addHeaderAlias("timeoutSeconds", "超时时间(秒)");
         writer.addHeaderAlias("alarmTime", "报警时间");
         writer.addHeaderAlias("handleStatus", "处理状态");
         writer.addHeaderAlias("moldModel", "模具型号");
