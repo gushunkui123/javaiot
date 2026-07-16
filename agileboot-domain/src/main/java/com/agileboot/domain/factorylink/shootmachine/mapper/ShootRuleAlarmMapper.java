@@ -184,6 +184,19 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("sinceTime") LocalDateTime sinceTime);
 
     /**
+     * 查询最近是否有相同的黄色报警（按fieldCode去重，用于不依赖排期的PLC直接检测）
+     */
+    @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false' "
+            + "AND alarm_time >= #{sinceTime}")
+    long countRecentSameYellowAlarmByFieldCode(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("sinceTime") LocalDateTime sinceTime);
+
+    /**
      * 处理停机恢复后的黄色报警
      */
     @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '停机恢复' "
@@ -194,12 +207,35 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("stationId") Long stationId);
 
     /**
-     * 批量自动处理超过指定秒数的黄色报警（基于updated_at判断，使用数据库NOW()避免时间不同步）
+     * 状态恢复时仅取消该站位指定 field_code 的黄色报警，不影响其他黄色报警
      */
-    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '超时自动取消' "
-            + "WHERE deleted = 0 AND alarm_level = 'yellow' AND handle_status = 'false' "
-            + "AND updated_at < DATE_SUB(NOW(), INTERVAL #{expireSeconds} SECOND)")
-    int handleExpiredYellowAlarms(@Param("expireSeconds") int expireSeconds);
+    @Update("<script>UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '状态恢复自动取消' "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND alarm_level = 'yellow' AND handle_status = 'false' "
+            + "AND field_code IN "
+            + "<foreach collection='fieldCodes' item='code' open='(' separator=',' close=')'>#{code}</foreach>"
+            + "</script>")
+    int handleYellowAlarmsByFieldCodes(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCodes") List<String> fieldCodes);
+
+    /**
+     * 按fieldCode处理超过指定秒数的黄色报警（基于alarm_time判断）
+     * operation_timeout → handle_remark = '操作超时'
+     * stop_no_mold_close → handle_remark = '5分钟未合模停机'
+     */
+    @Update("<script>UPDATE shoot_rule_alarm SET handle_status = 'true', "
+            + "handle_remark = field_name "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false' "
+            + "AND alarm_time &lt; DATE_SUB(NOW(), INTERVAL #{expireSeconds} SECOND)"
+            + "</script>")
+    int handleExpiredYellowAlarmsByFieldCode(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("expireSeconds") int expireSeconds);
 
     /**
      * 插入红色报警

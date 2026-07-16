@@ -3,7 +3,6 @@ package com.agileboot.domain.factorylink.shootmachine.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.common.exception.ApiException;
-import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldMapper;
@@ -78,9 +77,6 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     private void validateMold(ShootMoldEntity entity) {
         if (StrUtil.isBlank(entity.getMoldModel())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具型号不能为空");
-        }
-        if (StrUtil.isBlank(entity.getColor())) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "颜色不能为空");
         }
     }
 }

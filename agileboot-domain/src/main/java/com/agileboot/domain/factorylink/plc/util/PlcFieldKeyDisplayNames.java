@@ -292,9 +292,9 @@ public final class PlcFieldKeyDisplayNames {
     /**
      * 根据射枪数量返回对应的 category_name
      * @param gunCount 射枪数量（4 或 2）
-     * @return "4枪温度" 或 "2枪温度"
+     * @return "4射枪温度" 或 "2射枪温度"
      */
     public static String resolveGunTemperatureCategoryName(int gunCount) {
-        return gunCount + "枪温度";
+        return gunCount + "射枪温度";
     }
 }

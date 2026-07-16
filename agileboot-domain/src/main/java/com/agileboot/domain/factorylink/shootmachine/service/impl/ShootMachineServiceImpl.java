@@ -103,7 +103,6 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         getByIdOrThrow(id);
-        deleteValidator.assertNoMachineStations(id);
         deleteValidator.assertNoMachineActiveSchedule(id);
         deleteValidator.assertNoAlarm(id, null, null, null);
         removeById(id);
