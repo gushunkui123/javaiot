@@ -253,6 +253,8 @@ public class PlcDataSyncService {
         entity.setFieldValue(StrUtil.subPre(fieldValue, 500));
         entity.setCategoryName(StrUtil.subPre(categoryName, 100));
         entity.setCreateTime(dataTime);
+        // 首次插入时 value_changed_at = 当前同步时间；upsert 时 SQL 仅在 field_value 变化时更新
+        entity.setValueChangedAt(LocalDateTime.now());
         return entity;
     }
 

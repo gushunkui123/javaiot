@@ -52,4 +52,9 @@ public class PlcDataLatestEntity implements Serializable {
     @TableField("create_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
+
+    /** 值最近一次变化的时间：仅当 field_value 与上次不同时才更新，用于超时检测 */
+    @TableField("value_changed_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime valueChangedAt;
 }

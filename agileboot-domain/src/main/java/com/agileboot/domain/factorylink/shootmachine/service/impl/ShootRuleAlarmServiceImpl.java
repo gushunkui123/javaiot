@@ -37,7 +37,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     // ====== 报警阈值常量 ======
     private static final int DATA_STALE_MINUTES = 15;       // 数据超时停机：15分钟未更新
-    private static final int MOLD_TIMEOUT_SECONDS = 50;     // 操作超时：合模止=OFF（生产中）持续≥60秒未变成ON
+    private static final int MOLD_TIMEOUT_SECONDS = 55;     // 操作超时：合模止=OFF（生产中）持续≥60秒未变成ON
     private static final int MOLD_STOP_MINUTES = 5;         // 停机报警：合模止=OFF（生产中）持续≥5分钟未变成ON
     private static final int AUTO_HANDLE_SECONDS = 10;      // 黄色报警自动处理：报警超过10秒后自动处理
 
@@ -464,7 +464,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
 
         String heMoValue = heMoData.getFieldValue();
-        LocalDateTime heMoTime = heMoData.getDataTimestamp();
+        // 用 value_changed_at：值首次变为 OFF 的时间，而非每次同步覆盖的 timestamp
+        LocalDateTime heMoTime = heMoData.getValueChangedAt() != null
+                ? heMoData.getValueChangedAt() : heMoData.getDataTimestamp();
 
         if (heMoTime == null) {
             return;
@@ -542,7 +544,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             log.info("[MoldState] 合模止: machineId={}, stationNo={}, categoryName={}, fieldValue={}, timestamp={}", machineId, stationNo, categoryName, heMoData.getFieldValue(), heMoData.getDataTimestamp());
 
             String heMoValue = heMoData.getFieldValue();
-            LocalDateTime heMoTime = heMoData.getDataTimestamp();
+            // 用 value_changed_at：值首次变为 OFF 的时间，而非每次同步覆盖的 timestamp
+            LocalDateTime heMoTime = heMoData.getValueChangedAt() != null
+                    ? heMoData.getValueChangedAt() : heMoData.getDataTimestamp();
             if (heMoTime == null) {
                 continue;
             }
