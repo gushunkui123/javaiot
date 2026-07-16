@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -47,15 +48,34 @@ public class PlcDataSyncService {
     @Value("${factory-link.workshop.api-secret:}")
     private String workshopApiSecret;
 
+    /** 高频字段：开模止/合模止，3秒同步一次 */
+    private static final Set<String> HIGH_FREQ_FIELDS = Set.of("开模止", "合模止");
+
     /**
-     * 同步外部 PLC 数据点到本地（固定 dataCodes）
+     * 同步外部 PLC 数据点到本地（固定 dataCodes），无过滤
      * @return 同步的记录数
      */
     public int syncPlcDataPoints() {
-        return doSync(DEFAULT_DATA_CODES);
+        return doSync(DEFAULT_DATA_CODES, null);
     }
 
-    private int doSync(List<String> dataCodes) {
+    /**
+     * 仅同步指定 fieldKey 的数据（高频字段：开模止/合模止）
+     * @return 同步的记录数
+     */
+    public int syncHighFrequencyFields() {
+        return doSync(DEFAULT_DATA_CODES, fieldKey -> HIGH_FREQ_FIELDS.contains(fieldKey));
+    }
+
+    /**
+     * 同步除指定 fieldKey 外的所有数据（低频字段）
+     * @return 同步的记录数
+     */
+    public int syncLowFrequencyFields() {
+        return doSync(DEFAULT_DATA_CODES, fieldKey -> !HIGH_FREQ_FIELDS.contains(fieldKey));
+    }
+
+    private int doSync(List<String> dataCodes, Predicate<String> fieldKeyFilter) {
         SignedRestTemplateUtil signedUtil = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
 
         // 第三方单值验签：每个 dataCode 单独请求；无 dataCode 时发一次全量请求(null)
@@ -93,6 +113,16 @@ public class PlcDataSyncService {
         List<PlcDataLatestEntity> entities = convertToEntities(allRows);
         if (entities.isEmpty()) {
             return 0;
+        }
+
+        // 按 fieldKey 过滤：高频任务只写开模止/合模止，低频任务写其余
+        if (fieldKeyFilter != null) {
+            entities = entities.stream()
+                    .filter(e -> e.getFieldKey() != null && fieldKeyFilter.test(e.getFieldKey()))
+                    .collect(Collectors.toList());
+            if (entities.isEmpty()) {
+                return 0;
+            }
         }
 
         plcDataLatestMapper.batchUpsert(entities);
