@@ -128,8 +128,8 @@ public class PlcDataSyncService {
         }
         try {
             ResponseEntity<Map<String, Object>> response = signedUtil.get(
-                    externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
-//                    externalPlcBaseUrl, "/prod-api/api/device/listByFactoryAndDevice",
+//                    externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
+                    externalPlcBaseUrl, "/prod-api/api/device/listByFactoryAndDevice",
                     params, new ParameterizedTypeReference<Map<String, Object>>() {});
             Map<String, Object> result = response.getBody();
             if (result == null) {
