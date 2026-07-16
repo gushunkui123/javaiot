@@ -218,7 +218,7 @@ public class PlcDataSyncService {
         }
         entity.setMachineId(machineId);
         entity.setDataTimestamp(dataTime);
-        entity.setFieldKey(StrUtil.subPre(remark, 100));
+        entity.setFieldKey(StrUtil.subPre(remark, 100).trim());
         entity.setDataCode(dataCode);
         entity.setFieldValue(StrUtil.subPre(fieldValue, 500));
         entity.setCategoryName(StrUtil.subPre(categoryName, 100));

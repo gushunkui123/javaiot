@@ -70,8 +70,9 @@ public final class PlcFieldKeyDisplayNames {
 
     // ====== fieldCode（展示文字）→ PLC字段中文名模式映射 ======
     // 左右字段：前缀 "左模" / "右模"，根据 moldSide 动态替换
+    // 注意：PLC实际field_key格式为 {side}{number}设定温度（数字在前），如"左模1设定温度"
     private static final Map<String, List<String>> LEFT_RIGHT_FIELDS = Map.of(
-            "设定温度", List.of("左模设定温度1", "左模设定温度2"),
+            "设定温度", List.of("左模1设定温度", "左模2设定温度"),
             "射出压力", List.of("左模第一阶段 射出压力", "左模第二阶段 射出压力", "左模第三阶段 射出压力", "左模第四阶段 射出压力", "左模第五阶段 射出压力"),
             "第一阶段 射出速度", List.of("左模第一阶段 射出速度"),
             "第二阶段 射出速度", List.of("左模第二阶段 射出速度"),
@@ -80,8 +81,9 @@ public final class PlcFieldKeyDisplayNames {
     );
 
     // 右模对应的字段名（用于 RIGHT 方向）
+    // PLC实际field_key格式：{side}{number}设定温度（数字在前），如"右模1设定温度"
     private static final Map<String, List<String>> RIGHT_FIELDS = Map.of(
-            "设定温度", List.of("右模设定温度1", "右模设定温度2"),
+            "设定温度", List.of("右模1设定温度", "右模2设定温度"),
             "射出压力", List.of("右模第一阶段 射出压力", "右模第二阶段 射出压力", "右模第三阶段 射出压力", "右模第四阶段 射出压力", "右模第五阶段 射出压力"),
             "第一阶段 射出速度", List.of("右模第一阶段 射出速度"),
             "第二阶段 射出速度", List.of("右模第二阶段 射出速度"),
@@ -199,7 +201,7 @@ public final class PlcFieldKeyDisplayNames {
      * moldSide 为 "LEFT" 或 "RIGHT"；全局字段忽略 moldSide。
      *
      * 示例：
-     *   resolvePlcFieldKeys("设定温度", "LEFT")  → ["左模设定温度1", "左模设定温度2"]
+     *   resolvePlcFieldKeys("设定温度", "LEFT")  → ["左模1设定温度", "左模2设定温度"]
      *   resolvePlcFieldKeys("射出压力", "RIGHT") → ["右模第一阶段射出压力", ..., "右模第五阶段射出压力"]
      *   resolvePlcFieldKeys("设定加硫时间", "LEFT") → ["设定加硫时间"]
      */
@@ -236,7 +238,8 @@ public final class PlcFieldKeyDisplayNames {
      * @return 需要比对的 PLC 字段名列表
      */
     public static List<String> resolvePlcFieldKeysForGunTemperature(String fieldCode, int gunCount, Integer gunNo) {
-        if (!"射枪温度".equals(fieldCode) || gunCount < 1) {
+        String normalized = fieldCode == null ? "" : fieldCode.replaceAll("\\s+", "");
+        if (!"射枪温度".equals(normalized) || gunCount < 1) {
             return List.of();
         }
 

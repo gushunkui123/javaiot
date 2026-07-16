@@ -229,11 +229,14 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 String[] result = resolveFieldKeysAndCategory(rule, moldSide, gunCount, gunNo, categoryName);
                 List<String> plcFieldKeys = List.of(result[0].split(","));
                 String queryCategoryName = result[1];
+                log.info("[RedAlarm] 规则解析: ruleId={}, fieldCode={}, moldSide={}, plcFieldKeys={}, queryCategoryName={}",
+                        rule.getId(), rule.getFieldCode(), moldSide, plcFieldKeys, queryCategoryName);
 
                 for (String plcFieldKey : plcFieldKeys) {
                     PlcDataLatestEntity fieldData = queryPlcFieldByCategory(machineId, queryCategoryName, plcFieldKey);
                     if (fieldData == null) {
-                        log.info("未找到PLC数据: machineId={}, queryCategoryName={}, plcFieldKey={}", machineId, queryCategoryName, plcFieldKey);
+                        log.info("[RedAlarm] 未匹配PLC数据，跳过: machineId={}, stationNo={}, ruleId={}, fieldCode={}, queryCategoryName={}, plcFieldKey={}",
+                                machineId, stationNo, rule.getId(), rule.getFieldCode(), queryCategoryName, plcFieldKey);
                         continue;
                     }
 
@@ -270,11 +273,30 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
      * 其他字段：先按分类查，查不到再回退到全局（用于站台级别字段）
      */
     private PlcDataLatestEntity queryPlcFieldByCategory(Long machineId, String categoryName, String fieldKey) {
+        // trim防止第三方传入的field_key带空格导致查询失败
+        if (fieldKey != null) fieldKey = fieldKey.trim();
+        log.info("[PLC查询] 精确查询: machineId={}, fieldKey={}, categoryName={}", machineId, fieldKey, categoryName);
         PlcDataLatestEntity fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
                 machineId, fieldKey, categoryName);
+        if (fieldData != null) {
+            log.info("[PLC查询] 精确查询命中: machineId={}, fieldKey={}, categoryName={}, fieldValue={}, timestamp={}",
+                    machineId, fieldKey, categoryName, fieldData.getFieldValue(), fieldData.getDataTimestamp());
+            return fieldData;
+        }
+        log.info("[PLC查询] 精确查询未命中: machineId={}, fieldKey={}, categoryName={}", machineId, fieldKey, categoryName);
         // 射枪温度字段不回退到全局查询，严格按指定温度组匹配
-        if (fieldData == null && !categoryName.contains("射枪温度")) {
-            fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
+        if (categoryName.contains("射枪温度")) {
+            log.info("[PLC查询] 射枪温度按分类未找到，不回退全局: machineId={}, categoryName={}, fieldKey={}", machineId, categoryName, fieldKey);
+            return null;
+        }
+        // 其他字段回退到全局查询
+        log.info("[PLC查询] 回退全局查询: machineId={}, fieldKey={}", machineId, fieldKey);
+        fieldData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyForGlobal(machineId, fieldKey);
+        if (fieldData == null) {
+            log.info("[PLC查询] 全局查询也未找到: machineId={}, fieldKey={}", machineId, fieldKey);
+        } else {
+            log.info("[PLC查询] 全局查询命中: machineId={}, fieldKey={}, categoryName={}, fieldValue={}, timestamp={}",
+                    machineId, fieldKey, fieldData.getCategoryName(), fieldData.getFieldValue(), fieldData.getDataTimestamp());
         }
         return fieldData;
     }
@@ -361,8 +383,18 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             // 一次查出该站位需要的字段
             PlcDataLatestEntity settingTimeData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
                     machineId, "设定加硫时间", categoryName);
+            if (settingTimeData == null) {
+                log.info("[YellowAlarm] 未找到设定加硫时间: machineId={}, stationNo={}, categoryName={}, fieldKey=设定加硫时间", machineId, stationNo, categoryName);
+            } else {
+                log.info("[YellowAlarm] 设定加硫时间: machineId={}, stationNo={}, categoryName={}, fieldValue={}, timestamp={}", machineId, stationNo, categoryName, settingTimeData.getFieldValue(), settingTimeData.getDataTimestamp());
+            }
             PlcDataLatestEntity heMoData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
                     machineId, "合模止", categoryName);
+            if (heMoData == null) {
+                log.info("[YellowAlarm] 未找到合模止: machineId={}, stationNo={}, categoryName={}, fieldKey=合模止", machineId, stationNo, categoryName);
+            } else {
+                log.info("[YellowAlarm] 合模止: machineId={}, stationNo={}, categoryName={}, fieldValue={}, timestamp={}", machineId, stationNo, categoryName, heMoData.getFieldValue(), heMoData.getDataTimestamp());
+            }
 
             // 查询该站位已有的未处理黄色报警（复用）
             long yellowAlarmCount = baseMapper.countRecentYellowAlarm(machineId, stationId, dedupSince);
@@ -494,8 +526,10 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             PlcDataLatestEntity heMoData = plcDataLatestMapper.selectLatestByMachineIdAndFieldKeyAndCategory(
                     machineId, "合模止", categoryName);
             if (heMoData == null) {
+                log.info("[MoldState] 未找到合模止: machineId={}, stationNo={}, categoryName={}, fieldKey=合模止", machineId, stationNo, categoryName);
                 continue;
             }
+            log.info("[MoldState] 合模止: machineId={}, stationNo={}, categoryName={}, fieldValue={}, timestamp={}", machineId, stationNo, categoryName, heMoData.getFieldValue(), heMoData.getDataTimestamp());
 
             String heMoValue = heMoData.getFieldValue();
             LocalDateTime heMoTime = heMoData.getDataTimestamp();
