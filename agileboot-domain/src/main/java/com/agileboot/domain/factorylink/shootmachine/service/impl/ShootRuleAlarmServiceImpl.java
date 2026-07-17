@@ -560,9 +560,10 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             // 合模止=OFF 表示在生产
             boolean isProducing = "OFF".equalsIgnoreCase(heMoValue);
             if (!isProducing) {
-                // 合模止恢复ON → 自动关闭该站位的5分钟未合模停机报警
-                baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("stop_no_mold_close"));
-                log.info("合模止恢复ON，关闭停机报警: stationId={}, heMoValue={}", stationId, heMoValue);
+                // 合模止恢复ON → 自动关闭该站位的所有黄色报警（停机+操作超时）
+                int closedCount = baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, 
+                        List.of("stop_no_mold_close", "operation_timeout"));
+                log.info("合模止恢复ON，关闭黄色报警: stationId={}, heMoValue={}, closedCount={}", stationId, heMoValue, closedCount);
                 continue;
             }
 
@@ -578,6 +579,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             // 5分钟未合模 → 停机黄色报警（只产生一条，按 fieldCode 去重）
             long stopThreshold = MOLD_STOP_MINUTES * 60;
             if (elapsedSeconds >= stopThreshold) {
+                // 操作超时升级为停机时，先关闭该站位的操作超时报警
+                int closedTimeout = baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("operation_timeout"));
+                if (closedTimeout > 0) {
+                    log.info("操作超时升级为停机，关闭操作超时报警: stationId={}, count={}", stationId, closedTimeout);
+                }
                 long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "stop_no_mold_close");
                 if (sameYellowAlarmCount == 0) {
                     baseMapper.insertYellowAlarm(machineId, stationId, null, null, "stop_no_mold_close", "5分钟未合模停机", elapsedSeconds);
