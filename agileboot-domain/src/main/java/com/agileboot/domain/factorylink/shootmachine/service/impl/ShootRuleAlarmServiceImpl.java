@@ -98,9 +98,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             long rawSeconds = alarm.getCurrentValue() != null ? alarm.getCurrentValue().longValue() : 0;
             long threshold = 0;
             if ("operation_timeout".equals(alarm.getFieldCode())) {
-                threshold = MOLD_TIMEOUT_SECONDS;
+                threshold = MOLD_TIMEOUT_SECONDS;              // 55秒
             } else if ("stop_no_mold_close".equals(alarm.getFieldCode())) {
-                threshold = MOLD_STOP_MINUTES * 60L;
+                threshold = MOLD_STOP_MINUTES * 60L;           // 300秒 (5分钟)
+            } else if ("she_ding_jia_liu_time".equals(alarm.getFieldCode())) {
+                threshold = DATA_STALE_MINUTES * 60L;          // 900秒 (15分钟)
             }
             long displaySeconds = Math.max(rawSeconds - threshold, 0);
             dto.setTimeoutSeconds(String.valueOf(displaySeconds));
