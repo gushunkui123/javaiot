@@ -37,9 +37,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     // ====== 报警阈值常量 ======
     private static final int DATA_STALE_MINUTES = 15;       // 数据超时停机：15分钟未更新
-    private static final int MOLD_TIMEOUT_SECONDS = 55;     // 操作超时：合模止=OFF（生产中）持续≥60秒未变成ON
+    private static final int MOLD_TIMEOUT_SECONDS = 55;     // 操作超时：合模止=OFF（生产中）持续≥55秒未变成ON
     private static final int MOLD_STOP_MINUTES = 5;         // 停机报警：合模止=OFF（生产中）持续≥5分钟未变成ON
-    private static final int AUTO_HANDLE_SECONDS = 10;      // 黄色报警自动处理：报警超过10秒后自动处理
+    private static final int AUTO_HANDLE_SECONDS = 10;      // 操作超时自动处理：报警超过10秒后自动关闭
 
     private final ShootStationScheduleService shootStationScheduleService;
     private final ShootMachineStationService shootMachineStationService;
@@ -199,13 +199,16 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     public void detectAlarmsByPlcData(Long machineId) {
         List<ShootStationScheduleEntity> schedules =
                 shootStationScheduleService.listCurrentByMachineId(machineId);
+
+        // 优先执行5分钟停机检测（先创建 stop_no_mold_close）
+        // 这样后续 detectDataStaleAlarm 检查时能正确判断优先级
+        detectMoldStateAlarmsFromPlc(machineId);
+
+        // 15分钟停机检测（会检查是否已有5分钟停机，有则跳过）
         detectYellowAndStopAlarms(machineId, schedules);
 
         // 从PLC数据检测红色报警（基于规则值范围，含射枪温度等全局字段）
         detectRedAlarmsFromPlcData(machineId, schedules);
-
-        // 黄色报警：直接从PLC数据检测生产超时（不依赖排期和模具阈值）
-        detectMoldStateAlarmsFromPlc(machineId);
     }
     
 
@@ -415,14 +418,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 log.info("[YellowAlarm] 合模止: machineId={}, stationNo={}, categoryName={}, fieldValue={}, timestamp={}", machineId, stationNo, categoryName, heMoData.getFieldValue(), heMoData.getDataTimestamp());
             }
 
-            // 查询该站位已有的未处理黄色报警（复用）
-            long yellowAlarmCount = baseMapper.countRecentYellowAlarm(machineId, stationId, dedupSince);
+            // ====== 1. 数据超时停机：设定加硫时间 15分钟未更新 → 黄色报警（一次停机一条，按fieldCode去重） ======
+            detectDataStaleAlarm(machineId, stationId, stationNo, categoryName, settingTimeData, staleThreshold, dedupSince, now);
 
-            // ====== 1. 数据超时停机：设定加硫时间 15分钟未更新 → 黄色报警 ======
-            detectDataStaleAlarm(machineId, stationId, stationNo, categoryName, settingTimeData, staleThreshold, yellowAlarmCount, now);
-
-            // ====== 2. 生产超时：合模止=OFF（在生产）持续≥60秒/5分钟未变成ON ======
-            detectMoldStateAlarms(machineId, stationId, stationNo, categoryName, moldId, fieldCodeToRuleIdMap, heMoData, yellowAlarmCount, now, dedupSince);
+            // ====== 2. 生产超时：合模止=OFF（在生产）持续≥5分钟/55秒未变成ON（一次停机一条） ======
+            detectMoldStateAlarms(machineId, stationId, stationNo, categoryName, moldId, fieldCodeToRuleIdMap, heMoData, now, dedupSince);
         }
     }
 
@@ -432,7 +432,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
      */
     private void detectDataStaleAlarm(Long machineId, Long stationId, Integer stationNo, String categoryName,
                                       PlcDataLatestEntity latestData, LocalDateTime staleThreshold,
-                                      long yellowAlarmCount, LocalDateTime now) {
+                                      LocalDateTime dedupSince, LocalDateTime now) {
         if (latestData == null) {
             return;
         }
@@ -443,31 +443,41 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         }
 
         boolean isStale = updateTime.isBefore(staleThreshold);
+        String fieldCode = "she_ding_jia_liu_time";
 
-        if (isStale && yellowAlarmCount == 0) {
-            BigDecimal fieldValue = Convert.toBigDecimal(latestData.getFieldValue(), null);
-            long currentValue = fieldValue != null ? fieldValue.longValue() : 0;
-            String fieldCode = "she_ding_jia_liu_time";
-            baseMapper.insertYellowAlarm(machineId, stationId, null, null, fieldCode, "15分钟未加硫停机", currentValue);
-            log.info("创建数据超时黄色报警: machineId={}, stationId={}, categoryName={}, lastUpdateTime={}",
-                    machineId, stationId, categoryName, updateTime);
-        } else if (!isStale && yellowAlarmCount > 0) {
-            // 数据已更新，仅取消本条「15分钟未加硫」数据超时黄色报警，不影响其他黄色报警
-            baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId,
-                    List.of("she_ding_jia_liu_time"));
+        if (isStale) {
+            // 优先级：5分钟未合模停机 > 15分钟未加硫停机
+            // 如果该站位已有未处理的5分钟停机报警，则不创建15分钟报警
+            long stopAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "stop_no_mold_close");
+            if (stopAlarmCount > 0) {
+                return;
+            }
+            // 按 fieldCode 去重：同站位已有未处理的15分钟报警则不创建
+            long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, fieldCode);
+            if (sameYellowAlarmCount == 0) {
+                BigDecimal fieldValue = Convert.toBigDecimal(latestData.getFieldValue(), null);
+                long currentValue = fieldValue != null ? fieldValue.longValue() : 0;
+                baseMapper.insertYellowAlarm(machineId, stationId, null, null, fieldCode, "15分钟未加硫停机", currentValue);
+                log.info("创建数据超时黄色报警: machineId={}, stationId={}, categoryName={}, lastUpdateTime={}",
+                        machineId, stationId, categoryName, updateTime);
+            }
+        } else {
+            // 数据已更新，取消该站位的15分钟未加硫停机报警，不影响其他黄色报警
+            baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of(fieldCode));
         }
     }
 
     /**
      * 检测模具生产超时：
-     * - 合模止=OFF（在生产）且持续≥60秒未变成ON → 黄色报警（操作超时）
-     * - 合模止=OFF（在生产）且持续≥5分钟未变成ON → 黄色报警（停机）
-     * - 报警在创建新报警时自动处理超过10秒的同fieldCode旧报警
+     * - 合模止=OFF（在生产）且持续≥55秒未变成ON → 黄色报警（操作超时）
+     * - 合模止=OFF（在生产）且持续≥5分钟未变成ON → 黄色报警（5分钟未合模停机）
+     * - 合模止恢复ON → 自动关闭该站位的停机报警（5分钟未合模）
+     * - 一次停机事件 = 一条报警，不反复重建
      */
     private void detectMoldStateAlarms(Long machineId, Long stationId, Integer stationNo, String categoryName,
                                        Long moldId, Map<String, Long> fieldCodeToRuleIdMap,
                                        PlcDataLatestEntity heMoData,
-                                       long yellowAlarmCount, LocalDateTime now, LocalDateTime dedupSince) {
+                                       LocalDateTime now, LocalDateTime dedupSince) {
         if (heMoData == null) {
             return;
         }
@@ -487,35 +497,21 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         if (isProducing) {
             long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
 
-            // 5分钟未合模 → 停机黄色报警（优先级更高，先判断）
+            // 5分钟未合模 → 停机黄色报警（只产生一条，按 fieldCode 去重）
             if (elapsedSeconds >= MOLD_STOP_MINUTES * 60) {
                 String fieldCode = "stop_no_mold_close";
                 Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
-                if (ruleId == null) {
-                    log.error("未找到停机规则! moldId={}, fieldCode={}, fieldCodeToRuleIdMap={}", moldId, fieldCode, fieldCodeToRuleIdMap);
-                } else {
-                    long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarm(machineId, stationId, ruleId, dedupSince);
-                    if (sameYellowAlarmCount == 0) {
-                        baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId,
-                                fieldCode, "5分钟未合模停机", elapsedSeconds);
-                        log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, ruleId={}, 已过{}秒",
-                                stationId, stationNo, ruleId, elapsedSeconds);
-                    }
-                }
-            } else if (elapsedSeconds >= MOLD_TIMEOUT_SECONDS) {
-                // 60秒操作超时 → 黄色报警（未达到5分钟停机阈值时触发）
-                String fieldCode = "operation_timeout";
-                Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
-                if (ruleId == null) {
-                    log.error("未找到操作超时规则! moldId={}, fieldCode={}, fieldCodeToRuleIdMap={}", moldId, fieldCode, fieldCodeToRuleIdMap);
-                } else {
-                    long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarm(machineId, stationId, ruleId, dedupSince);
-                    if (sameYellowAlarmCount == 0) {
-                        baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId, fieldCode, "操作超时", elapsedSeconds);
-                        log.info("创建操作超时黄色报警: stationId={}, stationNo={}, ruleId={}, 已过{}秒", stationId, stationNo, ruleId, elapsedSeconds);
-                    }
+                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, fieldCode);
+                if (sameYellowAlarmCount == 0) {
+                    baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId,
+                            fieldCode, "5分钟未合模停机", elapsedSeconds);
+                    log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, 已过{}秒",
+                            stationId, stationNo, elapsedSeconds);
                 }
             }
+        } else {
+            // 合模止恢复ON → 自动关闭该站位的5分钟未合模停机报警
+            baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("stop_no_mold_close"));
         }
     }
 
@@ -525,7 +521,6 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
      */
     private void detectMoldStateAlarmsFromPlc(Long machineId) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime dedupSince = now.minusMinutes(ALARM_DEDUP_MINUTES);
 
         // 查询该机器的所有站位
         List<ShootMachineStationEntity> stations = shootMachineStationService.lambdaQuery()
@@ -560,27 +555,28 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
             long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
 
-            // 每次都先处理超过AUTO_HANDLE_SECONDS秒的旧报警（不管合模止是什么状态）
-            int handledTimeout = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "operation_timeout", AUTO_HANDLE_SECONDS);
-            int handledStop = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "stop_no_mold_close", AUTO_HANDLE_SECONDS);
-            if (handledTimeout > 0 || handledStop > 0) {
-                log.info("自动处理过期报警: stationId={}, operationTimeout={}, stop={}", stationId, handledTimeout, handledStop);
-            }
-
             // 合模止=OFF 表示在生产
             boolean isProducing = "OFF".equalsIgnoreCase(heMoValue);
             if (!isProducing) {
-                log.info("合模止非OFF，跳过报警创建: stationId={}, heMoValue={}", stationId, heMoValue);
+                // 合模止恢复ON → 自动关闭该站位的5分钟未合模停机报警
+                baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("stop_no_mold_close"));
+                log.info("合模止恢复ON，关闭停机报警: stationId={}, heMoValue={}", stationId, heMoValue);
                 continue;
+            }
+
+            // 操作超时报警超过10秒自动关闭（仅操作超时，停机报警不自动关闭）
+            int handledTimeout = baseMapper.handleExpiredYellowAlarmsByFieldCode(machineId, stationId, "operation_timeout", AUTO_HANDLE_SECONDS);
+            if (handledTimeout > 0) {
+                log.info("自动处理操作超时报警: stationId={}, count={}", stationId, handledTimeout);
             }
 
             log.info("操作超时检测: stationId={}, stationNo={}, heMoValue={}, heMoTime={}, elapsedSeconds={}, MOLD_TIMEOUT_SECONDS={}",
                     stationId, stationNo, heMoValue, heMoTime, elapsedSeconds, MOLD_TIMEOUT_SECONDS);
 
-            // 5分钟未合模 → 停机黄色报警（优先级更高，先判断）
+            // 5分钟未合模 → 停机黄色报警（只产生一条，按 fieldCode 去重）
             long stopThreshold = MOLD_STOP_MINUTES * 60;
             if (elapsedSeconds >= stopThreshold) {
-                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "stop_no_mold_close", dedupSince);
+                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "stop_no_mold_close");
                 if (sameYellowAlarmCount == 0) {
                     baseMapper.insertYellowAlarm(machineId, stationId, null, null, "stop_no_mold_close", "5分钟未合模停机", elapsedSeconds);
                     log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, elapsedSeconds={}", stationId, stationNo, elapsedSeconds);
@@ -589,8 +585,8 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 }
             } else if (elapsedSeconds >= MOLD_TIMEOUT_SECONDS) {
                 // 操作超时 → 黄色报警（未达到5分钟停机阈值时触发）
-                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "operation_timeout", dedupSince);
-                log.info("去重检查: stationId={}, sameYellowAlarmCount={}, dedupSince={}", stationId, sameYellowAlarmCount, dedupSince);
+                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "operation_timeout");
+                log.info("去重检查: stationId={}, sameYellowAlarmCount={}", stationId, sameYellowAlarmCount);
                 if (sameYellowAlarmCount == 0) {
                     baseMapper.insertYellowAlarm(machineId, stationId, null, null, "operation_timeout", "操作超时", elapsedSeconds);
                     log.info("创建操作超时黄色报警: stationId={}, stationNo={}, elapsedSeconds={}", stationId, stationNo, elapsedSeconds);

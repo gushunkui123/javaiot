@@ -184,17 +184,16 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("sinceTime") LocalDateTime sinceTime);
 
     /**
-     * 查询最近是否有相同的黄色报警（按fieldCode去重，用于不依赖排期的PLC直接检测）
+     * 查询是否有未处理的相同黄色报警（按fieldCode去重）
+     * 只要有未处理的同fieldCode报警就不创建新的，确保一次停机事件只产生一条报警
      */
     @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false' "
-            + "AND alarm_time >= #{sinceTime}")
+            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false'")
     long countRecentSameYellowAlarmByFieldCode(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
-            @Param("fieldCode") String fieldCode,
-            @Param("sinceTime") LocalDateTime sinceTime);
+            @Param("fieldCode") String fieldCode);
 
     /**
      * 处理停机恢复后的黄色报警
