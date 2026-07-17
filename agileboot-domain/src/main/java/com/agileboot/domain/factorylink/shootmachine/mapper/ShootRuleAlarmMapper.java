@@ -237,6 +237,43 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("expireSeconds") int expireSeconds);
 
     /**
+     * 合模止恢复ON时，更新操作超时报警的currentValue为超出时间，并标记为已处理
+     */
+    @Update("UPDATE shoot_rule_alarm SET current_value = #{currentValue}, "
+            + "handle_status = 'true', handle_remark = '操作完成自动处理' "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false'")
+    int updateCurrentValueAndHandle(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("currentValue") BigDecimal currentValue);
+
+    /**
+     * 更新未处理报警的currentValue（不改变handle_status）
+     */
+    @Update("UPDATE shoot_rule_alarm SET current_value = #{currentValue}, updated_at = NOW() "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false'")
+    int updateCurrentValueByFieldCode(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("currentValue") BigDecimal currentValue);
+
+    /**
+     * 获取未处理报警的创建时间（用于计算超出时间）
+     */
+    @Select("SELECT alarm_time FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND alarm_level = 'yellow' AND handle_status = 'false' "
+            + "ORDER BY alarm_time DESC LIMIT 1")
+    LocalDateTime getAlarmCreateTime(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode);
+
+    /**
      * 插入红色报警
      */
     @Insert("INSERT INTO shoot_rule_alarm (machine_id, station_id, mold_id, rule_id, field_code, field_name, " +
