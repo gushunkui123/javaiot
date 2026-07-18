@@ -168,7 +168,7 @@ public class PlcDataSyncService {
             }
             Object dataObj = result.get("data");
             if (!(dataObj instanceof List<?> rows)) {
-                log.warn("数据格式异常, dataCode={}", dataCode);
+                log.warn("数据格式异常, dataCode={}, 返回内容={}, data字段类型={}", dataCode, result, dataObj != null ? dataObj.getClass().getName() : "null");
                 return null;
             }
             return rows;

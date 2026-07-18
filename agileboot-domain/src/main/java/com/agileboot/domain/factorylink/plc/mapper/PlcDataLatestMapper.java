@@ -128,4 +128,19 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
                     + "</script>")
     List<PlcDataLatestEntity> selectLatestByFieldAndCategoryList(@Param("machineId") Long machineId,
                                                                  @Param("fieldCategories") List<Map<String, String>> fieldCategories);
+
+    /**
+     * 查询指定设备下多个指定工艺参数字段的最新数据
+     */
+    @Select(
+            "<script>"
+                    + "SELECT id, device_name AS deviceName, machine_id AS machineId, `timestamp` AS dataTimestamp, "
+                    + "field_key AS fieldKey, field_value AS fieldValue, category_name AS categoryName, create_time AS createTime "
+                    + "FROM plc_data_latest "
+                    + "WHERE device_name = #{deviceName} AND field_key IN "
+                    + "<foreach collection='fieldKeys' item='key' open='(' separator=',' close=')'>#{key}</foreach> "
+                    + "ORDER BY field_key"
+                    + "</script>")
+    List<PlcDataLatestEntity> selectByDeviceNameAndFieldKeys(@Param("deviceName") String deviceName,
+                                                              @Param("fieldKeys") List<String> fieldKeys);
 }

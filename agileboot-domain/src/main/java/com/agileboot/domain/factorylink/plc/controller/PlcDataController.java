@@ -23,6 +23,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -87,7 +88,7 @@ public class PlcDataController {
     @Operation(summary = "查询设备 PLC 数据（包含所有字段）")
     @GetMapping("/data/all")
     public ResponseDTO<List<PlcDataLatestEntity>> all(
-            @Parameter(description = "设备名称", required = true, example = "射出机五号机")
+            @Parameter(description = "设备名称", required = true, example = "射出机九号机")
             @RequestParam("deviceName")
             @NotBlank
             String deviceName) {
@@ -250,5 +251,37 @@ public class PlcDataController {
 //        List<PlcDeviceEntity> data = (List<PlcDeviceEntity>) result.get("data");
 //        return ResponseDTO.ok(data);
 //    }
+
+    // 关键工艺参数：设定温度 / 设定加硫时间 / 第一阶段射出压力 / 第一阶段射出速度
+    @Operation(summary = "查询设备关键工艺参数（设定温度、加硫时间、射出压力、射出速度）")
+    @GetMapping("/data/process-params")
+    public ResponseDTO<List<Map<String, Object>>> getProcessParams(
+            @Parameter(description = "设备名称", required = true, example = "射出机九号机")
+            @RequestParam("deviceName")
+            @NotBlank
+            String deviceName) {
+        // 固定返回这 7 个工艺参数字段（该设备下所有站位）
+        List<String> fieldKeys = List.of(
+                "左模1设定温度",
+                "右模1设定温度",
+                "设定加硫时间",
+                "左模第一阶段 射出压力",
+                "右模第一阶段 射出压力",
+                "左模第一阶段 射出速度",
+                "右模第一阶段 射出速度");
+
+        List<PlcDataLatestEntity> rows = plcDataLatestMapper.selectByDeviceNameAndFieldKeys(deviceName, fieldKeys);
+
+        List<Map<String, Object>> result = rows.stream().map(r -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("fieldKey", r.getFieldKey());
+            item.put("fieldValue", r.getFieldValue());
+            item.put("categoryName", r.getCategoryName());
+            item.put("dataTimestamp", r.getDataTimestamp());
+            return item;
+        }).collect(Collectors.toList());
+
+        return ResponseDTO.ok(result);
+    }
 
 }
