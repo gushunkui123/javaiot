@@ -415,7 +415,8 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             detectDataStaleAlarm(machineId, stationId, stationNo, categoryName, settingTimeData, staleThreshold, dedupSince, now);
 
             // ====== 2. 生产超时：合模止=OFF（在生产）持续≥5分钟/55秒未变成ON（一次停机一条） ======
-            detectMoldStateAlarms(machineId, stationId, stationNo, categoryName, moldId, fieldCodeToRuleIdMap, heMoData, now, dedupSince);
+            // 已由 detectMoldStateAlarmsFromPlc 统一处理，避免重复报警
+            // detectMoldStateAlarms(machineId, stationId, stationNo, categoryName, moldId, fieldCodeToRuleIdMap, heMoData, now, dedupSince);
         }
     }
 
@@ -470,66 +471,58 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 检测模具生产超时：
-     * - 合模止=OFF（在生产）且持续≥55秒未变成ON → 黄色报警（操作超时）
-     * - 合模止=OFF（在生产）且持续≥5分钟未变成ON → 黄色报警（5分钟未合模停机）
-     * - 合模止恢复ON → 自动关闭该站位的停机报警（5分钟未合模）
-     * - 一次停机事件 = 一条报警，不反复重建
+     * 【已废弃】检测模具生产超时（PLC时间戳路径）
+     * 已由 detectMoldStateAlarmsFromPlc 统一处理，避免重复报警
+     * 保留代码供参考，后续清理
      */
-    private void detectMoldStateAlarms(Long machineId, Long stationId, Integer stationNo, String categoryName,
-                                       Long moldId, Map<String, Long> fieldCodeToRuleIdMap,
-                                       PlcDataLatestEntity heMoData,
-                                       LocalDateTime now, LocalDateTime dedupSince) {
-        if (heMoData == null) {
-            return;
-        }
-
-        String heMoValue = heMoData.getFieldValue();
-        // 用 value_changed_at：值首次变为 OFF 的时间，而非每次同步覆盖的 timestamp
-        LocalDateTime heMoTime = heMoData.getValueChangedAt() != null
-                ? heMoData.getValueChangedAt() : heMoData.getDataTimestamp();
-
-        if (heMoTime == null) {
-            return;
-        }
-
-        // 合模止=OFF 表示在生产
-        boolean isProducing = "OFF".equalsIgnoreCase(heMoValue);
-
-        if (isProducing) {
-            long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
-
-            // 5分钟未合模 → 停机黄色报警（只产生一条，按 fieldCode 去重）
-            long stopThreshold = MOLD_STOP_MINUTES * 60;
-            if (elapsedSeconds >= stopThreshold) {
-                String fieldCode = "stop_no_mold_close";
-                Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
-                // 互斥：如果该站位已有未处理的15分钟未加硫报警，则不创建5分钟未合模报警
-                long staleAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "she_ding_jia_liu_time");
-                if (staleAlarmCount > 0) {
-                    log.info("跳过5分钟未合模报警：站位{}已有15分钟未加硫报警", stationId);
-                    return;
-                }
-                long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, fieldCode);
-                if (sameYellowAlarmCount == 0) {
-                    long exceededSeconds = Math.max(0, elapsedSeconds - stopThreshold);
-                    baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId,
-                            fieldCode, "5分钟未合模停机", exceededSeconds);
-                    log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, elapsedSeconds={}, exceededSeconds={}",
-                            stationId, stationNo, elapsedSeconds, exceededSeconds);
-                } else {
-                    // 已有未处理的报警，更新currentValue为最新的超出时间
-                    long exceededSeconds = Math.max(0, elapsedSeconds - stopThreshold);
-                    int updatedCount = baseMapper.updateCurrentValueByFieldCode(machineId, stationId, fieldCode, BigDecimal.valueOf(exceededSeconds));
-                    log.info("更新停机报警currentValue: stationId={}, stationNo={}, elapsedSeconds={}, exceededSeconds={}, updatedCount={}",
-                            stationId, stationNo, elapsedSeconds, exceededSeconds, updatedCount);
-                }
-            }
-        } else {
-            // 合模止恢复ON → 自动关闭该站位的5分钟未合模停机报警
-            baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("stop_no_mold_close"));
-        }
-    }
+    // private void detectMoldStateAlarms(Long machineId, Long stationId, Integer stationNo, String categoryName,
+    //                                    Long moldId, Map<String, Long> fieldCodeToRuleIdMap,
+    //                                    PlcDataLatestEntity heMoData,
+    //                                    LocalDateTime now, LocalDateTime dedupSince) {
+    //     if (heMoData == null) {
+    //         return;
+    //     }
+    //
+    //     String heMoValue = heMoData.getFieldValue();
+    //     LocalDateTime heMoTime = heMoData.getValueChangedAt() != null
+    //             ? heMoData.getValueChangedAt() : heMoData.getDataTimestamp();
+    //
+    //     if (heMoTime == null) {
+    //         return;
+    //     }
+    //
+    //     boolean isProducing = "OFF".equalsIgnoreCase(heMoValue);
+    //
+    //     if (isProducing) {
+    //         long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
+    //
+    //         long stopThreshold = MOLD_STOP_MINUTES * 60;
+    //         if (elapsedSeconds >= stopThreshold) {
+    //             String fieldCode = "stop_no_mold_close";
+    //             Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
+    //             long staleAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "she_ding_jia_liu_time");
+    //             if (staleAlarmCount > 0) {
+    //                 log.info("跳过5分钟未合模报警：站位{}已有15分钟未加硫报警", stationId);
+    //                 return;
+    //             }
+    //             long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, fieldCode);
+    //             if (sameYellowAlarmCount == 0) {
+    //                 long exceededSeconds = Math.max(0, elapsedSeconds - stopThreshold);
+    //                 baseMapper.insertYellowAlarm(machineId, stationId, moldId, ruleId,
+    //                         fieldCode, "5分钟未合模停机", exceededSeconds);
+    //                 log.info("创建5分钟未合模停机黄色报警: stationId={}, stationNo={}, elapsedSeconds={}, exceededSeconds={}",
+    //                         stationId, stationNo, elapsedSeconds, exceededSeconds);
+    //             } else {
+    //                 long exceededSeconds = Math.max(0, elapsedSeconds - stopThreshold);
+    //                 int updatedCount = baseMapper.updateCurrentValueByFieldCode(machineId, stationId, fieldCode, BigDecimal.valueOf(exceededSeconds));
+    //                 log.info("更新停机报警currentValue: stationId={}, stationNo={}, elapsedSeconds={}, exceededSeconds={}, updatedCount={}",
+    //                         stationId, stationNo, elapsedSeconds, exceededSeconds, updatedCount);
+    //             }
+    //         }
+    //     } else {
+    //         baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("stop_no_mold_close"));
+    //     }
+    // }
 
     /**
      * 直接从PLC数据检测生产超时（仅对有排期的站位检测操作超时和5分钟停机）
