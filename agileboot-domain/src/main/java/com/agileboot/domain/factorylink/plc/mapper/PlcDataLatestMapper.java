@@ -1,5 +1,6 @@
 package com.agileboot.domain.factorylink.plc.mapper;
 
+import com.agileboot.domain.factorylink.plc.dto.PlcLatestCollectTimeResponse;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.util.List;
@@ -143,4 +144,13 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
                     + "</script>")
     List<PlcDataLatestEntity> selectByDeviceNameAndFieldKeys(@Param("deviceName") String deviceName,
                                                               @Param("fieldKeys") List<String> fieldKeys);
+
+    /**
+     * 查询指定射出机在 plc_data_latest 中的最新采集时间（MAX(timestamp)）与行数。
+     * 用于匿名接口：传入 machine_id 即可，无需登录。
+     */
+    @Select(
+            "SELECT #{machineId} AS machineId, MAX(`timestamp`) AS collectTime "
+                    + "FROM plc_data_latest WHERE machine_id = #{machineId}")
+    PlcLatestCollectTimeResponse selectLatestCollectTimeByMachineId(@Param("machineId") Long machineId);
 }

@@ -3,6 +3,7 @@ import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.domain.factorylink.plc.entity.EnvironmentDataEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
+import com.agileboot.domain.factorylink.plc.dto.PlcLatestCollectTimeResponse;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataPointEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDeviceEntity;
@@ -282,6 +283,14 @@ public class PlcDataController {
         }).collect(Collectors.toList());
 
         return ResponseDTO.ok(result);
+    }
+
+    @Operation(summary = "查询射出机最新采集时间（匿名接口，无需登录）")
+    @GetMapping("/data/latest-collect-time")
+    public ResponseDTO<PlcLatestCollectTimeResponse> latestCollectTime(
+            @Parameter(description = "射出机ID", required = true, example = "1")
+            @RequestParam("machineId") @NotNull Long machineId) {
+        return ResponseDTO.ok(plcDataLatestMapper.selectLatestCollectTimeByMachineId(machineId));
     }
 
 }
