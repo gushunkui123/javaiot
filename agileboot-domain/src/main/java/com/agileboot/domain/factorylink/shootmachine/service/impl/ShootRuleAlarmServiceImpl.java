@@ -37,7 +37,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     private static final int ALARM_DEDUP_MINUTES = 1;      // 报警去重：1分钟内
 
     // ====== 报警阈值常量 ======
-    private static final int DATA_STALE_MINUTES = 15;       // 数据超时停机：15分钟未更新
+    private static final int DATA_STALE_MINUTES = 15;       // 数据超时停机：15分钟未更新设定加硫
     private static final int MOLD_TIMEOUT_SECONDS = 85;     // 操作超时：合模止=OFF（生产中）持续≥85秒未变成ON
     private static final int MOLD_STOP_MINUTES = 5;         // 停机报警：合模止=OFF（生产中）持续≥5分钟未变成ON
 
@@ -195,7 +195,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
         // 优先执行5分钟停机检测（先创建 stop_no_mold_close）
         // 这样后续 detectDataStaleAlarm 检查时能正确判断优先级
-        detectMoldStateAlarmsFromPlc(machineId);
+        detectMoldStateAlarmsFromPlc(machineId, schedules);
 
         // 15分钟停机检测（会检查是否已有5分钟停机，有则跳过）
         detectYellowAndStopAlarms(machineId, schedules);
@@ -504,6 +504,12 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             if (elapsedSeconds >= stopThreshold) {
                 String fieldCode = "stop_no_mold_close";
                 Long ruleId = fieldCodeToRuleIdMap.get(fieldCode);
+                // 互斥：如果该站位已有未处理的15分钟未加硫报警，则不创建5分钟未合模报警
+                long staleAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "she_ding_jia_liu_time");
+                if (staleAlarmCount > 0) {
+                    log.info("跳过5分钟未合模报警：站位{}已有15分钟未加硫报警", stationId);
+                    return;
+                }
                 long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, fieldCode);
                 if (sameYellowAlarmCount == 0) {
                     long exceededSeconds = Math.max(0, elapsedSeconds - stopThreshold);
@@ -526,18 +532,33 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 直接从PLC数据检测生产超时（不依赖排期和模具阈值）
-     * 查询所有站位的合模止数据，合模止=OFF（在生产）且数据时间戳超过60秒未更新 → 黄色报警
+     * 直接从PLC数据检测生产超时（仅对有排期的站位检测操作超时和5分钟停机）
+     * 查询有排期站位的合模止数据，合模止=OFF（在生产）且持续超时 → 黄色报警
      */
     // 记录每个站位合模止变为OFF的时间，用于计算超出时间
     private final Map<Long, LocalDateTime> moldOffTimeMap = new ConcurrentHashMap<>();
 
-    private void detectMoldStateAlarmsFromPlc(Long machineId) {
+    private void detectMoldStateAlarmsFromPlc(Long machineId, List<ShootStationScheduleEntity> schedules) {
         LocalDateTime now = LocalDateTime.now();
 
-        // 查询该机器的所有站位
+        // 从排期中提取有排期的站位集合（stationId）
+        Set<Long> scheduledStationIds = new HashSet<>();
+        for (ShootStationScheduleEntity schedule : schedules) {
+            if (schedule.getStationId() != null) {
+                scheduledStationIds.add(schedule.getStationId());
+            }
+        }
+
+        // 没有排期的站位不检测黄色报警
+        if (scheduledStationIds.isEmpty()) {
+            log.info("[MoldState] 机器{}无排期站位，跳过操作超时检测", machineId);
+            return;
+        }
+
+        // 仅查询有排期的站位
         List<ShootMachineStationEntity> stations = shootMachineStationService.lambdaQuery()
                 .eq(ShootMachineStationEntity::getMachineId, machineId)
+                .in(ShootMachineStationEntity::getId, scheduledStationIds)
                 .list();
 
         for (ShootMachineStationEntity station : stations) {
@@ -600,6 +621,12 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 int closedTimeout = baseMapper.handleYellowAlarmsByFieldCodes(machineId, stationId, List.of("operation_timeout"));
                 if (closedTimeout > 0) {
                     log.info("操作超时升级为停机，关闭操作超时报警: stationId={}, count={}", stationId, closedTimeout);
+                }
+                // 互斥：如果该站位已有未处理的15分钟未加硫报警，则不创建5分钟未合模报警
+                long staleAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "she_ding_jia_liu_time");
+                if (staleAlarmCount > 0) {
+                    log.info("跳过5分钟未合模报警：站位{}已有15分钟未加硫报警", stationId);
+                    continue;
                 }
                 long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, "stop_no_mold_close");
                 if (sameYellowAlarmCount == 0) {
