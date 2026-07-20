@@ -82,7 +82,7 @@ public class ShootMachineStationServiceImpl
         ShootMachineStationEntity station = new ShootMachineStationEntity();
         station.setMachineId(machine.getId());
         station.setStationNo(stationNo);
-        station.setStationName(machine.getMachineName() + "-站位" + stationNo);
+        station.setStationName(machine.getMachineName() + "-站台" + stationNo);
         station.setEnabled(true);
         station.setDeleted(false);
         return station;

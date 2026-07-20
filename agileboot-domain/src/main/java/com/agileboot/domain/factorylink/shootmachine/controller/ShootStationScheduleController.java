@@ -4,6 +4,7 @@ import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationSchedule
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleRequest;
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleResult;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
+import com.agileboot.domain.factorylink.shootmachine.service.StationMoldModelResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,13 @@ public class ShootStationScheduleController {
     public ResponseDTO<List<ShootStationScheduleEntity>> listCurrentByMachine(
             @Parameter(description = "机台ID", required = true) @RequestParam Long machineId) {
         return ResponseDTO.ok(shootStationScheduleService.listCurrentByMachineId(machineId));
+    }
+
+    @Operation(summary = "查询机台各站位当前在产的左模/右模生产产品型号")
+    @GetMapping("/station-mold-models")
+    public ResponseDTO<List<StationMoldModelResponse>> listStationMoldModels(
+            @Parameter(description = "机台ID", required = true) @RequestParam Long machineId) {
+        return ResponseDTO.ok(shootStationScheduleService.listStationMoldModels(machineId));
     }
 
     @Operation(summary = "查询生产记录详情")

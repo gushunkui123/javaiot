@@ -10,13 +10,17 @@ import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationSchedule
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
+import com.agileboot.domain.factorylink.shootmachine.service.StationMoldModelResponse;
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleRequest;
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleResult;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -43,6 +47,33 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     public List<ShootStationScheduleEntity> listCurrentByMachineId(Long machineId) {
         shootMachineService.getByIdOrThrow(machineId);
         return baseMapper.selectListCurrentByMachineIdWithMold(machineId, LocalDateTime.now());
+    }
+
+    @Override
+    public List<StationMoldModelResponse> listStationMoldModels(Long machineId) {
+        shootMachineService.getByIdOrThrow(machineId);
+        List<ShootStationScheduleEntity> rows = baseMapper.selectListCurrentByMachineIdWithMold(machineId, LocalDateTime.now());
+
+        Map<Integer, String> stationNameMap = new HashMap<>();
+        shootMachineStationService.listByMachineId(machineId)
+                .forEach(s -> stationNameMap.put(s.getStationNo(), s.getStationName()));
+
+        Map<Integer, StationMoldModelResponse> map = new LinkedHashMap<>();
+        for (ShootStationScheduleEntity row : rows) {
+            Integer stationNo = row.getStationNo();
+            StationMoldModelResponse resp = map.computeIfAbsent(stationNo, k -> {
+                StationMoldModelResponse r = new StationMoldModelResponse();
+                r.setStationNo(stationNo);
+                r.setStationName(stationNameMap.getOrDefault(stationNo, "站位" + stationNo));
+                return r;
+            });
+            if ("LEFT".equals(row.getMoldSide())) {
+                resp.setLeftMoldModel(row.getMoldModel());
+            } else if ("RIGHT".equals(row.getMoldSide())) {
+                resp.setRightMoldModel(row.getMoldModel());
+            }
+        }
+        return new ArrayList<>(map.values());
     }
 
     @Override

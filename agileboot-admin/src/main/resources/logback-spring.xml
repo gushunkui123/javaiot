@@ -54,6 +54,12 @@
         <appender-ref ref="file_error"/>
     </logger>
 
+    <!-- 抓取/报警检测日志量大，只落文件不刷控制台；排障看 sys-all.log -->
+    <logger name="com.agileboot.domain.factorylink" level="INFO" additivity="false">
+        <appender-ref ref="file_all"/>
+        <appender-ref ref="file_error"/>
+    </logger>
+
     <logger name="org.springframework" level="INFO" additivity="false">
         <appender-ref ref="console"/>
         <appender-ref ref="file_all"/>

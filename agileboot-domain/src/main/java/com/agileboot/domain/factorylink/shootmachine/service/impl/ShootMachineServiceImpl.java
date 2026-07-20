@@ -13,6 +13,7 @@ import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineStationMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
@@ -66,13 +67,13 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         entity.setDeleted(false);
         save(entity);
 
-        // 自动生成站位：站位名称格式 = "{机台名称}-站位{编号}"
+        // 自动生成站位：站位名称格式 = "{机台名称}-站台{编号}"
         String machineName = entity.getMachineName();
         for (int i = 1; i <= entity.getStationCount(); i++) {
             ShootMachineStationEntity station = new ShootMachineStationEntity();
             station.setMachineId(entity.getId());
             station.setStationNo(i);
-            station.setStationName(machineName + "-站位" + i);
+            station.setStationName(machineName + "-站台" + i);
             station.setEnabled(true);
             station.setDeleted(false);
             station.setCreatedAt(LocalDateTime.now());
@@ -105,6 +106,10 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         getByIdOrThrow(id);
         deleteValidator.assertNoMachineActiveSchedule(id);
         deleteValidator.assertNoAlarm(id, null, null, null);
+        // 删除机台时一并软删除其下所有站台（@TableLogic 置 deleted=1，不物理删，外键安全）
+        shootMachineStationMapper.delete(
+                Wrappers.<ShootMachineStationEntity>lambdaQuery()
+                        .eq(ShootMachineStationEntity::getMachineId, id));
         removeById(id);
     }
 

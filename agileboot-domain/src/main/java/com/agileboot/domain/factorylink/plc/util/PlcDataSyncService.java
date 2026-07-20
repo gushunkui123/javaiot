@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PlcDataSyncService {
 
-    private static final List<String> DEFAULT_DATA_CODES = List.of("kkb756", "7JTAVe");
+    private static final List<String> DEFAULT_DATA_CODES = List.of("kkb756", "7JTAVe","2WSK6z","QLjnd7");
 
     private final PlcDataLatestMapper plcDataLatestMapper;
     private final ShootRuleAlarmService shootRuleAlarmService;
@@ -149,8 +149,6 @@ public class PlcDataSyncService {
      * 单次调用外部 PLC 接口，只带一个 dataCodes（或 null 表示全量）
      */
     private List<?> callOnce(SignedRestTemplateUtil signedUtil, String dataCode) {
-        // 临时调试：打印实际调用的地址和 apiKey，确认配置是否生效
-        log.info("PLC调用实际配置: base-url={}, apiKey={}", externalPlcBaseUrl, workshopApiKey);
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         if (dataCode != null) {
             // 第三方参数名为 dataCode（camelCase 单数）
@@ -211,12 +209,19 @@ public class PlcDataSyncService {
     }
 
     /**
-     * 单条外部数据转实体；remark 或 dataCode 为空返回 null（避免空数据/唯一键冲突）
+     * 单条外部数据转实体；dataCode 为空或 field_key 来源（displayName，缺失时回退 remark）为空返回 null（避免空数据/唯一键冲突）
      */
     private PlcDataLatestEntity toEntity(Map<?, ?> map) {
         String remark = getStr(map, "remark");
         String dataCode = getStr(map, "dataCode");
-        if (StrUtil.isBlank(remark) || StrUtil.isBlank(dataCode)) {
+        if (StrUtil.isBlank(dataCode)) {
+            return null;
+        }
+
+        // field_key 优先使用第三方返回的 displayName；displayName 缺失时回退 remark，避免数据被静默丢弃
+        String displayName = getStr(map, "displayName");
+        String fieldKeySource = StrUtil.isNotBlank(displayName) ? displayName : remark;
+        if (StrUtil.isBlank(fieldKeySource)) {
             return null;
         }
 
@@ -248,7 +253,7 @@ public class PlcDataSyncService {
         }
         entity.setMachineId(machineId);
         entity.setDataTimestamp(dataTime);
-        entity.setFieldKey(StrUtil.subPre(remark, 100).trim());
+        entity.setFieldKey(StrUtil.subPre(fieldKeySource, 100).trim());
         entity.setDataCode(dataCode);
         entity.setFieldValue(StrUtil.subPre(fieldValue, 500));
         entity.setCategoryName(StrUtil.subPre(categoryName, 100));
