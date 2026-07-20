@@ -57,4 +57,8 @@ public class ShootMachineEntity implements Serializable {
     /** 最新采集时间在 2 分钟内为 true，否则停机（非表字段） */
     @TableField(exist = false)
     private Boolean running;
+
+    /** 是否存在未处理报警（非表字段，大屏机台列表用） */
+    @TableField(exist = false)
+    private Boolean hasUnhandledAlarm;
 }

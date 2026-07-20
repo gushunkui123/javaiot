@@ -11,6 +11,7 @@ import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineStationMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -35,6 +36,7 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
     private final PlcDataService plcDataService;
     private final ShootDeleteValidator deleteValidator;
     private final ShootMachineStationMapper shootMachineStationMapper;
+    private final ShootRuleAlarmMapper shootRuleAlarmMapper;
 
     @Override
     public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize) {
@@ -42,6 +44,7 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         Page<ShootMachineEntity> result =
                 lambdaQuery().orderByDesc(ShootMachineEntity::getUpdatedAt).page(page);
         fillPlcRunStatus(result.getRecords());
+        fillHasUnhandledAlarm(result.getRecords());
         return new PageDTO<>(result.getRecords(), result.getTotal());
     }
 
@@ -138,6 +141,24 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
             LocalDateTime latest = latestMap.get(machine.getId());
             machine.setLatestPlcDataTime(latest);
             machine.setRunning(latest != null && !latest.isBefore(cutoff));
+        }
+    }
+
+    /**
+     * 根据未处理报警填充机台是否有未处理报警标记（单次 IN 查询批量判定）
+     */
+    private void fillHasUnhandledAlarm(List<ShootMachineEntity> machines) {
+        if (CollUtil.isEmpty(machines)) {
+            return;
+        }
+        List<Long> machineIds =
+                machines.stream().map(ShootMachineEntity::getId).filter(id -> id != null).distinct().toList();
+        if (machineIds.isEmpty()) {
+            return;
+        }
+        List<Long> alarmMachineIds = shootRuleAlarmMapper.selectMachineIdsWithUnhandledAlarm(machineIds);
+        for (ShootMachineEntity machine : machines) {
+            machine.setHasUnhandledAlarm(alarmMachineIds.contains(machine.getId()));
         }
     }
 }

@@ -86,6 +86,17 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             "</script>")
     long countUnhandled(@Param("machineId") Long machineId, @Param("stationId") Long stationId);
 
+    /**
+     * 批量查询存在未处理报警的机器ID（大屏机台列表用，单次 IN 查询）
+     */
+    @Select("<script>" +
+            "SELECT DISTINCT machine_id FROM shoot_rule_alarm " +
+            "WHERE deleted = 0 AND handle_status = 'false' " +
+            "AND machine_id IN " +
+            "<foreach collection='machineIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
+            "</script>")
+    List<Long> selectMachineIdsWithUnhandledAlarm(@Param("machineIds") List<Long> machineIds);
+
     @Select(
             "<script>" +
             "SELECT COUNT(1) FROM shoot_rule_alarm "
