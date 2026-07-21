@@ -196,16 +196,27 @@ public class PlcDataSyncService {
     }
 
     /**
-     * 根据第三方 areaName 反查 shoot_machine 表主键
-     * @return 匹配的机台 id；未匹配到返回 null
+     * 根据第三方 areaName 反查 shoot_machine 表机台
+     * @return 匹配的机台实体；未匹配到返回 null
      */
-    private Long resolveMachineId(String areaName) {
+    private ShootMachineEntity resolveMachine(String areaName) {
         if (StrUtil.isBlank(areaName)) {
             return null;
         }
-        ShootMachineEntity machine = shootMachineMapper.selectOne(
+        return shootMachineMapper.selectOne(
                 new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, areaName));
-        return machine != null ? machine.getId() : null;
+    }
+
+    /**
+     * 判定是否为射出机5号机：按机台名称反查判定，避免把"15号机"等误判为5号机
+     */
+    private boolean isShootFiveMachine(ShootMachineEntity machine) {
+        if (machine == null) {
+            return false;
+        }
+        String name = machine.getMachineName();
+        // 机台名形如"射出机5号机"或"射出机五号机"；"5号机"前用负向后查确保不是数字，避免"15号机"误命中
+        return name.matches(".*[^\\d]5号机$") || name.matches(".*五号机$");
     }
 
     /**
@@ -234,8 +245,9 @@ public class PlcDataSyncService {
             categoryName = "默认";
         }
 
-        // 根据第三方 areaName 反查 shoot_machine.machine_name 得到机台主键
-        Long machineId = resolveMachineId(areaName);
+        // 根据第三方 areaName 反查 shoot_machine 机台（id + 名称）
+        ShootMachineEntity machine = resolveMachine(areaName);
+        Long machineId = machine != null ? machine.getId() : null;
         if (machineId == null) {
             log.warn("未匹配到机台，跳过该条数据: areaName={}, dataCode={}", areaName, dataCode);
             return null;
@@ -245,9 +257,10 @@ public class PlcDataSyncService {
         LocalDateTime dataTime = parseThirdPartyTime(map);
 
         PlcDataLatestEntity entity = new PlcDataLatestEntity();
-        // 当categoryName为"4射枪温度"时，device_name不填写；其他情况优先使用第三方返回的areaName
+        // 4射枪温度：仅射出机5号机填充 deviceName（按机台名称反查判定，大屏可按 device_name 查询到）；
+        // 9号机等其它机台保持为空
         if ("4射枪温度".equals(categoryName)) {
-            entity.setDeviceName("");
+            entity.setDeviceName(isShootFiveMachine(machine) ? StrUtil.subPre(areaName, 100) : "");
         } else {
             entity.setDeviceName(StrUtil.isNotBlank(areaName) ? StrUtil.subPre(areaName, 100) : "");
         }

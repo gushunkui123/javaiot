@@ -18,6 +18,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmServi
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -382,7 +383,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             String categoryName = "站台" + stationNo;
 
             // 查询该模具的规则列表，构建 field_code -> rule_id 映射
-            Map<String, Long> fieldCodeToRuleIdMap = new java.util.HashMap<>();
+            Map<String, Long> fieldCodeToRuleIdMap = new HashMap<>();
             log.info("开始查询模具规则: moldId={}", moldId);
             List<ShootMoldRuleEntity> rules = shootMoldRuleService.listByMoldId(moldId);
             log.info("查询到模具规则数量: {}, moldId={}", rules.size(), moldId);
@@ -451,14 +452,14 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             // 按 fieldCode 去重：同站位已有未处理的15分钟报警则不创建
             long sameYellowAlarmCount = baseMapper.countRecentSameYellowAlarmByFieldCode(machineId, stationId, fieldCode);
             if (sameYellowAlarmCount == 0) {
-                long elapsedSeconds = java.time.Duration.between(updateTime, now).getSeconds();
+                long elapsedSeconds = Duration.between(updateTime, now).getSeconds();
                 long exceededSeconds = Math.max(0, elapsedSeconds - DATA_STALE_MINUTES * 60L);
                 baseMapper.insertYellowAlarm(machineId, stationId, null, null, fieldCode, "15分钟未加硫停机", exceededSeconds);
                 log.info("创建数据超时黄色报警: machineId={}, stationId={}, categoryName={}, lastUpdateTime={}, elapsedSeconds={}, exceededSeconds={}",
                         machineId, stationId, categoryName, updateTime, elapsedSeconds, exceededSeconds);
             } else {
                 // 已有未处理的报警，更新currentValue为最新的超出时间
-                long elapsedSeconds = java.time.Duration.between(updateTime, now).getSeconds();
+                long elapsedSeconds = Duration.between(updateTime, now).getSeconds();
                 long exceededSeconds = Math.max(0, elapsedSeconds - DATA_STALE_MINUTES * 60L);
                 int updatedCount = baseMapper.updateCurrentValueByFieldCode(machineId, stationId, fieldCode, BigDecimal.valueOf(exceededSeconds));
                 log.info("更新数据超时报警currentValue: machineId={}, stationId={}, elapsedSeconds={}, exceededSeconds={}, updatedCount={}",
@@ -494,7 +495,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     //     boolean isProducing = "OFF".equalsIgnoreCase(heMoValue);
     //
     //     if (isProducing) {
-    //         long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
+    //         long elapsedSeconds = Duration.between(heMoTime, now).getSeconds();
     //
     //         long stopThreshold = MOLD_STOP_MINUTES * 60;
     //         if (elapsedSeconds >= stopThreshold) {
@@ -602,7 +603,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             // 记录合模止变为OFF的时间
             moldOffTimeMap.putIfAbsent(stationId, heMoTime);
 
-            long elapsedSeconds = java.time.Duration.between(heMoTime, now).getSeconds();
+            long elapsedSeconds = Duration.between(heMoTime, now).getSeconds();
 
             log.info("操作超时检测: stationId={}, stationNo={}, heMoValue={}, heMoTime={}, now={}, elapsedSeconds={}, MOLD_TIMEOUT_SECONDS={}, stopThreshold={}",
                     stationId, stationNo, heMoValue, heMoTime, now, elapsedSeconds, MOLD_TIMEOUT_SECONDS, MOLD_STOP_MINUTES * 60);
