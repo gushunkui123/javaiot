@@ -339,8 +339,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         log.info("阶段射枪温度解析: ruleId={}, fieldCode='{}', stageNo={}", rule.getId(), fieldCode, stageNo);
         
         if (stageNo != null) {
-            // 枪号所有阶段的射枪温度字段（第一阶段到第四阶段）
-            List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeysForGunTemperatureAllStages(gunCount, gunNo);
+            // 仅匹配该阶段的射枪温度字段，不展开所有阶段
+            // 例：stageNo=4 → 只生成 "射枪温度4第四阶段"，用该阶段自己的阈值比较
+            List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeysForGunTemperatureByStage(stageNo, gunCount, gunNo);
             String categoryName = PlcFieldKeyDisplayNames.resolveGunTemperatureCategoryName(gunCount);
             log.info("阶段射枪温度规则匹配: ruleId={}, stageNo={}, keys={}, categoryName={}", rule.getId(), stageNo, keys, categoryName);
             return new String[]{String.join(",", keys), categoryName};
