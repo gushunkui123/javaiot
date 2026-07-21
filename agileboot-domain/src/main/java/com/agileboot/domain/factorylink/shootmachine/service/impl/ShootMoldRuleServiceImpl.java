@@ -122,7 +122,8 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         if (entity.getMinValue().compareTo(entity.getMaxValue()) >= 0) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值必须小于最大值");
         }
-        entity.setFieldCode(entity.getFieldCode().trim().toLowerCase());
+        entity.setFieldCode(PlcFieldKeyDisplayNames.normalizeGunTemperatureFieldCode(
+                entity.getFieldCode().trim().toLowerCase()));
         if (entity.getEnabled() == null) {
             entity.setEnabled(true);
         }

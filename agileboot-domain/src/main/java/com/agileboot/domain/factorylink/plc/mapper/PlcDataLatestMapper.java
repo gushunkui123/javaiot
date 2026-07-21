@@ -146,6 +146,18 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
                                                               @Param("fieldKeys") List<String> fieldKeys);
 
     /**
+     * 查询指定机器、分类名下的全部记录（用于射枪温度规则按 category 整批比较）
+     */
+    @Select(
+            "SELECT id, device_name AS deviceName, machine_id AS machineId, `timestamp` AS dataTimestamp, "
+                    + "field_key AS fieldKey, field_value AS fieldValue, category_name AS categoryName, create_time AS createTime "
+                    + "FROM plc_data_latest "
+                    + "WHERE machine_id = #{machineId} AND category_name = #{categoryName} "
+                    + "ORDER BY field_key")
+    List<PlcDataLatestEntity> selectListByMachineIdAndCategoryName(@Param("machineId") Long machineId,
+                                                                   @Param("categoryName") String categoryName);
+
+    /**
      * 查询指定射出机在 plc_data_latest 中的最新采集时间（MAX(timestamp)）与行数。
      * 用于匿名接口：传入 machine_id 即可，无需登录。
      */

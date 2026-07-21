@@ -259,8 +259,11 @@ public final class PlcFieldKeyDisplayNames {
     private static final String[] STAGE_CHINESE = {"一", "二", "三", "四"};
 
     /**
-     * 判断 fieldCode 是否为按阶段的射枪温度规则，如 "第一阶段 射枪温度"、"第四阶段射枪温度"
-     * 忽略空格差异，支持 "第一阶段 射枪温度"、"第一阶段  射枪温度"、"第一阶段射枪温度" 等格式
+     * 判断 fieldCode 是否为按阶段的射枪温度规则
+     * 支持两种顺序：
+     *   "第一阶段 射枪温度" / "第四阶段射枪温度"（阶段在前）
+     *   "射枪温度 第一阶段" / "射枪温度第四阶段"（射枪温度在前）
+     * 忽略空格差异
      * @return 阶段号（1-4），非射枪温度阶段规则返回 null
      */
     public static Integer parseGunTemperatureStage(String fieldCode) {
@@ -269,11 +272,28 @@ public final class PlcFieldKeyDisplayNames {
         }
         String normalized = fieldCode.replaceAll("\\s+", "");
         for (int i = 0; i < STAGE_CHINESE.length; i++) {
-            if (normalized.equals("第" + STAGE_CHINESE[i] + "阶段射枪温度")) {
+            String stagePart = "第" + STAGE_CHINESE[i] + "阶段";
+            if (normalized.equals(stagePart + "射枪温度") || normalized.equals("射枪温度" + stagePart)) {
                 return i + 1;
             }
         }
         return null;
+    }
+
+    /**
+     * 将射枪温度阶段规则的 fieldCode 入库规范化为 "射枪温度 第X阶段" 格式
+     * 例："第一阶段 射枪温度" → "射枪温度 第一阶段"，"射枪温度第四阶段" → "射枪温度 第四阶段"
+     * 非射枪温度阶段规则原样返回
+     */
+    public static String normalizeGunTemperatureFieldCode(String fieldCode) {
+        if (StrUtil.isBlank(fieldCode)) {
+            return fieldCode;
+        }
+        Integer stageNo = parseGunTemperatureStage(fieldCode);
+        if (stageNo != null) {
+            return "射枪温度 " + "第" + STAGE_CHINESE[stageNo - 1] + "阶段";
+        }
+        return fieldCode;
     }
 
     /**
@@ -288,6 +308,24 @@ public final class PlcFieldKeyDisplayNames {
         String stageName = "第" + STAGE_CHINESE[stage - 1] + "阶段";
         for (int g = startGun; g <= endGun; g++) {
             fieldKeys.add("射枪温度" + g + stageName);
+        }
+        return fieldKeys;
+    }
+
+    /**
+     * 根据枪号返回该枪所有阶段的射枪温度字段（第一阶段到第四阶段）
+     * 例如 gunNo=4, gunCount=4 → ["射枪温度4第一阶段", "射枪温度4第二阶段", "射枪温度4第三阶段", "射枪温度4第四阶段"]
+     */
+    public static List<String> resolvePlcFieldKeysForGunTemperatureAllStages(int gunCount, Integer gunNo) {
+        List<String> fieldKeys = new ArrayList<>();
+        int startGun = (gunNo != null && gunNo >= 1 && gunNo <= gunCount) ? gunNo : 1;
+        int endGun = (gunNo != null && gunNo >= 1 && gunNo <= gunCount) ? gunNo : gunCount;
+
+        for (int g = startGun; g <= endGun; g++) {
+            for (int i = 0; i < STAGE_CHINESE.length; i++) {
+                String stageName = "第" + STAGE_CHINESE[i] + "阶段";
+                fieldKeys.add("射枪温度" + g + stageName);
+            }
         }
         return fieldKeys;
     }

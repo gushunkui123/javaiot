@@ -257,10 +257,15 @@ public class PlcDataSyncService {
         LocalDateTime dataTime = parseThirdPartyTime(map);
 
         PlcDataLatestEntity entity = new PlcDataLatestEntity();
-        // 4射枪温度：仅射出机5号机填充 deviceName（按机台名称反查判定，大屏可按 device_name 查询到）；
-        // 9号机等其它机台保持为空
+        // 4射枪温度：仅射出机5号机填充 deviceName
+        // 2射枪温度：仅射出机9号机填充 deviceName
+        String machineName = machine != null ? machine.getMachineName() : "";
+        boolean isShootFive = machineName.matches(".*[^\\d]5号机$") || machineName.matches(".*五号机$");
+        boolean isShootNine = machineName.matches(".*[^\\d]9号机$") || machineName.matches(".*九号机$");
         if ("4射枪温度".equals(categoryName)) {
-            entity.setDeviceName(isShootFiveMachine(machine) ? StrUtil.subPre(areaName, 100) : "");
+            entity.setDeviceName(isShootFive ? StrUtil.subPre(areaName, 100) : "");
+        } else if ("2射枪温度".equals(categoryName)) {
+            entity.setDeviceName(isShootNine ? StrUtil.subPre(areaName, 100) : "");
         } else {
             entity.setDeviceName(StrUtil.isNotBlank(areaName) ? StrUtil.subPre(areaName, 100) : "");
         }

@@ -243,8 +243,11 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                 }
 
                 String[] result = resolveFieldKeysAndCategory(rule, moldSide, gunCount, gunNo, categoryName);
-                List<String> plcFieldKeys = List.of(result[0].split(","));
                 String queryCategoryName = result[1];
+                String fieldKeysCsv = result[0];
+
+                // 逐 fieldKey 精确查询（射枪温度阶段规则 + 其他字段统一逻辑）
+                List<String> plcFieldKeys = List.of(fieldKeysCsv.split(","));
                 log.info("[RedAlarm] 规则解析: ruleId={}, fieldCode={}, moldSide={}, plcFieldKeys={}, queryCategoryName={}",
                         rule.getId(), rule.getFieldCode(), moldSide, plcFieldKeys, queryCategoryName);
 
@@ -265,12 +268,10 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                     log.info("PLC字段值: machineId={}, plcFieldKey={}, currentValue={}, minValue={}, maxValue={}", 
                             machineId, plcFieldKey, currentValue, rule.getMinValue(), rule.getMaxValue());
 
-                    // 检查值是否超出范围
                     boolean isOutOfRange = currentValue.compareTo(rule.getMinValue()) < 0
                             || currentValue.compareTo(rule.getMaxValue()) > 0;
 
                     if (isOutOfRange) {
-                        // 内存去重：同一事务内相同 (stationId, ruleId, fieldCode, currentValue) 已插入则跳过
                         String dedupKey = stationId + "_" + rule.getId() + "_" + plcFieldKey + "_" + currentValue;
                         if (insertedKeys.add(dedupKey)) {
                             createAlarmFromDetection(machineId, stationId, rule, currentValue, plcFieldKey);
@@ -338,7 +339,8 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         log.info("阶段射枪温度解析: ruleId={}, fieldCode='{}', stageNo={}", rule.getId(), fieldCode, stageNo);
         
         if (stageNo != null) {
-            List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeysForGunTemperatureByStage(stageNo, gunCount, gunNo);
+            // 枪号所有阶段的射枪温度字段（第一阶段到第四阶段）
+            List<String> keys = PlcFieldKeyDisplayNames.resolvePlcFieldKeysForGunTemperatureAllStages(gunCount, gunNo);
             String categoryName = PlcFieldKeyDisplayNames.resolveGunTemperatureCategoryName(gunCount);
             log.info("阶段射枪温度规则匹配: ruleId={}, stageNo={}, keys={}, categoryName={}", rule.getId(), stageNo, keys, categoryName);
             return new String[]{String.join(",", keys), categoryName};
