@@ -1,7 +1,8 @@
 # 外部接口配置
 factory-link:
     workshop:
-        base-url: http://10.0.100.225:8088
+#        base-url: http://10.0.100.225:8088
+        base-url: http://10.0.100.28:33011
         plc-device-path: /api/device/queryPlcDataDeviceList
         plc-data-point-path: /api/device/queryPlcDataPointList
         api-key: 19e3f535-7fde-4dcc-b552-cfdd9dd92661

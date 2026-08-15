@@ -3,6 +3,7 @@ package com.agileboot.domain.factorylink.plc.util;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
+import com.agileboot.domain.factorylink.plc.util.ShootMachineCode;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
@@ -32,7 +33,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PlcDataSyncService {
 
-    private static final List<String> DEFAULT_DATA_CODES = List.of("kkb756", "7JTAVe","2WSK6z","QLjnd7");
 
     private final PlcDataLatestMapper plcDataLatestMapper;
     private final ShootRuleAlarmService shootRuleAlarmService;
@@ -56,7 +56,7 @@ public class PlcDataSyncService {
      * @return 同步的记录数
      */
     public int syncPlcDataPoints() {
-        return doSync(DEFAULT_DATA_CODES, null);
+        return doSync(ShootMachineCode.allDataCodes(), null);
     }
 
     /**
@@ -64,7 +64,7 @@ public class PlcDataSyncService {
      * @return 同步的记录数
      */
     public int syncHighFrequencyFields() {
-        return doSync(DEFAULT_DATA_CODES, fieldKey -> HIGH_FREQ_FIELDS.contains(fieldKey));
+        return doSync(ShootMachineCode.allDataCodes(), fieldKey -> HIGH_FREQ_FIELDS.contains(fieldKey));
     }
 
     /**
@@ -72,7 +72,7 @@ public class PlcDataSyncService {
      * @return 同步的记录数
      */
     public int syncLowFrequencyFields() {
-        return doSync(DEFAULT_DATA_CODES, fieldKey -> !HIGH_FREQ_FIELDS.contains(fieldKey));
+        return doSync(ShootMachineCode.allDataCodes(), fieldKey -> !HIGH_FREQ_FIELDS.contains(fieldKey));
     }
 
     private int doSync(List<String> dataCodes, Predicate<String> fieldKeyFilter) {
@@ -128,7 +128,7 @@ public class PlcDataSyncService {
         plcDataLatestMapper.batchUpsert(entities);
         log.info("同步完成，共写入 {} 条记录", entities.size());
 
-        // 按 distinct machineId 触发报警检测（machineId 由第三方 areaName 反查得到）
+        // 按 distinct machineId 触发报警检测（machineId 由 dataCode 经枚举查 shoot_machine 得到）
         Set<Long> machineIds = entities.stream()
                 .map(PlcDataLatestEntity::getMachineId)
                 .filter(Objects::nonNull)
@@ -196,36 +196,44 @@ public class PlcDataSyncService {
     }
 
     /**
-     * 根据第三方 areaName 反查 shoot_machine 表机台
-     * @return 匹配的机台实体；未匹配到返回 null
+     * 根据第三方 areaName 反查 shoot_machine 表机台（已停用：areaName 不可靠时会整条丢数据，
+     * 机台归属改由 ShootMachineCode 枚举按 dataCode 决定）
      */
-    private ShootMachineEntity resolveMachine(String areaName) {
-        if (StrUtil.isBlank(areaName)) {
-            return null;
-        }
-        return shootMachineMapper.selectOne(
-                new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, areaName));
-    }
+//    private ShootMachineEntity resolveMachine(String areaName) {
+//        if (StrUtil.isBlank(areaName)) {
+//            return null;
+//        }
+//        return shootMachineMapper.selectOne(
+//                new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, areaName));
+//    }
 
     /**
-     * 判定是否为射出机5号机：按机台名称反查判定，避免把"15号机"等误判为5号机
+     * 判定是否为射出机5号机（已停用，逻辑收敛到 ShootMachineCode.isShootFive()）
      */
-    private boolean isShootFiveMachine(ShootMachineEntity machine) {
-        if (machine == null) {
-            return false;
-        }
-        String name = machine.getMachineName();
-        // 机台名形如"射出机5号机"或"射出机五号机"；"5号机"前用负向后查确保不是数字，避免"15号机"误命中
-        return name.matches(".*[^\\d]5号机$") || name.matches(".*五号机$");
-    }
+//    private boolean isShootFiveMachine(ShootMachineEntity machine) {
+//        if (machine == null) {
+//            return false;
+//        }
+//        String name = machine.getMachineName();
+//        // 机台名形如"射出机5号机"或"射出机五号机"；"5号机"前用负向后查确保不是数字，避免"15号机"误命中
+//        return name.matches(".*[^\\d]5号机$") || name.matches(".*五号机$");
+//    }
 
     /**
      * 单条外部数据转实体；dataCode 为空或 field_key 来源（displayName，缺失时回退 remark）为空返回 null（避免空数据/唯一键冲突）
+     * 机台归属由 dataCode 经 ShootMachineCode 枚举决定，不再依赖第三方 areaName 反查。
      */
     private PlcDataLatestEntity toEntity(Map<?, ?> map) {
         String remark = getStr(map, "remark");
         String dataCode = getStr(map, "dataCode");
         if (StrUtil.isBlank(dataCode)) {
+            return null;
+        }
+
+        // 由 dataCode 直接确定所属机台（9号机/5号机），这是稳定业务规则
+        ShootMachineCode shootMachine = ShootMachineCode.of(dataCode);
+        if (shootMachine == null) {
+            log.warn("dataCode 未匹配到机台映射，跳过: dataCode={}", dataCode);
             return null;
         }
 
@@ -245,12 +253,25 @@ public class PlcDataSyncService {
             categoryName = "默认";
         }
 
-        // 根据第三方 areaName 反查 shoot_machine 机台（id + 名称）
-        ShootMachineEntity machine = resolveMachine(areaName);
+        // ===== 原逻辑：根据第三方 areaName 反查 shoot_machine 机台（已停用，areaName 不可靠时会整条丢数据）=====
+        // ShootMachineEntity machine = resolveMachine(areaName);
+        // Long machineId = machine != null ? machine.getId() : null;
+        // if (machineId == null) {
+        //     log.warn("未匹配到机台，跳过该条数据: areaName={}, dataCode={}", areaName, dataCode);
+        //     return null;
+        // }
+        // ===== 新逻辑：按枚举机台名查本地 shoot_machine 获取 machineId（稳定，不依赖第三方 areaName）=====
+        ShootMachineEntity machine = shootMachineMapper.selectOne(
+                new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, shootMachine.getMachineName()));
         Long machineId = machine != null ? machine.getId() : null;
         if (machineId == null) {
-            log.warn("未匹配到机台，跳过该条数据: areaName={}, dataCode={}", areaName, dataCode);
+            log.warn("本地未找到机台记录，跳过该条数据: machineName={}, dataCode={}", shootMachine.getMachineName(), dataCode);
             return null;
+        }
+
+        // 一致性校验：第三方 areaName 与枚举机台名不一致仅告警，不影响落库
+        if (StrUtil.isNotBlank(areaName) && !areaName.equals(shootMachine.getMachineName())) {
+            log.warn("第三方 areaName={} 与 dataCode 归属机台={} 不一致，请核对映射", areaName, shootMachine.getMachineName());
         }
 
         // 从第三方数据中提取时间字段（尝试常见字段名），解析失败回退当前时间
@@ -259,15 +280,16 @@ public class PlcDataSyncService {
         PlcDataLatestEntity entity = new PlcDataLatestEntity();
         // 4射枪温度：仅射出机5号机填充 deviceName
         // 2射枪温度：仅射出机9号机填充 deviceName
-        String machineName = machine != null ? machine.getMachineName() : "";
-        boolean isShootFive = machineName.matches(".*[^\\d]5号机$") || machineName.matches(".*五号机$");
-        boolean isShootNine = machineName.matches(".*[^\\d]9号机$") || machineName.matches(".*九号机$");
+        String machineName = shootMachine.getMachineName();
+        boolean isShootFive = shootMachine.isShootFive();
+        boolean isShootNine = shootMachine.isShootNine();
+        String deviceName = StrUtil.isNotBlank(areaName) ? StrUtil.subPre(areaName, 100) : "";
         if ("4射枪温度".equals(categoryName)) {
-            entity.setDeviceName(isShootFive ? StrUtil.subPre(areaName, 100) : "");
+            entity.setDeviceName(isShootFive ? deviceName : "");
         } else if ("2射枪温度".equals(categoryName)) {
-            entity.setDeviceName(isShootNine ? StrUtil.subPre(areaName, 100) : "");
+            entity.setDeviceName(isShootNine ? deviceName : "");
         } else {
-            entity.setDeviceName(StrUtil.isNotBlank(areaName) ? StrUtil.subPre(areaName, 100) : "");
+            entity.setDeviceName(deviceName);
         }
         entity.setMachineId(machineId);
         entity.setDataTimestamp(dataTime);
