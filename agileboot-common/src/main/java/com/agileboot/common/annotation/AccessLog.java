@@ -1,4 +1,4 @@
-package com.agileboot.admin.customize.aop.accessLog;
+package com.agileboot.common.annotation;
 
 import com.agileboot.common.enums.common.BusinessTypeEnum;
 import com.agileboot.common.enums.common.OperatorTypeEnum;
@@ -10,8 +10,6 @@ import java.lang.annotation.Target;
 
 /**
  * 自定义操作日志记录注解
- *
- * @author ruoyi
  */
 @Target({ElementType.PARAMETER, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

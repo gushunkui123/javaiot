@@ -1,6 +1,8 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
 
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.dto.ResponseDTO;
+import com.agileboot.common.enums.common.BusinessTypeEnum;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Internal;
 import com.agileboot.domain.factorylink.shootmachine.dto.AlarmPageResponse;
@@ -53,6 +55,7 @@ public class ShootRuleAlarmController {
         return ResponseDTO.ok(shootRuleAlarmService.getDetailByStationNo(stationNo));
     }
 
+    @AccessLog(title = "模具阈值报警", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "根据报警ID列表批量处理报警")
     @PostMapping("/handleByStation")
     public ResponseDTO<Void> handleByStation(@RequestBody BatchHandleAlarmDTO dto) {
@@ -66,6 +69,7 @@ public class ShootRuleAlarmController {
         return ResponseDTO.ok(shootRuleAlarmService.getStatisticsOverview(machineId));
     }
 
+    @AccessLog(title = "模具阈值报警", businessType = BusinessTypeEnum.EXPORT)
     @Operation(summary = "导出报警数据到Excel")
     @GetMapping("/export")
     public void exportAlarms(@RequestParam(required = false) Long machineId,

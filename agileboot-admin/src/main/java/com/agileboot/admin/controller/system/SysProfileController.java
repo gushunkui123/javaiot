@@ -12,7 +12,7 @@ import com.agileboot.domain.system.user.command.UpdateProfileCommand;
 import com.agileboot.domain.system.user.command.UpdateUserAvatarCommand;
 import com.agileboot.domain.system.user.command.UpdateUserPasswordCommand;
 import com.agileboot.domain.system.user.dto.UserProfileDTO;
-import com.agileboot.admin.customize.aop.accessLog.AccessLog;
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.infrastructure.user.AuthenticationUtils;
 import com.agileboot.infrastructure.user.web.SystemLoginUser;
 import com.agileboot.common.enums.common.BusinessTypeEnum;

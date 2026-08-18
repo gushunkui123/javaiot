@@ -1,5 +1,7 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.dto.ResponseDTO;
+import com.agileboot.common.enums.common.BusinessTypeEnum;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationScheduleEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleRequest;
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleResult;
@@ -53,12 +55,14 @@ public class ShootStationScheduleController {
         return ResponseDTO.ok(shootStationScheduleService.getByIdOrThrow(id));
     }
 
+    @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.ADD)
     @Operation(summary = "新增生产记录")
     @PostMapping("/create")
     public ResponseDTO<ShootStationScheduleEntity> create(@RequestBody ShootStationScheduleEntity entity) {
         return ResponseDTO.ok(shootStationScheduleService.create(entity));
     }
 
+    @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.ADD)
     @Operation(summary = "批量新增生产记录")
     @PostMapping("/batch")
     public ResponseDTO<BatchCreateStationScheduleResult> batchCreate(
@@ -66,6 +70,7 @@ public class ShootStationScheduleController {
         return ResponseDTO.ok(shootStationScheduleService.batchCreate(request));
     }
 
+    @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "编辑生产记录")
     @PutMapping("/{id}")
     public ResponseDTO<ShootStationScheduleEntity> update(
@@ -74,6 +79,7 @@ public class ShootStationScheduleController {
         return ResponseDTO.ok(shootStationScheduleService.update(id, entity));
     }
 
+    @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.DELETE)
     @Operation(summary = "删除生产记录")
     @DeleteMapping("/{id}")
     public ResponseDTO<Void> delete(
@@ -82,6 +88,7 @@ public class ShootStationScheduleController {
         return ResponseDTO.ok();
     }
 
+    @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "取消生产记录")
     @PatchMapping("/{id}/cancel")
     public ResponseDTO<Void> cancel(

@@ -1,6 +1,7 @@
 package com.agileboot.admin.customize.aop.accessLog;
 
 import com.agileboot.admin.customize.async.AsyncTaskFactory;
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.infrastructure.thread.ThreadPoolManager;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;

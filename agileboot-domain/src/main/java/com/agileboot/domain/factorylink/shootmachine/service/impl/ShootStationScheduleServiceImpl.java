@@ -18,9 +18,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -91,6 +93,8 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         ShootMachineStationEntity station = getStationOrThrow(entity.getStationId());
         shootMoldService.getByIdOrThrow(entity.getMoldId());
         validateSchedule(entity);
+        checkNoOverlap(entity.getStationId(), entity.getMoldSide(),
+                entity.getStartTime(), entity.getEndTime(), null);
         fillFromStation(entity, station);
         if (StrUtil.isBlank(entity.getStatus())) {
             entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
@@ -109,6 +113,8 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         }
         shootMoldService.getByIdOrThrow(entity.getMoldId());
         validateSchedule(entity);
+        checkNoOverlap(entity.getStationId(), entity.getMoldSide(),
+                entity.getStartTime(), entity.getEndTime(), id);
         entity.setId(id);
         entity.setMachineId(existing.getMachineId());
         entity.setStationId(existing.getStationId());
@@ -130,9 +136,30 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id) {
-        ShootStationScheduleEntity entity = requireExists(id);
-        entity.setStatus(ShootStationScheduleEntity.STATUS_CANCELLED);
-        updateById(entity);
+        ShootStationScheduleEntity existing = requireExists(id);
+        if (ShootStationScheduleEntity.STATUS_RUNNING.equals(existing.getStatus())
+                || ShootStationScheduleEntity.STATUS_FINISHED.equals(existing.getStatus())) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "已开始或已完成的生产计划不能取消");
+        }
+        existing.setStatus(ShootStationScheduleEntity.STATUS_CANCELLED);
+        updateById(existing);
+    }
+
+    private ShootStationScheduleEntity requireExists(Long id) {
+        ShootStationScheduleEntity entity = getById(id);
+        if (entity == null) {
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "生产计划");
+        }
+        return entity;
+    }
+
+    // 获取站位信息，不存在则抛异常
+    private ShootMachineStationEntity getStationOrThrow(Long stationId) {
+        ShootMachineStationEntity station = shootMachineStationService.getById(stationId);
+        if (station == null) {
+            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, stationId, "站台");
+        }
+        return station;
     }
 
     @Override
@@ -154,19 +181,26 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
 
         List<ShootStationScheduleEntity> successItems = new ArrayList<>();
         List<BatchCreateStationScheduleResult.Failure> failures = new ArrayList<>();
+        // 同批次已成功写入的站位+模向组合，避免同批次内重复写入
+        Set<String> batchUsedKeys = new HashSet<>();
 
         // 每条独立提交，互不回滚；冲突或异常的项记入 failures 后继续
         for (BatchCreateStationScheduleRequest.Item item : items) {
             try {
+                if (item.getStationId() == null) {
+                    throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "请选择站位");
+                }
+                validateMoldSide(item.getMoldSide());
+                String key = item.getStationId() + "_" + item.getMoldSide();
+                if (batchUsedKeys.contains(key)) {
+                    failures.add(buildFailure(item, "同批次内该站位该模向重复选择，已跳过"));
+                    continue;
+                }
                 ShootMachineStationEntity station = getStationOrThrow(item.getStationId());
-                boolean conflict = lambdaQuery()
-                        .eq(ShootStationScheduleEntity::getStationId, item.getStationId())
-                        .eq(ShootStationScheduleEntity::getMoldSide, item.getMoldSide())
-                        .eq(ShootStationScheduleEntity::getGunNo, item.getGunNo())
-                        .ne(ShootStationScheduleEntity::getStatus, ShootStationScheduleEntity.STATUS_CANCELLED)
-                        .exists();
+                boolean conflict = baseMapper.countOverlapping(item.getStationId(), item.getMoldSide(),
+                        request.getStartTime(), request.getEndTime(), null) > 0;
                 if (conflict) {
-                    failures.add(buildFailure(item, "该站位该模向该射枪已存在未取消的生产计划"));
+                    failures.add(buildFailure(item, "该站位该模向在指定时间段内已存在生产计划，时间冲突"));
                     continue;
                 }
                 ShootStationScheduleEntity entity = new ShootStationScheduleEntity();
@@ -181,6 +215,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
                 fillFromStation(entity, station);
                 save(entity);
                 successItems.add(entity);
+                batchUsedKeys.add(key);
             } catch (ApiException e) {
                 failures.add(buildFailure(item, e.getMessage()));
             }
@@ -201,38 +236,40 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         return failure;
     }
 
-    // 获取站位信息
-    private ShootMachineStationEntity getStationOrThrow(Long stationId) {
-        ShootMachineStationEntity station = shootMachineStationService.getById(stationId);
-        if (station == null) {
-            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, stationId, "站位");
-        }
-        return station;
-    }
-
-    private ShootStationScheduleEntity requireExists(Long id) {
-        ShootStationScheduleEntity entity = getById(id);
-        if (entity == null) {
-            throw new ApiException(Business.COMMON_OBJECT_NOT_FOUND, id, "生产计划");
-        }
-        return entity;
-    }
-
     private void fillFromStation(ShootStationScheduleEntity entity, ShootMachineStationEntity station) {
         entity.setStationId(station.getId());
         entity.setMachineId(station.getMachineId());
         entity.setStationNo(station.getStationNo());
     }
 
+    private void checkNoOverlap(Long stationId, String moldSide,
+                                LocalDateTime startTime, LocalDateTime endTime, Long excludeId) {
+        long count = baseMapper.countOverlapping(stationId, moldSide, startTime, endTime, excludeId);
+        if (count > 0) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID,
+                    "该站台该模向在指定时间段内已存在生产计划，时间冲突");
+        }
+    }
+
     private void validateSchedule(ShootStationScheduleEntity entity) {
         if (entity.getMoldId() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "请选择模具");
         }
+        validateMoldSide(entity.getMoldSide());
         if (entity.getStartTime() == null || entity.getEndTime() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "开始时间和结束时间不能为空");
         }
         if (!entity.getStartTime().isBefore(entity.getEndTime())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "结束时间必须晚于开始时间");
+        }
+    }
+
+    private void validateMoldSide(String moldSide) {
+        if (StrUtil.isBlank(moldSide)) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "请选择模向（左模/右模）");
+        }
+        if (!"LEFT".equals(moldSide) && !"RIGHT".equals(moldSide)) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模向值非法，必须为 LEFT 或 RIGHT");
         }
     }
 }

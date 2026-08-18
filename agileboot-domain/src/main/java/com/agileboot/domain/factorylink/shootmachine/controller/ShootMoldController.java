@@ -1,7 +1,9 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
 
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
+import com.agileboot.common.enums.common.BusinessTypeEnum;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,12 +47,14 @@ public class ShootMoldController {
         return ResponseDTO.ok(shootMoldService.getByIdOrThrow(id));
     }
 
+    @AccessLog(title = "射出机模具", businessType = BusinessTypeEnum.ADD)
     @Operation(summary = "新增模具")
     @PostMapping("/create")
     public ResponseDTO<ShootMoldEntity> create(@RequestBody ShootMoldEntity entity) {
         return ResponseDTO.ok(shootMoldService.create(entity));
     }
 
+    @AccessLog(title = "射出机模具", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "编辑模具")
     @PutMapping("/{id}")
     public ResponseDTO<ShootMoldEntity> update(
@@ -59,6 +63,7 @@ public class ShootMoldController {
         return ResponseDTO.ok(shootMoldService.update(id, entity));
     }
 
+    @AccessLog(title = "射出机模具", businessType = BusinessTypeEnum.DELETE)
     @Operation(summary = "删除模具")
     @DeleteMapping("/{id}")
     public ResponseDTO<Void> delete(

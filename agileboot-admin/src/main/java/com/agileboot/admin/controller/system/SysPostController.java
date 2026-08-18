@@ -1,6 +1,6 @@
 package com.agileboot.admin.controller.system;
 
-import com.agileboot.admin.customize.aop.accessLog.AccessLog;
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.base.BaseController;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;

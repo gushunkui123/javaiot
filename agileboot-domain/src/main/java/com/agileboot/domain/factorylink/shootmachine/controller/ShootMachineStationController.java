@@ -1,6 +1,8 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
 
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.dto.ResponseDTO;
+import com.agileboot.common.enums.common.BusinessTypeEnum;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +28,7 @@ public class ShootMachineStationController {
         return ResponseDTO.ok(shootMachineStationService.listByMachineId(machineId));
     }
 
+    @AccessLog(title = "射出机站位", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "从 PLC 最新数据同步站位")
     @PostMapping("/stations/sync/{machineId}")
     public ResponseDTO<Map<String, Object>> syncFromPlc(

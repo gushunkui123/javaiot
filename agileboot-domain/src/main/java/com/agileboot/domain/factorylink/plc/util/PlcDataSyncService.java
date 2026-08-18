@@ -3,7 +3,6 @@ package com.agileboot.domain.factorylink.plc.util;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
-import com.agileboot.domain.factorylink.plc.util.ShootMachineCode;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
@@ -20,7 +19,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,7 +37,7 @@ public class PlcDataSyncService {
     private final ShootMachineMapper shootMachineMapper;
     private final RestTemplate restTemplate;
 
-    @Value("${factory-link.workshop.base-url:http://10.0.100.225:8088}")
+    @Value("${factory-link.workshop.base-url:http://10.0.100.225:33010}")
     private String externalPlcBaseUrl;
 
     @Value("${factory-link.workshop.api-key:}")
@@ -56,7 +54,7 @@ public class PlcDataSyncService {
      * @return 同步的记录数
      */
     public int syncPlcDataPoints() {
-        return doSync(ShootMachineCode.allDataCodes(), null);
+        return doSync(null);
     }
 
     /**
@@ -64,7 +62,7 @@ public class PlcDataSyncService {
      * @return 同步的记录数
      */
     public int syncHighFrequencyFields() {
-        return doSync(ShootMachineCode.allDataCodes(), fieldKey -> HIGH_FREQ_FIELDS.contains(fieldKey));
+        return doSync(fieldKey -> HIGH_FREQ_FIELDS.contains(fieldKey));
     }
 
     /**
@@ -72,21 +70,31 @@ public class PlcDataSyncService {
      * @return 同步的记录数
      */
     public int syncLowFrequencyFields() {
-        return doSync(ShootMachineCode.allDataCodes(), fieldKey -> !HIGH_FREQ_FIELDS.contains(fieldKey));
+        return doSync(fieldKey -> !HIGH_FREQ_FIELDS.contains(fieldKey));
     }
 
-    private int doSync(List<String> dataCodes, Predicate<String> fieldKeyFilter) {
+    /**
+     * 遍历 ShootMachineCode 枚举项，每个枚举项即一个机台（9号机/5号机），
+     * 其下所有 entry（dataCode+configCode）请求回来的数据均归属该机台，无需按 dataCode 反查。
+     * @param fieldKeyFilter 字段过滤（null 表示不过滤）
+     */
+    private int doSync(Predicate<String> fieldKeyFilter) {
         SignedRestTemplateUtil signedUtil = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
 
-        // 第三方单值验签：每个 dataCode 单独请求；无 dataCode 时发一次全量请求(null)
-        List<String> targets = (dataCodes == null || dataCodes.isEmpty())
-                ? Collections.singletonList(null) : dataCodes;
-
         List<Object> allRows = new ArrayList<>();
-        for (String code : targets) {
-            List<?> rows = callOnce(signedUtil, code);
-            if (rows != null) {
-                allRows.addAll(rows);
+        // 每批返回数据 -> 所属机台枚举项（一次请求返回的整批数据均归属该枚举项机台）
+        Map<Object, ShootMachineCode> rowMachineMap = new java.util.IdentityHashMap<>();
+
+        for (ShootMachineCode machine : ShootMachineCode.values()) {
+            for (ShootMachineCode.DataCodeEntry entry : machine.getEntries()) {
+                List<?> rows = callOnce(signedUtil, entry);
+                if (rows != null) {
+                    for (Object row : rows) {
+                        // 用 IdentityHashMap 以"行对象"本身为键，避免同 dataCode 不同行的混淆
+                        rowMachineMap.put(row, machine);
+                    }
+                    allRows.addAll(rows);
+                }
             }
         }
 
@@ -109,8 +117,8 @@ public class PlcDataSyncService {
             }
         }
 
-        // 合并所有请求结果，统一落库、统一触发一次报警检测
-        List<PlcDataLatestEntity> entities = convertToEntities(allRows);
+        // 合并所有请求结果，统一落库、统一触发一次报警检测；机台由请求枚举项整批决定
+        List<PlcDataLatestEntity> entities = convertToEntities(allRows, rowMachineMap);
         if (entities.isEmpty()) {
             return 0;
         }
@@ -128,7 +136,7 @@ public class PlcDataSyncService {
         plcDataLatestMapper.batchUpsert(entities);
         log.info("同步完成，共写入 {} 条记录", entities.size());
 
-        // 按 distinct machineId 触发报警检测（machineId 由 dataCode 经枚举查 shoot_machine 得到）
+        // 按 distinct machineId 触发报警检测（machineId 由枚举机台查 shoot_machine 得到）
         Set<Long> machineIds = entities.stream()
                 .map(PlcDataLatestEntity::getMachineId)
                 .filter(Objects::nonNull)
@@ -146,19 +154,31 @@ public class PlcDataSyncService {
     }
 
     /**
-     * 单次调用外部 PLC 接口，只带一个 dataCodes（或 null 表示全量）
+     * 单次调用外部 PLC 接口，按枚举项 entry（dataCode + configCode）请求
      */
-    private List<?> callOnce(SignedRestTemplateUtil signedUtil, String dataCode) {
+    private List<?> callOnce(SignedRestTemplateUtil signedUtil, ShootMachineCode.DataCodeEntry entry) {
+        String dataCode = entry.getDataCode();
+        String configCode = entry.getConfigCode();
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         if (dataCode != null) {
             // 第三方参数名为 dataCode（camelCase 单数）
             params.add("dataCode", dataCode);
+            // MQTT 配置编码（调用外部 PLC 接口必传）
+            if (configCode != null) {
+                params.add("configCode", configCode);
+            }
         }
         try {
+            // 调试打印：确认请求的完整地址及端口（确认是否走 33010）
+            String fullUrl = externalPlcBaseUrl + "/api/device/listByFactoryAndDevice";
+            log.info("调用外部PLC接口 URL={}/api/device/listByFactoryAndDevice?dataCode={}, configCode={}", externalPlcBaseUrl, dataCode, configCode);
+            log.info("【调试】外部PLC完整请求URL={}, 端口={}, dataCode={}, configCode={}", fullUrl, extractPort(externalPlcBaseUrl), dataCode, configCode);
+
             ResponseEntity<Map<String, Object>> response = signedUtil.get(
-//                    externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
-                    externalPlcBaseUrl, "/prod-api/api/device/listByFactoryAndDevice",
+                    externalPlcBaseUrl, "/api/device/listByFactoryAndDevice",
+//                    externalPlcBaseUrl, "/prod-api/api/device/listByFactoryAndDevice",
                     params, new ParameterizedTypeReference<Map<String, Object>>() {});
+            log.info("【调试】外部PLC响应状态码={}, dataCode={}", response.getStatusCode(), dataCode);
             Map<String, Object> result = response.getBody();
             if (result == null) {
                 log.warn("调用外部PLC接口返回为空, dataCode={}", dataCode);
@@ -176,7 +196,28 @@ public class PlcDataSyncService {
         }
     }
 
-    private List<PlcDataLatestEntity> convertToEntities(List<?> rows) {
+    /** 从 baseUrl 中提取端口号（无端口时返回默认 80/443 描述） */
+    private String extractPort(String baseUrl) {
+        if (baseUrl == null) {
+            return "null";
+        }
+        try {
+            java.net.URI uri = new java.net.URI(baseUrl);
+            int port = uri.getPort();
+            return port == -1 ? (uri.getScheme().equalsIgnoreCase("https") ? "443(默认)" : "80(默认)") : String.valueOf(port);
+        } catch (Exception e) {
+            return "解析失败:" + baseUrl;
+        }
+    }
+
+    /** 在 entry->机台 映射中按 dataCode 找到所属机台枚举项（同一 dataCode 只可能属于一个机台） */
+    /** 按行对象取所属机台枚举项（该行由哪个枚举项请求回来，即归属哪个机台） */
+    private ShootMachineCode findMachineByRow(Map<Object, ShootMachineCode> rowMachineMap, Object row) {
+        return rowMachineMap.get(row);
+    }
+
+    private List<PlcDataLatestEntity> convertToEntities(List<?> rows,
+                                                         Map<Object, ShootMachineCode> rowMachineMap) {
         List<PlcDataLatestEntity> entities = new ArrayList<>();
         int skipped = 0;
         for (Object item : rows) {
@@ -184,7 +225,7 @@ public class PlcDataSyncService {
                 skipped++;
                 continue;
             }
-            PlcDataLatestEntity entity = toEntity(map);
+            PlcDataLatestEntity entity = toEntity(map, rowMachineMap);
             if (entity == null) {
                 skipped++;
                 continue;
@@ -196,44 +237,21 @@ public class PlcDataSyncService {
     }
 
     /**
-     * 根据第三方 areaName 反查 shoot_machine 表机台（已停用：areaName 不可靠时会整条丢数据，
-     * 机台归属改由 ShootMachineCode 枚举按 dataCode 决定）
-     */
-//    private ShootMachineEntity resolveMachine(String areaName) {
-//        if (StrUtil.isBlank(areaName)) {
-//            return null;
-//        }
-//        return shootMachineMapper.selectOne(
-//                new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, areaName));
-//    }
-
-    /**
-     * 判定是否为射出机5号机（已停用，逻辑收敛到 ShootMachineCode.isShootFive()）
-     */
-//    private boolean isShootFiveMachine(ShootMachineEntity machine) {
-//        if (machine == null) {
-//            return false;
-//        }
-//        String name = machine.getMachineName();
-//        // 机台名形如"射出机5号机"或"射出机五号机"；"5号机"前用负向后查确保不是数字，避免"15号机"误命中
-//        return name.matches(".*[^\\d]5号机$") || name.matches(".*五号机$");
-//    }
-
-    /**
      * 单条外部数据转实体；dataCode 为空或 field_key 来源（displayName，缺失时回退 remark）为空返回 null（避免空数据/唯一键冲突）
-     * 机台归属由 dataCode 经 ShootMachineCode 枚举决定，不再依赖第三方 areaName 反查。
+     * 机台归属直接由枚举项（ShootMachineCode）决定——遍历枚举项请求，其下数据均归属该机台，不再按 dataCode 反查。
      */
-    private PlcDataLatestEntity toEntity(Map<?, ?> map) {
+    private PlcDataLatestEntity toEntity(Map<?, ?> map,
+                                         Map<Object, ShootMachineCode> rowMachineMap) {
         String remark = getStr(map, "remark");
         String dataCode = getStr(map, "dataCode");
         if (StrUtil.isBlank(dataCode)) {
             return null;
         }
 
-        // 由 dataCode 直接确定所属机台（9号机/5号机），这是稳定业务规则
-        ShootMachineCode shootMachine = ShootMachineCode.of(dataCode);
+        // 机台由请求枚举项整批决定：该行是哪个枚举项请求回来的，就归属哪个机台
+        ShootMachineCode shootMachine = findMachineByRow(rowMachineMap, map);
         if (shootMachine == null) {
-            log.warn("dataCode 未匹配到机台映射，跳过: dataCode={}", dataCode);
+            log.warn("该行数据未关联到任何机台枚举项，跳过: dataCode={}", dataCode);
             return null;
         }
 
@@ -253,14 +271,7 @@ public class PlcDataSyncService {
             categoryName = "默认";
         }
 
-        // ===== 原逻辑：根据第三方 areaName 反查 shoot_machine 机台（已停用，areaName 不可靠时会整条丢数据）=====
-        // ShootMachineEntity machine = resolveMachine(areaName);
-        // Long machineId = machine != null ? machine.getId() : null;
-        // if (machineId == null) {
-        //     log.warn("未匹配到机台，跳过该条数据: areaName={}, dataCode={}", areaName, dataCode);
-        //     return null;
-        // }
-        // ===== 新逻辑：按枚举机台名查本地 shoot_machine 获取 machineId（稳定，不依赖第三方 areaName）=====
+        // 按枚举机台名查本地 shoot_machine 获取 machineId（稳定，不依赖第三方 areaName）
         ShootMachineEntity machine = shootMachineMapper.selectOne(
                 new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, shootMachine.getMachineName()));
         Long machineId = machine != null ? machine.getId() : null;

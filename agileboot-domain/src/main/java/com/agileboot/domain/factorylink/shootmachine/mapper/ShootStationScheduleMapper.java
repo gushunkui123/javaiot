@@ -57,4 +57,20 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
                     + "LEFT JOIN shoot_mold m ON s.mold_id = m.id AND m.deleted = 0 "
                     + "WHERE s.deleted = 0 AND s.id = #{id}")
     ShootStationScheduleEntity selectByIdWithMold(@Param("id") Long id);
+
+    /**
+     * 判断同一站台+同模向是否存在时间段重叠的未取消计划
+     * 边界相接也算冲突：新区间 [startTime, endTime] 与已有 [start_time, end_time] 重叠条件 S1 <= E2 AND E1 >= S2
+     * excludeId 用于编辑时排除自身
+     */
+    @Select("SELECT COUNT(1) FROM shoot_station_schedule "
+            + "WHERE deleted = 0 AND station_id = #{stationId} AND mold_side = #{moldSide} "
+            + "AND status != 'cancelled' "
+            + "AND start_time <= #{endTime} AND end_time >= #{startTime} "
+            + "AND (#{excludeId} IS NULL OR id != #{excludeId})")
+    long countOverlapping(@Param("stationId") Long stationId,
+                          @Param("moldSide") String moldSide,
+                          @Param("startTime") LocalDateTime startTime,
+                          @Param("endTime") LocalDateTime endTime,
+                          @Param("excludeId") Long excludeId);
 }

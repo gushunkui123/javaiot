@@ -1,6 +1,8 @@
 package com.agileboot.domain.factorylink.shootmachine.controller;
 
+import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.dto.ResponseDTO;
+import com.agileboot.common.enums.common.BusinessTypeEnum;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +40,7 @@ public class ShootMoldRuleController {
         return ResponseDTO.ok(shootMoldRuleService.listByMoldId(moldId));
     }
 
+    @AccessLog(title = "射出机模具规则", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "整批保存模具规则")
     @PutMapping("/mold/{moldId}")
     public ResponseDTO<Void> saveByMold(
@@ -47,12 +50,14 @@ public class ShootMoldRuleController {
         return ResponseDTO.ok();
     }
 
+    @AccessLog(title = "射出机模具规则", businessType = BusinessTypeEnum.ADD)
     @Operation(summary = "新增单条规则")
     @PostMapping("/create")
     public ResponseDTO<ShootMoldRuleEntity> create(@RequestBody ShootMoldRuleEntity entity) {
         return ResponseDTO.ok(shootMoldRuleService.create(entity));
     }
 
+    @AccessLog(title = "射出机模具规则", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "编辑单条规则")
     @PutMapping("/{id}")
     public ResponseDTO<ShootMoldRuleEntity> update(
@@ -61,6 +66,7 @@ public class ShootMoldRuleController {
         return ResponseDTO.ok(shootMoldRuleService.update(id, entity));
     }
 
+    @AccessLog(title = "射出机模具规则", businessType = BusinessTypeEnum.DELETE)
     @Operation(summary = "删除单条规则")
     @DeleteMapping("/{id}")
     public ResponseDTO<Void> delete(
