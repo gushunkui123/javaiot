@@ -203,6 +203,18 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
         // 从PLC数据检测红色报警（基于规则值范围，含射枪温度等全局字段）
         detectRedAlarmsFromPlcData(machineId, schedules);
+
+        // 清理孤儿报警：告警所属模具已无当前排期时，该告警自动取消
+        int orphanCancelled = baseMapper.autoCancelAlarmsWithoutCurrentSchedule();
+        if (orphanCancelled > 0) {
+            log.info("自动取消{}条无当前排期的红色报警", orphanCancelled);
+        }
+
+        // 自动恢复：当前排期挂载模具的规则阈值内，则取消（用实时值，不用告警自身存的当前值）
+        int recoveredCancelled = baseMapper.autoCancelAlarmsByCurrentValue();
+        if (recoveredCancelled > 0) {
+            log.info("自动取消{}条参数已恢复的红色报警", recoveredCancelled);
+        }
     }
     
 

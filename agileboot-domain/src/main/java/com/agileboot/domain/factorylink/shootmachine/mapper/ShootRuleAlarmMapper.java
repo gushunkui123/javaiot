@@ -342,6 +342,55 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("fieldCode") String fieldCode);
 
     /**
+     * 自动取消「所属模具已无当前排期」的红色报警（孤儿报警清理）。
+     * 业务约定：只在有排期时才做阈值检测与处理；一旦告警所属的模具在该站台当前无有效排期，
+     * 该告警即为失效告警，应自动标记为已处理。
+     * 有效排期定义：未删除、且 start_time <= NOW() < end_time。
+     */
+    @Update("<script>"
+            + "UPDATE shoot_rule_alarm a "
+            + "LEFT JOIN ("
+            + "    SELECT sc.station_id, sc.mold_id "
+            + "    FROM shoot_station_schedule sc "
+            + "    WHERE sc.deleted = 0 AND sc.start_time &lt;= NOW() AND sc.end_time &gt; NOW()"
+            + ") cur ON cur.station_id = a.station_id AND cur.mold_id = a.mold_id "
+            + "SET a.handle_status = 'true', a.handle_remark = '排期变更自动取消' "
+            + "WHERE a.deleted = 0 AND a.handle_status = 'false' AND a.alarm_level = 'red' "
+            + "  AND cur.station_id IS NULL"
+            + "</script>")
+    int autoCancelAlarmsWithoutCurrentSchedule();
+
+    /**
+     * 自动更新/取消红色报警：用 plc_data_latest 的最新实时值刷新 current_value；
+     * 若最新值已恢复到「告警自身 rule_id 对应规则」的阈值内，则自动标记为已处理。
+     * 匹配规则：
+     *   1. 阈值取自 shoot_mold_rule，按告警自己的 rule_id 关联（避免多排期/换模歧义）；
+     *   2. plc_data_latest 的 field_key 与告警 field_code 做「左右模前缀归一化」匹配
+     *      （规则表存 "第一阶段 射出速度"，告警/PLC 存 "右模第一阶段 射出速度"）。
+     */
+    @Update("<script>"
+            + "UPDATE shoot_rule_alarm a "
+            + "JOIN shoot_machine_station s ON s.id = a.station_id "
+            + "LEFT JOIN shoot_mold_rule r "
+            + "  ON r.id = a.rule_id AND r.deleted = 0 "
+            + "LEFT JOIN plc_data_latest p "
+            + "  ON p.machine_id = a.machine_id "
+            + "  AND REPLACE(REPLACE(p.field_key, '左模', ''), '右模', '') = REPLACE(REPLACE(a.field_code, '左模', ''), '右模', '') "
+            + "  AND p.category_name = CONCAT('站台', s.station_no) "
+            + "SET a.current_value = CAST(p.field_value AS DECIMAL), "
+            + "    a.handle_status = CASE "
+            + "        WHEN CAST(p.field_value AS DECIMAL) BETWEEN r.min_value AND r.max_value "
+            + "        THEN 'true' ELSE a.handle_status END, "
+            + "    a.handle_remark = CASE "
+            + "        WHEN CAST(p.field_value AS DECIMAL) BETWEEN r.min_value AND r.max_value "
+            + "        THEN '参数恢复正常自动取消' ELSE a.handle_remark END "
+            + "WHERE a.deleted = 0 AND a.handle_status = 'false' AND a.alarm_level = 'red' "
+            + "  AND r.id IS NOT NULL "
+            + "  AND p.field_value IS NOT NULL"
+            + "</script>")
+    int autoCancelAlarmsByCurrentValue();
+
+    /**
      * 查询所有报警（包含已处理和未处理），用于导出Excel
      */
     @Select(
