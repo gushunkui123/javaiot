@@ -33,6 +33,15 @@ public class ShootRuleAlarmExportDTO {
     @ExcelColumn(name = "超时时间(秒)")
     private String timeoutSeconds;
 
+    @ExcelColumn(name = "出现次数")
+    private String occurrenceCount;
+
+    @ExcelColumn(name = "首次报警时间")
+    private String firstAlarmTime;
+
+    @ExcelColumn(name = "末次报警时间")
+    private String lastAlarmTime;
+
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ExcelColumn(name = "报警时间")
     private String alarmTime;

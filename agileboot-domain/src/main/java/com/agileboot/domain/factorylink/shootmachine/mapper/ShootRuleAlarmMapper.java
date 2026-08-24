@@ -309,17 +309,30 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("ruleId") Long ruleId);
 
     /**
-     * 判断是否存在同条件、未处理且当前值相等的红色报警（去重用）
-     * 用于「同一超标值不重复报警」：值60报过且未恢复就不再报，值变为70再报，回到60也不报。
-     * fieldCode 为空时仅按 ruleId 判定；非空时按 ruleId + fieldCode 判定（支持同规则多阶段各自独立）
+     * 判断是否已存在同字段的未处理红色报警（按 机器+站位+规则+字段 维度去重，不看当前值）。
+     * 用于「同一超标字段只保留一条未处理报警」：只要该字段仍超标且未处理，无论值如何变化都只更新 current_value，不再新增记录。
+     * fieldCode 为空时仅按 ruleId 判定；非空时按 ruleId + fieldCode 判定（支持同规则多阶段各自独立）。
      */
     @Select("<script>SELECT COUNT(1) FROM shoot_rule_alarm "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
             + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false' "
-            + "AND current_value = #{currentValue}"
             + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
             + "</script>")
-    long existsUnhandledRedAlarmWithValue(
+    long existsUnhandledRedAlarm(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("ruleId") Long ruleId,
+            @Param("fieldCode") String fieldCode);
+
+    /**
+     * 更新已存在未处理红色报警的 current_value 为最新超标值（不新增记录）。
+     */
+    @Update("<script>UPDATE shoot_rule_alarm SET current_value = #{currentValue}, updated_at = NOW() "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false'"
+            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
+            + "</script>")
+    int updateRedAlarmCurrentValue(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
             @Param("ruleId") Long ruleId,
@@ -395,11 +408,14 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
      */
     @Select(
             "<script>" +
-            "SELECT a.id, a.machine_id AS machineId, a.station_id AS stationId, "
-                    + "a.field_code AS fieldCode, a.field_name AS fieldName, a.min_value AS `minValue`, a.max_value AS `maxValue`, "
-                    + "a.current_value AS currentValue, a.alarm_level AS alarmLevel, a.alarm_time AS alarmTime, "
-                    + "a.handle_status AS handleStatus, a.handle_remark AS handleRemark, "
-                    + "m.machine_name AS machineName, s.station_name AS stationName, mo.mold_model AS moldModel, mo.color AS moldColor "
+            "SELECT a.machine_id AS machineId, a.station_id AS stationId, "
+                    + "a.field_code AS fieldCode, MAX(a.field_name) AS fieldName, "
+                    + "MAX(a.min_value) AS `minValue`, MAX(a.current_value) AS currentValue, MAX(a.max_value) AS `maxValue`, "
+                    + "a.alarm_level AS alarmLevel, a.handle_status AS handleStatus, "
+                    + "MAX(a.alarm_time) AS alarmTime, "
+                    + "MAX(m.machine_name) AS machineName, MAX(s.station_name) AS stationName, "
+                    + "MAX(mo.mold_model) AS moldModel, MAX(mo.color) AS moldColor, "
+                    + "COUNT(*) AS occurrenceCount, MIN(a.alarm_time) AS firstAlarmTime, MAX(a.alarm_time) AS lastAlarmTime "
                     + "FROM shoot_rule_alarm a "
                     + "LEFT JOIN shoot_machine m ON a.machine_id = m.id AND m.deleted = 0 "
                     + "LEFT JOIN shoot_machine_station s ON a.station_id = s.id AND s.deleted = 0 "
@@ -407,7 +423,8 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
                     + "WHERE a.deleted = 0 "
                     + "AND a.alarm_time >= DATE_SUB(CURDATE(), INTERVAL #{days} - 1 DAY) "
                     + "<if test='machineId != null'>AND a.machine_id = #{machineId}</if> "
-                    + "ORDER BY a.alarm_time DESC" +
+                    + "GROUP BY a.machine_id, a.station_id, a.field_code, a.alarm_level, a.handle_status "
+                    + "ORDER BY MAX(a.alarm_time) DESC" +
             "</script>")
     List<ShootRuleAlarmEntity> selectAllWithRelation(@Param("machineId") Long machineId, @Param("days") Integer days);
 

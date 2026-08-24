@@ -89,5 +89,17 @@ public class ShootRuleAlarmEntity implements Serializable {
     @TableField(exist = false)
     private String moldColor;
 
+    /** 出现次数（导出聚合，非表字段） */
+    @TableField(exist = false)
+    private Long occurrenceCount;
+
+    /** 首次报警时间（导出聚合，非表字段） */
+    @TableField(exist = false)
+    private LocalDateTime firstAlarmTime;
+
+    /** 末次报警时间（导出聚合，非表字段） */
+    @TableField(exist = false)
+    private LocalDateTime lastAlarmTime;
+
 
 }

@@ -83,7 +83,8 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     /**
-     * 单个报警转导出 DTO：黄色报警显示超时时间不显示阈值，红色报警显示阈值不显示超时时间
+     * 一条已聚合报警转导出 DTO：出现次数/首末时间直接取 SQL 聚合结果。
+     * 黄色报警显示超时时间不显示阈值，红色报警显示阈值不显示超时时间。
      */
     private ShootRuleAlarmExportDTO convertToExportDto(ShootRuleAlarmEntity alarm, boolean isYellow) {
         ShootRuleAlarmExportDTO dto = new ShootRuleAlarmExportDTO();
@@ -91,6 +92,10 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         dto.setStationName(alarm.getStationName());
         dto.setFieldName(alarm.getFieldName());
         dto.setAlarmLevel(isYellow ? "黄色" : "红色");
+        dto.setOccurrenceCount(alarm.getOccurrenceCount() != null ? String.valueOf(alarm.getOccurrenceCount()) : "");
+        String fmt = "yyyy-MM-dd HH:mm:ss";
+        dto.setFirstAlarmTime(alarm.getFirstAlarmTime() != null ? alarm.getFirstAlarmTime().format(DateTimeFormatter.ofPattern(fmt)) : "");
+        dto.setLastAlarmTime(alarm.getLastAlarmTime() != null ? alarm.getLastAlarmTime().format(DateTimeFormatter.ofPattern(fmt)) : "");
         if (isYellow) {
             // 黄色报警（操作超时/停机）：不显示阈值、当前值与模具信息，仅显示超时时间
             // current_value 已存储超出阈值的秒数，直接显示
@@ -671,11 +676,27 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         try {
             String alarmFieldCode = StrUtil.isNotBlank(plcFieldKey) ? plcFieldKey : rule.getFieldCode();
 
-            // 去重：同机器+站位+规则(+字段) 已存在未处理且当前值相等的红色报警时，不再重复插入。
-            // 即同一超标值只报一次；值变化（如60→70）才新增一条；已报过的值不再重复报。
-            long existingCount = baseMapper.existsUnhandledRedAlarmWithValue(
-                    machineId, stationId, rule.getId(), plcFieldKey, currentValue);
+            // 去重：同一超标字段只保留一条报警记录，避免重复插入。
+            // 分为三种情况：
+            //  ① 已有「未处理」记录 → 仅更新最新超标值，不新增；
+            //  ② 没有未处理记录，但存在同字段「已处理」记录（刚被自动取消、值又超标）→ 复用该记录翻回未处理并更新值，不新增；
+            //  ③ 完全没有记录 → 才真正插入新记录。
+            long existingCount = baseMapper.existsUnhandledRedAlarm(
+                    machineId, stationId, rule.getId(), alarmFieldCode);
             if (existingCount > 0) {
+                baseMapper.updateRedAlarmCurrentValue(
+                        machineId, stationId, rule.getId(), alarmFieldCode, currentValue);
+                log.info("已存在红色报警，仅更新最新值: machineId={}, stationId={}, ruleId={}, fieldCode={}, currentValue={}",
+                        machineId, stationId, rule.getId(), alarmFieldCode, currentValue);
+                return;
+            }
+
+            Long latestId = baseMapper.findLatestRedAlarmId(
+                    machineId, stationId, rule.getId(), alarmFieldCode);
+            if (latestId != null) {
+                baseMapper.reactivateRedAlarm(latestId, currentValue);
+                log.info("复用已存在的红色报警（翻回未处理并更新值）: machineId={}, stationId={}, ruleId={}, fieldCode={}, alarmId={}, currentValue={}",
+                        machineId, stationId, rule.getId(), alarmFieldCode, latestId, currentValue);
                 return;
             }
 

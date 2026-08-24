@@ -25,7 +25,9 @@ public final class AlarmExcelExportUtil {
             new ColumnMeta("minValue", "最小阈值", 12),
             new ColumnMeta("currentValue", "当前值", 12),
             new ColumnMeta("maxValue", "最大阈值", 12),
-            new ColumnMeta("alarmTime", "报警时间", 20),
+            new ColumnMeta("occurrenceCount", "出现次数", 10),
+            new ColumnMeta("firstAlarmTime", "首次报警时间", 20),
+            new ColumnMeta("lastAlarmTime", "末次报警时间", 20),
             new ColumnMeta("handleStatus", "处理状态", 10),
             new ColumnMeta("moldModel", "模具型号", 15),
             new ColumnMeta("moldColor", "模具颜色", 10)
@@ -38,7 +40,9 @@ public final class AlarmExcelExportUtil {
             new ColumnMeta("fieldName", "报警字段", 15),
             new ColumnMeta("alarmLevel", "报警级别", 10),
             new ColumnMeta("timeoutSeconds", "超时时间(秒)", 12),
-            new ColumnMeta("alarmTime", "报警时间", 20),
+            new ColumnMeta("occurrenceCount", "出现次数", 10),
+            new ColumnMeta("firstAlarmTime", "首次报警时间", 20),
+            new ColumnMeta("lastAlarmTime", "末次报警时间", 20),
             new ColumnMeta("handleStatus", "处理状态", 10)
     );
 
