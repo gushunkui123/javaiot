@@ -340,6 +340,30 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("currentValue") BigDecimal currentValue);
 
     /**
+     * 查询指定规则同字段的最近一条红色报警 ID（不限已处理/未处理）。
+     * 用于：超标时若同字段已存在记录（含已处理），则复用该记录而非重复插入。
+     * fieldCode 为空时仅按 ruleId 判定；非空时按 ruleId + fieldCode 判定。
+     */
+    @Select("<script>SELECT id FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND rule_id = #{ruleId} AND alarm_level = 'red' "
+            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if> "
+            + "ORDER BY id DESC LIMIT 1</script>")
+    Long findLatestRedAlarmId(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("ruleId") Long ruleId,
+            @Param("fieldCode") String fieldCode);
+
+    /**
+     * 将某条已存在的红色报警「翻回未处理」并更新当前值（值再次超标时复用记录，不新增）。
+     */
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'false', handle_remark = NULL, "
+            + "current_value = #{currentValue}, updated_at = NOW() "
+            + "WHERE deleted = 0 AND id = #{id}")
+    int reactivateRedAlarm(@Param("id") Long id, @Param("currentValue") BigDecimal currentValue);
+
+    /**
      * 自动取消指定规则的红色报警（参数恢复正常时）
      * fieldCode 为空时取消该规则全部红色报警；非空时仅取消该 fieldCode 对应的报警
      */
