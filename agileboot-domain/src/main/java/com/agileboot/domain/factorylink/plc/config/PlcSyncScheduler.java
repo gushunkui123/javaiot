@@ -1,6 +1,7 @@
 package com.agileboot.domain.factorylink.plc.config;
 
 import com.agileboot.domain.factorylink.plc.util.PlcDataSyncService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,10 +22,12 @@ public class PlcSyncScheduler {
     private final AtomicBoolean highFreqRunning = new AtomicBoolean(false);
     private final AtomicBoolean lowFreqRunning = new AtomicBoolean(false);
 
+  
+
     /**
-     * 高频同步：每3秒同步开模止/合模止
+     * 高频同步：每3秒同步开模止/合模止（fixedDelay 等上轮结束再计时，防第三方接口慢导致并发重叠）
      */
-    @Scheduled(fixedRate = 3000)
+    @Scheduled(fixedDelay = 3000)
     public void syncHighFrequencyFields() {
         if (!highFreqRunning.compareAndSet(false, true)) {
             log.debug("高频同步任务仍在执行，跳过本次");
@@ -40,9 +43,9 @@ public class PlcSyncScheduler {
     }
 
     /**
-     * 低频同步：每10秒同步除开模止/合模止外的所有字段
+     * 低频同步：每10秒同步除开模止/合模止外的所有字段（fixedDelay 等上轮结束再计时，防并发重叠）
      */
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedDelay = 10000)
     public void syncLowFrequencyFields() {
         if (!lowFreqRunning.compareAndSet(false, true)) {
             log.debug("低频同步任务仍在执行，跳过本次");

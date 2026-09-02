@@ -9,7 +9,6 @@ import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
-import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -93,7 +92,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
             return List.of();
         }
         List<PlcDataLatestEntity> latestRows = plcDataLatestMapper.selectListByDeviceName(deviceName.trim());
-        return enrichDisplayNames(toPlcDataEntities(latestRows));
+        return toPlcDataEntities(latestRows);
     }
 
     //根据id查询
@@ -103,16 +102,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
             return List.of();
         }
         List<PlcDataLatestEntity> latestRows = plcDataLatestMapper.selectListByMachineId(machineId);
-        return enrichDisplayNames(toPlcDataEntities(latestRows));
-    }
-
-    //解析显示名称和站位号
-    private List<PlcDataEntity> enrichDisplayNames(List<PlcDataEntity> rows) {
-        rows.forEach(row -> {
-            row.setName(PlcFieldKeyDisplayNames.resolve(row.getFieldKey()));
-            row.setStationNo(PlcFieldKeyDisplayNames.parseStationNo(row.getFieldKey()));
-        });
-        return rows;
+        return toPlcDataEntities(latestRows);
     }
 
     //根据所有ids查询最新数据戳
@@ -153,6 +143,7 @@ public class PlcDataServiceImpl extends ServiceImpl<PlcDataMapper, PlcDataEntity
         entity.setDataTimestamp(latest.getDataTimestamp());
         entity.setFieldKey(latest.getFieldKey());
         entity.setFieldValue(latest.getFieldValue());
+        entity.setCategoryName(latest.getCategoryName());
         entity.setCreateTime(latest.getCreateTime());
         entity.setDeleted(false);
         return entity;

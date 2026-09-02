@@ -14,7 +14,6 @@ import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.util.PlcDataSyncService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
 import com.agileboot.domain.factorylink.plc.util.MinioUploadUtil;
-import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.agileboot.domain.factorylink.plc.util.SignedRestTemplateUtil;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -201,12 +200,11 @@ public class PlcDataController {
         List<Map<String, String>> result = dataList.stream()
                 .map(PlcDataEntity::getFieldKey)
                 .filter(StrUtil::isNotBlank)
-                .map(PlcFieldKeyDisplayNames::extractBaseKey)
                 .distinct()
                 .sorted()
                 .map(code -> Map.of(
                         "code", code,
-                        "name", PlcFieldKeyDisplayNames.resolveOrCode(code)
+                        "name", code
                 ))
                 .toList();
         return ResponseDTO.ok(result);

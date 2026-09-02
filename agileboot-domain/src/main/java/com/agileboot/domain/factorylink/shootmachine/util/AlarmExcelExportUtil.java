@@ -53,8 +53,24 @@ public final class AlarmExcelExportUtil {
         try (ExcelWriter writer = ExcelUtil.getWriter(true)) {
             writeSheet(writer, "红色报警", result.getRedList(), RED_COLUMNS, true);
             writeSheet(writer, "黄色报警", result.getYellowList(), YELLOW_COLUMNS, false);
+            appendYellowTruncateNotice(writer, result);
             writer.flush(response.getOutputStream(), true);
         }
+    }
+
+    /** 黄色报警被截断时，在黄色 sheet 末尾追加一行提示 */
+    private static void appendYellowTruncateNotice(ExcelWriter writer, AlarmExportResult result) {
+        if (!Boolean.TRUE.equals(result.getYellowTruncated())) {
+            return;
+        }
+        Sheet sheet = writer.getWorkbook().getSheet("黄色报警");
+        if (sheet == null) {
+            return;
+        }
+        int lastRow = sheet.getLastRowNum() + 1;
+        Row row = sheet.createRow(lastRow);
+        Cell cell = row.createCell(0);
+        cell.setCellValue("提示：黄色报警超过 3000 条，已截断，仅保留最近 3000 条");
     }
 
     /**

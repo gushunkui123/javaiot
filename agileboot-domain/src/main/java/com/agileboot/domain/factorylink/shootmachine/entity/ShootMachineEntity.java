@@ -33,6 +33,9 @@ public class ShootMachineEntity implements Serializable {
     @TableField("station_count")
     private Integer stationCount;
 
+    @TableField("gun_count")
+    private Integer gunCount;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

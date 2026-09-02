@@ -5,7 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
-import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
+import com.agileboot.domain.factorylink.plc.entity.FieldMappingEntity;
+import com.agileboot.domain.factorylink.plc.mapper.FieldMappingMapper;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMoldRuleEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMoldRuleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootDeleteValidator;
@@ -13,6 +14,9 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleServic
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -28,6 +32,7 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
 
     private final ShootMoldService shootMoldService;
     private final ShootDeleteValidator deleteValidator;
+    private final FieldMappingMapper fieldMappingMapper;
 
     @Override
     public List<ShootMoldRuleEntity> listAll() {
@@ -113,8 +118,13 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         if (!isGlobalRule && entity.getMoldId() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具ID不能为空");
         }
+        // fieldCode 即抽象内部键（如 MOLD_SET_TEMP / GUN_TEMP），与设备 L/R/枪号解耦，比较时由排期实例化
         if (StrUtil.isBlank(entity.getFieldCode())) {
-            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "字段不能为空");
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "fieldCode不能为空");
+        }
+        if (StrUtil.isBlank(entity.getDimensionType())
+                || (!"GLOBAL".equals(entity.getDimensionType()) && !"STAGE".equals(entity.getDimensionType()))) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "dimensionType必须为 GLOBAL 或 STAGE");
         }
         if (entity.getMinValue() == null || entity.getMaxValue() == null) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值和最大值不能为空");
@@ -122,22 +132,80 @@ public class ShootMoldRuleServiceImpl extends ServiceImpl<ShootMoldRuleMapper, S
         if (entity.getMinValue().compareTo(entity.getMaxValue()) >= 0) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "最小值必须小于最大值");
         }
-        entity.setFieldCode(PlcFieldKeyDisplayNames.normalizeGunTemperatureFieldCode(
-                entity.getFieldCode().trim().toLowerCase()));
+        // fieldCode 规范化（去空格 + 大写）
+        entity.setFieldCode(entity.getFieldCode().trim().toUpperCase().replaceAll("\\s+", ""));
         if (entity.getEnabled() == null) {
             entity.setEnabled(true);
+        }
+        if ("GLOBAL".equals(entity.getDimensionType())) {
+            entity.setStage(null);
         }
         enrichFieldName(entity);
     }
 
-    /** 展示名统一由 field_code */
+    /** 展示名统一由 fieldCode + field_mapping.match_pattern */
     private ShootMoldRuleEntity enrichFieldName(ShootMoldRuleEntity rule) {
-        rule.setFieldName(PlcFieldKeyDisplayNames.resolveOrCode(rule.getFieldCode()));
+        String displayName = resolveDisplayName(rule.getFieldCode());
+        rule.setFieldName(displayName);
         return rule;
     }
 
+    private String resolveDisplayName(String internalKey) {
+        if (StrUtil.isBlank(internalKey)) {
+            return internalKey;
+        }
+        FieldMappingEntity mapping = fieldMappingMapper.selectByInternalKey(internalKey);
+        if (mapping != null && StrUtil.isNotBlank(mapping.getMatchPattern())) {
+            return stripMoldSidePrefix(mapping.getMatchPattern());
+        }
+        return internalKey;
+    }
+
+    /** 从预查的 patternMap 中取 match_pattern 并剥前缀，不查 DB（批量场景使用） */
+    private String resolveDisplayNameFromMap(String internalKey, Map<String, String> patternMap) {
+        if (StrUtil.isBlank(internalKey)) {
+            return internalKey;
+        }
+        String pattern = patternMap.get(internalKey);
+        if (StrUtil.isNotBlank(pattern)) {
+            return stripMoldSidePrefix(pattern);
+        }
+        return internalKey;
+    }
+
+    /** 去掉"左模"/"右模"前缀，保留 {idx}/{stage}/{gun} 占位符 */
+    private String stripMoldSidePrefix(String name) {
+        if (name.startsWith("左模")) {
+            return name.substring(2);
+        } else if (name.startsWith("右模")) {
+            return name.substring(2);
+        }
+        return name;
+    }
+
     private List<ShootMoldRuleEntity> enrichFieldNames(List<ShootMoldRuleEntity> rules) {
-        rules.forEach(this::enrichFieldName);
+        if (CollUtil.isEmpty(rules)) {
+            return rules;
+        }
+        // 批量查询 field_mapping，消除 N+1：一次 IN 查询取回所有 internalKey 的 match_pattern
+        Set<String> internalKeys = rules.stream()
+                .map(ShootMoldRuleEntity::getFieldCode)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toSet());
+        if (internalKeys.isEmpty()) {
+            return rules;
+        }
+        List<FieldMappingEntity> mappings = fieldMappingMapper.selectByInternalKeys(internalKeys);
+        // 同一 internalKey 可能有多条（左模/右模），取第一条即可（resolveDisplayName 会剥前缀）
+        Map<String, String> patternMap = mappings.stream()
+                .collect(Collectors.toMap(
+                        FieldMappingEntity::getInternalKey,
+                        FieldMappingEntity::getMatchPattern,
+                        (first, second) -> first));
+        for (ShootMoldRuleEntity rule : rules) {
+            String displayName = resolveDisplayNameFromMap(rule.getFieldCode(), patternMap);
+            rule.setFieldName(displayName);
+        }
         return rules;
     }
 }

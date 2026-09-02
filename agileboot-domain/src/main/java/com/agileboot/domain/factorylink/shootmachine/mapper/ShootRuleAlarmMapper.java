@@ -162,7 +162,8 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
      */
     @Insert("<script>" +
             "INSERT INTO shoot_rule_alarm (machine_id, station_id, mold_id, rule_id, field_code, field_name, min_value, max_value, current_value, alarm_level, alarm_time, handle_status, deleted, created_at, updated_at) " +
-            "VALUES (#{machineId}, #{stationId}, #{moldId}, #{ruleId}, #{fieldCode}, #{fieldName}, 0, 900, #{currentValue}, 'yellow', NOW(), 'false', 0, NOW(), NOW()) " +
+            // 黄色报警为状态类（按持续时长触发），无阈值语义，min/max 置 NULL 更准确
+            "VALUES (#{machineId}, #{stationId}, #{moldId}, #{ruleId}, #{fieldCode}, #{fieldName}, NULL, NULL, #{currentValue}, 'yellow', NOW(), 'false', 0, NOW(), NOW()) " +
             "</script>")
     int insertYellowAlarm(@Param("machineId") Long machineId, @Param("stationId") Long stationId,
                           @Param("moldId") Long moldId, @Param("ruleId") Long ruleId,
@@ -207,6 +208,17 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("fieldCode") String fieldCode);
 
     /**
+     * 查询指定机器+站位下仍未处理的黄色报警 rule_code 集合。
+     * 黄色报警复用 field_code 列存储 alarm_state_rule.rule_code，故此处直接取 field_code。
+     * 供互斥/恢复判定使用，避免每轮都发无谓的 UPDATE。
+     */
+    @Select("SELECT field_code FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND alarm_level = 'yellow' AND handle_status = 'false'")
+    List<String> selectUnhandledYellowFieldCodes(@Param("machineId") Long machineId,
+                                                 @Param("stationId") Long stationId);
+
+    /**
      * 处理停机恢复后的黄色报警
      */
     @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '停机恢复' "
@@ -215,6 +227,14 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     int handleYellowAlarms(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId);
+
+    /**
+     * 机台未启用时，取消该机器全部未处理黄色报警（机台停用不做黄色监管）
+     */
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '机台未启用自动取消' "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} "
+            + "AND alarm_level = 'yellow' AND handle_status = 'false'")
+    int handleYellowAlarmsByMachine(@Param("machineId") Long machineId);
 
     /**
      * 状态恢复时仅取消该站位指定 field_code 的黄色报警，不影响其他黄色报警
@@ -309,74 +329,133 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("ruleId") Long ruleId);
 
     /**
-     * 判断是否已存在同字段的未处理红色报警（按 机器+站位+规则+字段 维度去重，不看当前值）。
-     * 用于「同一超标字段只保留一条未处理报警」：只要该字段仍超标且未处理，无论值如何变化都只更新 current_value，不再新增记录。
-     * fieldCode 为空时仅按 ruleId 判定；非空时按 ruleId + fieldCode 判定（支持同规则多阶段各自独立）。
+     * 判断是否已存在同点位(field_code)的未处理红色报警（按 机器+站位+物理点位 去重，不看当前值）。
+     * 不绑定 rule_id：规则被删除重建后 rule_id 会变化，若按 rule_id 去重，修改阈值会因 rule_id 变化而匹配不到
+     * 旧报警，从而每次都新增全新报警。field_code 是实例化后的物理点位 key（如 MOLD_SET_TEMP_L_1），
+     * 同一站位同一点位同一时刻只保留一条未处理红色报警，故按 field_code 去重即可。
      */
-    @Select("<script>SELECT COUNT(1) FROM shoot_rule_alarm "
+    @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false' "
-            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
-            + "</script>")
-    long existsUnhandledRedAlarm(
+            + "AND field_code = #{fieldCode} AND alarm_level = 'red' AND handle_status = 'false'")
+    long existsUnhandledRedAlarmByFieldCode(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
-            @Param("ruleId") Long ruleId,
             @Param("fieldCode") String fieldCode);
 
     /**
-     * 更新已存在未处理红色报警的 current_value 为最新超标值（不新增记录）。
+     * 更新已存在未处理红色报警的最新超标值，并同步刷新阈值快照 min_value/max_value/mold_id/rule_id
+     * （规则阈值被修改后，已存在的告警记录也应展示最新阈值；按点位去重，不新增记录）。
+     * 同步刷新 mold_id/rule_id：避免排期变更后旧 mold_id 触发「无当前排期自动取消」误杀 side-less 字段报警
+     * （如 SET_CURE_TIME 无左右模维度，一个站位只有一条报警，mold_id 必须跟随当前排期更新）。
      */
-    @Update("<script>UPDATE shoot_rule_alarm SET current_value = #{currentValue}, updated_at = NOW() "
+    @Update("UPDATE shoot_rule_alarm SET current_value = #{currentValue}, "
+            + "min_value = #{minValue}, max_value = #{maxValue}, "
+            + "mold_id = #{moldId}, rule_id = #{ruleId}, updated_at = NOW() "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false'"
-            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
-            + "</script>")
-    int updateRedAlarmCurrentValue(
+            + "AND field_code = #{fieldCode} AND alarm_level = 'red' AND handle_status = 'false'")
+    int updateRedAlarmCurrentValueByFieldCode(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
-            @Param("ruleId") Long ruleId,
             @Param("fieldCode") String fieldCode,
-            @Param("currentValue") BigDecimal currentValue);
+            @Param("currentValue") BigDecimal currentValue,
+            @Param("minValue") BigDecimal minValue,
+            @Param("maxValue") BigDecimal maxValue,
+            @Param("moldId") Long moldId,
+            @Param("ruleId") Long ruleId);
 
     /**
-     * 查询指定规则同字段的最近一条红色报警 ID（不限已处理/未处理）。
-     * 用于：超标时若同字段已存在记录（含已处理），则复用该记录而非重复插入。
-     * fieldCode 为空时仅按 ruleId 判定；非空时按 ruleId + fieldCode 判定。
+     * 查询同点位(field_code)的最近一条红色报警 ID（不限已处理/未处理，不绑定 rule_id）。
+     * 用于：超标时若同点位已存在记录（含已处理），则复用该记录而非重复插入。
      */
-    @Select("<script>SELECT id FROM shoot_rule_alarm "
+    @Select("SELECT id FROM shoot_rule_alarm "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-            + "AND rule_id = #{ruleId} AND alarm_level = 'red' "
-            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if> "
-            + "ORDER BY id DESC LIMIT 1</script>")
-    Long findLatestRedAlarmId(
+            + "AND field_code = #{fieldCode} AND alarm_level = 'red' "
+            + "ORDER BY id DESC LIMIT 1")
+    Long findLatestRedAlarmIdByFieldCode(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
-            @Param("ruleId") Long ruleId,
             @Param("fieldCode") String fieldCode);
 
     /**
-     * 将某条已存在的红色报警「翻回未处理」并更新当前值（值再次超标时复用记录，不新增）。
+     * 将某条已存在的红色报警「翻回未处理」并更新当前值，同时刷新阈值快照 min_value/max_value/mold_id/rule_id
+     * （值再次超标复用记录，且规则阈值修改后同步展示最新阈值）。
+     * 同步刷新 mold_id/rule_id，确保排期变更后报警绑定当前模具，避免被「无当前排期自动取消」误杀。
      */
     @Update("UPDATE shoot_rule_alarm SET handle_status = 'false', handle_remark = NULL, "
-            + "current_value = #{currentValue}, updated_at = NOW() "
+            + "current_value = #{currentValue}, min_value = #{minValue}, max_value = #{maxValue}, "
+            + "mold_id = #{moldId}, rule_id = #{ruleId}, updated_at = NOW() "
             + "WHERE deleted = 0 AND id = #{id}")
-    int reactivateRedAlarm(@Param("id") Long id, @Param("currentValue") BigDecimal currentValue);
+    int reactivateRedAlarm(@Param("id") Long id, @Param("currentValue") BigDecimal currentValue,
+                           @Param("minValue") BigDecimal minValue, @Param("maxValue") BigDecimal maxValue,
+                           @Param("moldId") Long moldId, @Param("ruleId") Long ruleId);
 
     /**
-     * 自动取消指定规则的红色报警（参数恢复正常时）
-     * fieldCode 为空时取消该规则全部红色报警；非空时仅取消该 fieldCode 对应的报警
+     * 按 PLC 物理点位(field_code)取消该站位下该点位所有未处理红色报警。
+     * 关键：不绑定 rule_id —— 规则被删除重建后（rule_id 变化），旧报警仍引用旧 rule_id，
+     * 若按 rule_id 取消会永远匹配不到，导致「阈值修改后报警无法自动消除」。
+     * field_code 是实例化后的物理点位 key（如 MOLD_SET_TEMP_L_1），当前模具规则解析后
+     * 判断值恢复正常，即可按 field_code 清理该点位所有未处理红色报警（含旧 rule_id 的孤儿报警）。
      */
     @Update("<script>UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消' "
             + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
-            + "AND rule_id = #{ruleId} AND alarm_level = 'red' AND handle_status = 'false'"
-            + "<if test='fieldCode != null and fieldCode != \"\"'> AND field_code = #{fieldCode}</if>"
+            + "AND field_code = #{fieldCode} AND alarm_level = 'red' AND handle_status = 'false'"
             + "</script>")
-    int autoCancelRedAlarms(
+    int autoCancelRedAlarmsByFieldCode(
             @Param("machineId") Long machineId,
             @Param("stationId") Long stationId,
-            @Param("ruleId") Long ruleId,
             @Param("fieldCode") String fieldCode);
+
+    /**
+     * 以下 4 个方法专用于无 side 维度的 GLOBAL 字段（如 SET_CURE_TIME）。
+     * 这类字段一个站位只有一条 PLC 数据，但排期可能排了左右两个模具，各自有独立阈值。
+     * 前端期望「每个模具一条报警」并按 moldModel 分行展示，故去重维度为
+     * (machine_id, station_id, field_code, mold_id)，而非普通字段的 (machine_id, station_id, field_code)。
+     * field_code 保持 "SET_CURE_TIME" 不变（不加 mold 后缀），由 mold_id 区分两条报警。
+     */
+    @Select("SELECT COUNT(1) FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND mold_id = #{moldId} "
+            + "AND alarm_level = 'red' AND handle_status = 'false'")
+    long existsUnhandledRedAlarmByFieldCodeAndMold(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("moldId") Long moldId);
+
+    @Update("UPDATE shoot_rule_alarm SET current_value = #{currentValue}, "
+            + "min_value = #{minValue}, max_value = #{maxValue}, rule_id = #{ruleId}, updated_at = NOW() "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND mold_id = #{moldId} "
+            + "AND alarm_level = 'red' AND handle_status = 'false'")
+    int updateRedAlarmByFieldCodeAndMold(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("moldId") Long moldId,
+            @Param("currentValue") BigDecimal currentValue,
+            @Param("minValue") BigDecimal minValue,
+            @Param("maxValue") BigDecimal maxValue,
+            @Param("ruleId") Long ruleId);
+
+    @Select("SELECT id FROM shoot_rule_alarm "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND mold_id = #{moldId} "
+            + "AND alarm_level = 'red' ORDER BY id DESC LIMIT 1")
+    Long findLatestRedAlarmIdByFieldCodeAndMold(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("moldId") Long moldId);
+
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消' "
+            + "WHERE deleted = 0 AND machine_id = #{machineId} AND station_id = #{stationId} "
+            + "AND field_code = #{fieldCode} AND mold_id = #{moldId} "
+            + "AND alarm_level = 'red' AND handle_status = 'false'")
+    int autoCancelRedAlarmsByFieldCodeAndMold(
+            @Param("machineId") Long machineId,
+            @Param("stationId") Long stationId,
+            @Param("fieldCode") String fieldCode,
+            @Param("moldId") Long moldId);
 
     /**
      * 自动取消「所属模具已无当前排期」的红色报警（孤儿报警清理）。
@@ -398,37 +477,31 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     int autoCancelAlarmsWithoutCurrentSchedule();
 
     /**
-     * 自动更新/取消红色报警：用 plc_data_latest 的最新实时值刷新 current_value；
-     * 若最新值已恢复到「告警自身 rule_id 对应规则」的阈值内，则自动标记为已处理。
-     * 匹配规则：
-     *   1. 阈值取自 shoot_mold_rule，按告警自己的 rule_id 关联（避免多排期/换模歧义）；
-     *   2. plc_data_latest 的 field_key 与告警 field_code 做「左右模前缀归一化」匹配
-     *      （规则表存 "第一阶段 射出速度"，告警/PLC 存 "右模第一阶段 射出速度"）。
+     * 查询所有未处理红色报警的聚合键（用于 Java 层兜底自动取消）。
+     * 注意：自动取消逻辑放到 Java 层实现（遍历 + 取对应站台 PLC 最新值 + 当前模具有效规则阈值判断），
+     * 避免在 UPDATE 上使用复杂多表 JOIN / 窗口函数（MyBatis-Plus 的 JSqlParser 无法解析，会导致事务回滚、报警全部消失）。
      */
-    @Update("<script>"
-            + "UPDATE shoot_rule_alarm a "
-            + "JOIN shoot_machine_station s ON s.id = a.station_id "
-            + "LEFT JOIN shoot_mold_rule r "
-            + "  ON r.id = a.rule_id AND r.deleted = 0 "
-            + "LEFT JOIN plc_data_latest p "
-            + "  ON p.machine_id = a.machine_id "
-            + "  AND REPLACE(REPLACE(p.field_key, '左模', ''), '右模', '') = REPLACE(REPLACE(a.field_code, '左模', ''), '右模', '') "
-            + "  AND p.category_name = CONCAT('站台', s.station_no) "
-            + "SET a.current_value = CAST(p.field_value AS DECIMAL), "
-            + "    a.handle_status = CASE "
-            + "        WHEN CAST(p.field_value AS DECIMAL) BETWEEN r.min_value AND r.max_value "
-            + "        THEN 'true' ELSE a.handle_status END, "
-            + "    a.handle_remark = CASE "
-            + "        WHEN CAST(p.field_value AS DECIMAL) BETWEEN r.min_value AND r.max_value "
-            + "        THEN '参数恢复正常自动取消' ELSE a.handle_remark END "
-            + "WHERE a.deleted = 0 AND a.handle_status = 'false' AND a.alarm_level = 'red' "
-            + "  AND r.id IS NOT NULL "
-            + "  AND p.field_value IS NOT NULL"
-            + "</script>")
-    int autoCancelAlarmsByCurrentValue();
+    @Select("SELECT a.id, a.machine_id AS machineId, a.station_id AS stationId, a.mold_id AS moldId, "
+            + "a.field_code AS fieldCode "
+            + "FROM shoot_rule_alarm a "
+            + "WHERE a.deleted = 0 AND a.handle_status = 'false' AND a.alarm_level = 'red'")
+    List<Map<String, Object>> selectUnhandledRedAlarms();
 
     /**
-     * 查询所有报警（包含已处理和未处理），用于导出Excel
+     * 将指定红色报警标记为已处理（参数恢复正常自动取消）。单表简单 UPDATE，JSqlParser 可解析。
+     */
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消', updated_at = NOW() "
+            + "WHERE deleted = 0 AND id = #{id} AND handle_status = 'false'")
+    int cancelRedAlarmById(@Param("id") Long id);
+
+    /**
+     * 查询站位名称（用于报警自动取消时按站台过滤 PLC 实时值）。
+     */
+    @Select("SELECT station_name FROM shoot_machine_station WHERE id = #{stationId} AND deleted = 0")
+    String selectStationNameById(@Param("stationId") Long stationId);
+
+    /**
+     * 查询所有红色报警（预聚合，用于导出Excel）
      */
     @Select(
             "<script>" +
@@ -444,13 +517,38 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
                     + "LEFT JOIN shoot_machine m ON a.machine_id = m.id AND m.deleted = 0 "
                     + "LEFT JOIN shoot_machine_station s ON a.station_id = s.id AND s.deleted = 0 "
                     + "LEFT JOIN shoot_mold mo ON a.mold_id = mo.id AND mo.deleted = 0 "
-                    + "WHERE a.deleted = 0 "
+                    + "WHERE a.deleted = 0 AND a.alarm_level = 'red' "
                     + "AND a.alarm_time >= DATE_SUB(CURDATE(), INTERVAL #{days} - 1 DAY) "
                     + "<if test='machineId != null'>AND a.machine_id = #{machineId}</if> "
                     + "GROUP BY a.machine_id, a.station_id, a.field_code, a.alarm_level, a.handle_status "
                     + "ORDER BY MAX(a.alarm_time) DESC" +
             "</script>")
-    List<ShootRuleAlarmEntity> selectAllWithRelation(@Param("machineId") Long machineId, @Param("days") Integer days);
+    List<ShootRuleAlarmEntity> selectAllRedForExport(@Param("machineId") Long machineId, @Param("days") Integer days);
+
+    /**
+     * 查询所有黄色报警：逐条导出，不做聚合累加（次数不累加、超时时间不取最大值）。
+     * 每行 = 一次报警记录，超时时间 = 该条自身的 current_value。
+     */
+    @Select(
+            "<script>" +
+            "SELECT a.machine_id AS machineId, a.station_id AS stationId, "
+                    + "a.field_code AS fieldCode, a.field_name AS fieldName, "
+                    + "a.current_value AS currentValue, "
+                    + "a.alarm_level AS alarmLevel, a.handle_status AS handleStatus, "
+                    + "a.alarm_time AS alarmTime, a.updated_at AS updatedAt, "
+                    + "m.machine_name AS machineName, s.station_name AS stationName, "
+                    + "a.alarm_time AS firstAlarmTime, a.alarm_time AS lastAlarmTime "
+                    + "FROM shoot_rule_alarm a "
+                    + "LEFT JOIN shoot_machine m ON a.machine_id = m.id AND m.deleted = 0 "
+                    + "LEFT JOIN shoot_machine_station s ON a.station_id = s.id AND s.deleted = 0 "
+                    + "WHERE a.deleted = 0 AND a.alarm_level = 'yellow' "
+                    + "AND a.alarm_time >= DATE_SUB(CURDATE(), INTERVAL #{days} - 1 DAY) "
+                    + "<if test='machineId != null'>AND a.machine_id = #{machineId}</if> "
+                    + "ORDER BY a.alarm_time DESC "
+                    // 截断保护：多取 1 条用于判断是否超出 3000 上限（超出则保留最新 3000，提示已截断）
+                    + "LIMIT 3001" +
+            "</script>")
+    List<ShootRuleAlarmEntity> selectAllYellowForExport(@Param("machineId") Long machineId, @Param("days") Integer days);
 
 
 }

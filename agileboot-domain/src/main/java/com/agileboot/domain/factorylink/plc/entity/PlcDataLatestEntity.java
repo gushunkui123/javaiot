@@ -49,6 +49,10 @@ public class PlcDataLatestEntity implements Serializable {
     @TableField("category_name")
     private String categoryName;
 
+    /** 第三方接口返回的原始点位名称（displayName/remark），用于追溯与展示 */
+    @TableField("third_point_name")
+    private String thirdPointName;
+
     @TableField("create_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

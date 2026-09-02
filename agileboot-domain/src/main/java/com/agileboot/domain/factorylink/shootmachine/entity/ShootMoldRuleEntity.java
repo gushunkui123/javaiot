@@ -30,6 +30,14 @@ public class ShootMoldRuleEntity implements Serializable {
     @TableField("field_name")
     private String fieldName;
 
+    /** 维度类型：GLOBAL（整体单行，如模具温度/射出压力/硫化时间）/ STAGE（按阶段，如射枪温度/射出速度） */
+    @TableField("dimension_type")
+    private String dimensionType;
+
+    /** 阶段号（STAGE 维度时有效，1~N；GLOBAL 为 null） */
+    @TableField("stage")
+    private Integer stage;
+
     @TableField("min_value")
     private BigDecimal minValue;
 

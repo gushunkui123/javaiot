@@ -14,6 +14,7 @@ public interface ShootMoldRuleMapper extends BaseMapper<ShootMoldRuleEntity> {
 
     @Select(
             "SELECT r.id, r.mold_id AS moldId, r.field_code AS fieldCode, r.field_name AS fieldName, "
+                    + "r.dimension_type AS dimensionType, r.stage AS stage, "
                     + "r.min_value AS `minValue`, r.max_value AS `maxValue`, r.enabled, "
                     + "r.station_no AS globalStationNo, "
                     + "r.created_at AS createdAt, r.updated_at AS updatedAt, r.deleted, "

@@ -50,6 +50,14 @@ public class ShootMachineStationEntity implements Serializable {
     @TableField(exist = false)
     private Integer gunCount;
 
+    /** 左模在产产品型号（非表字段，来自 shoot_station_schedule 当前在产记录） */
+    @TableField(exist = false)
+    private String leftMoldModel;
+
+    /** 右模在产产品型号（非表字段） */
+    @TableField(exist = false)
+    private String rightMoldModel;
+
     /** 按机台站位总数推导射枪数量：10站位4枪，6/8站位2枪 */
     public static int resolveGunCount(int stationCount) {
         if (stationCount == 10) return 4;

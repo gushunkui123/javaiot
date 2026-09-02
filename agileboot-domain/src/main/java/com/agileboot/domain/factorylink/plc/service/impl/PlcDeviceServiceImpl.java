@@ -5,7 +5,6 @@ import com.agileboot.domain.factorylink.plc.entity.PlcDataEntity;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDeviceMapper;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
 import com.agileboot.domain.factorylink.plc.service.PlcDeviceService;
-import com.agileboot.domain.factorylink.plc.util.PlcFieldKeyDisplayNames;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
@@ -57,8 +56,8 @@ public class PlcDeviceServiceImpl extends ServiceImpl<PlcDeviceMapper, PlcDevice
                     List<Map<String, Object>> dataPoints = new ArrayList<>();
                     for (PlcDataEntity data : dataList) {
                         Map<String, Object> point = new HashMap<>();
-                        // 解析为中文名称
-                        point.put("displayName", PlcFieldKeyDisplayNames.resolveWithStationNo(data.getFieldKey()));
+                        // 直接展示 fieldKey（已去掉名称匹配逻辑）
+                        point.put("displayName", data.getFieldKey());
                         point.put("currentValue", data.getFieldValue());
                         dataPoints.add(point);
                     }

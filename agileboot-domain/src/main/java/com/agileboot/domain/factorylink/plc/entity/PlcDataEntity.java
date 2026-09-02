@@ -46,6 +46,10 @@ public class PlcDataEntity implements Serializable {
     @TableField("field_value")
     private String fieldValue;
 
+    /** 分类名称（站位），如"站台9"，非表字段，由 latest 行带入。 */
+    @TableField(exist = false)
+    private String categoryName;
+
     @TableField("create_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

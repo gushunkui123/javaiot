@@ -66,7 +66,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
             StationMoldModelResponse resp = map.computeIfAbsent(stationNo, k -> {
                 StationMoldModelResponse r = new StationMoldModelResponse();
                 r.setStationNo(stationNo);
-                r.setStationName(stationNameMap.getOrDefault(stationNo, "站位" + stationNo));
+                r.setStationName(stationNameMap.getOrDefault(stationNo, "站台" + stationNo));
                 return r;
             });
             if ("LEFT".equals(row.getMoldSide())) {

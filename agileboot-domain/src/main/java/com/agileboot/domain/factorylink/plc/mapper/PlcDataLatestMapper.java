@@ -21,24 +21,25 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
      */
     @Insert(
             "<script>"
-                    + "INSERT INTO plc_data_latest (device_name, machine_id, `timestamp`, data_code, field_key, field_value, category_name, create_time, value_changed_at) VALUES "
+                    + "INSERT INTO plc_data_latest (device_name, machine_id, `timestamp`, data_code, field_key, field_value, category_name, third_point_name, create_time, value_changed_at) VALUES "
                     + "<foreach collection='rows' item='row' separator=','>"
-                    + "(#{row.deviceName}, #{row.machineId}, #{row.dataTimestamp}, #{row.dataCode}, #{row.fieldKey}, #{row.fieldValue}, #{row.categoryName}, #{row.createTime}, #{row.valueChangedAt})"
+                    + "(#{row.deviceName}, #{row.machineId}, #{row.dataTimestamp}, #{row.dataCode}, #{row.fieldKey}, #{row.fieldValue}, #{row.categoryName}, #{row.thirdPointName}, #{row.createTime}, #{row.valueChangedAt})"
                     + "</foreach>"
                     + "ON DUPLICATE KEY UPDATE "
                     + "machine_id = VALUES(machine_id), "
                     + "`timestamp` = VALUES(`timestamp`), "
                     + "field_key = VALUES(field_key), "
-                    + "value_changed_at = IF(VALUES(field_value) != field_value, NOW(), value_changed_at), "
+                    + "value_changed_at = IF(VALUES(field_value) != field_value, VALUES(value_changed_at), value_changed_at), "
                     + "field_value = VALUES(field_value), "
                     + "category_name = VALUES(category_name), "
+                    + "third_point_name = VALUES(third_point_name), "
                     + "create_time = VALUES(create_time)"
                     + "</script>")
     int batchUpsert(@Param("rows") List<PlcDataLatestEntity> rows);
 
     @Select(
             "SELECT id, device_name AS deviceName, machine_id AS machineId, `timestamp` AS dataTimestamp, "
-                    + "field_key AS fieldKey, field_value AS fieldValue, create_time AS createTime "
+                    + "field_key AS fieldKey, field_value AS fieldValue, category_name AS categoryName, create_time AS createTime "
                     + "FROM plc_data_latest "
                     + "WHERE device_name = #{deviceName} "
                     + "ORDER BY id ASC")
@@ -76,10 +77,12 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
     List<PlcDataLatestEntity> selectAllByDeviceName(@Param("deviceName") String deviceName);
 
     /**
-     * 查询指定机器的特定字段的最新更新时间
+     * 查询指定机器的特定字段的最新记录（含 field_value，供报警检测取 currentValue 用）
      */
     @Select(
-            "SELECT `timestamp` AS dataTimestamp, create_time AS createTime "
+            "SELECT id, device_name AS deviceName, machine_id AS machineId, `timestamp` AS dataTimestamp, "
+                    + "field_key AS fieldKey, field_value AS fieldValue, category_name AS categoryName, create_time AS createTime, "
+                    + "value_changed_at AS valueChangedAt "
                     + "FROM plc_data_latest "
                     + "WHERE machine_id = #{machineId} AND field_key = #{fieldKey} "
                     + "ORDER BY create_time DESC LIMIT 1")

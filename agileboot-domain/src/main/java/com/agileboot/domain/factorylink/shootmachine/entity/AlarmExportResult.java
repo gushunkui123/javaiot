@@ -15,12 +15,17 @@ public class AlarmExportResult {
     /** 黄色报警（操作超时/停机） */
     private List<ShootRuleAlarmExportDTO> yellowList;
 
+    /** 黄色报警是否因超过 3000 条上限而被截断（仅保留最近 3000 条） */
+    private Boolean yellowTruncated;
+
     public AlarmExportResult() {
     }
 
     public AlarmExportResult(List<ShootRuleAlarmExportDTO> redList,
-                             List<ShootRuleAlarmExportDTO> yellowList) {
+                             List<ShootRuleAlarmExportDTO> yellowList,
+                             Boolean yellowTruncated) {
         this.redList = redList;
         this.yellowList = yellowList;
+        this.yellowTruncated = yellowTruncated;
     }
 }
