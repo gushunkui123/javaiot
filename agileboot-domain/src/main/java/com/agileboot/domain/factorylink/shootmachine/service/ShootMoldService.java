@@ -6,9 +6,12 @@ import com.baomidou.mybatisplus.extension.service.IService;
 
 public interface ShootMoldService extends IService<ShootMoldEntity> {
 
-    PageDTO<ShootMoldEntity> list(int pageNum, int pageSize);
+    PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, Boolean enabled);
 
     ShootMoldEntity getByIdOrThrow(Long id);
+
+    /** 查询模具并校验其已启用（停用的模具不能排产） */
+    ShootMoldEntity getEnabledOrThrow(Long id);
 
     ShootMoldEntity create(ShootMoldEntity entity);
 

@@ -3,8 +3,10 @@ package com.agileboot.domain.factorylink.plc.util;
 import cn.hutool.core.util.StrUtil;
 import com.agileboot.domain.factorylink.plc.entity.FieldMappingEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
+import com.agileboot.domain.factorylink.plc.entity.PlcMachineDataConfigEntity;
 import com.agileboot.domain.factorylink.plc.mapper.FieldMappingMapper;
 import com.agileboot.domain.factorylink.plc.mapper.PlcDataLatestMapper;
+import com.agileboot.domain.factorylink.plc.mapper.PlcMachineDataConfigMapper;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
@@ -13,6 +15,7 @@ import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,6 +41,7 @@ public class PlcDataSyncService {
     private final FieldMappingMapper fieldMappingMapper;
     private final ShootRuleAlarmService shootRuleAlarmService;
     private final ShootMachineMapper shootMachineMapper;
+    private final PlcMachineDataConfigMapper plcMachineDataConfigMapper;
     private final RestTemplate restTemplate;
 
     @Value("${factory-link.workshop.base-url:http://10.0.100.225:33010}")
@@ -55,6 +59,9 @@ public class PlcDataSyncService {
     /** field_mapping 预编译结果，启动时加载 */
     private volatile List<CompiledMapping> compiledMappings = List.of();
 
+    /** 机台 dataCode/configCode 映射缓存，启动时加载（替代原 ShootMachineCode 枚举硬编码） */
+    private volatile List<PlcMachineDataConfigEntity> machineDataConfigCache = List.of();
+
     @PostConstruct
     public void initMappingCache() {
         try {
@@ -64,6 +71,13 @@ public class PlcDataSyncService {
         } catch (Exception e) {
             log.error("[PlcDataSync] field_mapping 预编译失败，fallback 空列表（落库时 category_name 可能不准）", e);
             compiledMappings = List.of();
+        }
+        try {
+            machineDataConfigCache = plcMachineDataConfigMapper.listEnabled();
+            log.info("[PlcDataSync] plc_machine_data_config 加载完成，共 {} 条", machineDataConfigCache.size());
+        } catch (Exception e) {
+            log.error("[PlcDataSync] plc_machine_data_config 加载失败，fallback 空列表（PLC 数据将停止同步）", e);
+            machineDataConfigCache = List.of();
         }
     }
 
@@ -97,35 +111,41 @@ public class PlcDataSyncService {
     }
 
     /**
-     * 遍历 ShootMachineCode 枚举项，每个枚举项即一个机台（9号机/5号机），
-     * 其下所有 entry（dataCode+configCode）请求回来的数据均归属该机台，无需按 dataCode 反查。
+     * 遍历 plc_machine_data_config 中启用的 (machineName, dataCode, configCode) 映射，
+     * 每个机台请求其下所有 dataCode 的数据，请求结果均归属该机台（无需按 dataCode 反查）。
      * @param resultFilter 基于 ConvertResult 的过滤（null 表示不过滤）
      */
     private int doSync(Predicate<ConvertResult> resultFilter) {
         SignedRestTemplateUtil signedUtil = new SignedRestTemplateUtil(restTemplate, workshopApiKey, workshopApiSecret);
 
-        // 预查所有机台实体（仅 2~3 条），避免 toEntity 每条数据查一次 DB
+        // 按机台分组配置行（保留插入顺序）
+        Map<String, List<PlcMachineDataConfigEntity>> configsByMachine = machineDataConfigCache.stream()
+                .collect(Collectors.groupingBy(PlcMachineDataConfigEntity::getMachineName,
+                        LinkedHashMap::new, Collectors.toList()));
+
+        // 预查所有机台实体，避免 toEntity 每条数据查一次 DB
         Map<String, ShootMachineEntity> machineByName = new HashMap<>();
-        for (ShootMachineCode mc : ShootMachineCode.values()) {
+        for (String machineName : configsByMachine.keySet()) {
             ShootMachineEntity m = shootMachineMapper.selectOne(
-                    new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, mc.getMachineName()));
+                    new LambdaQueryWrapper<ShootMachineEntity>().eq(ShootMachineEntity::getMachineName, machineName));
             if (m != null) {
-                machineByName.put(mc.getMachineName(), m);
+                machineByName.put(machineName, m);
             }
         }
 
         List<ConvertResult> allResults = new ArrayList<>();
         int totalRows = 0;
 
-        for (ShootMachineCode machine : ShootMachineCode.values()) {
-            ShootMachineEntity cachedMachine = machineByName.get(machine.getMachineName());
-            for (ShootMachineCode.DataCodeEntry entry : machine.getEntries()) {
-                List<?> rows = callOnce(signedUtil, entry);
+        for (Map.Entry<String, List<PlcMachineDataConfigEntity>> machineEntry : configsByMachine.entrySet()) {
+            String machineName = machineEntry.getKey();
+            ShootMachineEntity cachedMachine = machineByName.get(machineName);
+            for (PlcMachineDataConfigEntity cfg : machineEntry.getValue()) {
+                List<?> rows = callOnce(signedUtil, cfg.getDataCode(), cfg.getConfigCode());
                 if (rows == null || rows.isEmpty()) {
                     continue;
                 }
                 totalRows += rows.size();
-                List<ConvertResult> batchResults = convertAndFilter(rows, machine, cachedMachine, resultFilter);
+                List<ConvertResult> batchResults = convertAndFilter(rows, machineName, cachedMachine, resultFilter);
                 allResults.addAll(batchResults);
             }
         }
@@ -159,7 +179,7 @@ public class PlcDataSyncService {
         return entities.size();
     }
 
-    private List<ConvertResult> convertAndFilter(List<?> rows, ShootMachineCode machine, ShootMachineEntity cachedMachine, Predicate<ConvertResult> resultFilter) {
+    private List<ConvertResult> convertAndFilter(List<?> rows, String machineName, ShootMachineEntity cachedMachine, Predicate<ConvertResult> resultFilter) {
         List<ConvertResult> out = new ArrayList<>();
         int skipped = 0;
         int unMatched = 0;
@@ -168,7 +188,7 @@ public class PlcDataSyncService {
                 skipped++;
                 continue;
             }
-            ConvertResult r = toEntity(map, machine, cachedMachine);
+            ConvertResult r = toEntity(map, machineName, cachedMachine);
             if (r == null) {
                 skipped++;
                 continue;
@@ -184,17 +204,15 @@ public class PlcDataSyncService {
         }
         if (unMatched > 0 || skipped > 0) {
             log.debug("PLC数据转换: machine={}, 总={}, 有效={}, 未匹配={}, 跳过={}",
-                    machine.getMachineName(), rows.size(), out.size(), unMatched, skipped);
+                    machineName, rows.size(), out.size(), unMatched, skipped);
         }
         return out;
     }
 
     /**
-     * 单次调用外部 PLC 接口，按枚举项 entry（dataCode + configCode）请求
+     * 单次调用外部 PLC 接口，按 dataCode + configCode 请求
      */
-    private List<?> callOnce(SignedRestTemplateUtil signedUtil, ShootMachineCode.DataCodeEntry entry) {
-        String dataCode = entry.getDataCode();
-        String configCode = entry.getConfigCode();
+    private List<?> callOnce(SignedRestTemplateUtil signedUtil, String dataCode, String configCode) {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         if (dataCode != null) {
             params.add("dataCode", dataCode);
@@ -232,7 +250,7 @@ public class PlcDataSyncService {
      *          category_name 优先保留第三方原样，空时按 category_template + stationNo/gunCount 兜底重算。
      * @param cachedMachine 由 doSync 预查的机台实体（避免 N+1），可为 null（本地未配置该机台）
      */
-    private ConvertResult toEntity(Map<?, ?> map, ShootMachineCode shootMachine, ShootMachineEntity cachedMachine) {
+    private ConvertResult toEntity(Map<?, ?> map, String machineName, ShootMachineEntity cachedMachine) {
         String remark = getStr(map, "remark");
         String dataCode = getStr(map, "dataCode");
         if (StrUtil.isBlank(dataCode)) {
@@ -257,14 +275,14 @@ public class PlcDataSyncService {
         }
 
         if (cachedMachine == null) {
-            log.warn("本地未找到机台记录，跳过该条数据: machineName={}, dataCode={}", shootMachine.getMachineName(), dataCode);
+            log.warn("本地未找到机台记录，跳过该条数据: machineName={}, dataCode={}", machineName, dataCode);
             return null;
         }
         Long machineId = cachedMachine.getId();
         int gunCount = cachedMachine.getGunCount() != null ? cachedMachine.getGunCount() : 4;
 
-        if (StrUtil.isNotBlank(areaName) && !areaName.equals(shootMachine.getMachineName())) {
-            log.warn("第三方 areaName={} 与 dataCode 归属机台={} 不一致，请核对映射", areaName, shootMachine.getMachineName());
+        if (StrUtil.isNotBlank(areaName) && !areaName.equals(machineName)) {
+            log.warn("第三方 areaName={} 与 dataCode 归属机台={} 不一致，请核对映射", areaName, machineName);
         }
 
         // 匹配 field_mapping：拿到 internal_key + 维度（stationNo/gun/stage/idx/side）
@@ -286,8 +304,8 @@ public class PlcDataSyncService {
 
         PlcDataLatestEntity entity = new PlcDataLatestEntity();
         // 射枪温度：仅对应机台填充 deviceName（保留旧逻辑，不影响 category_template 工作）
-        boolean isShootFive = shootMachine.isShootFive();
-        boolean isShootNine = shootMachine.isShootNine();
+        boolean isShootFive = ShootMachineCode.isShootFive(machineName);
+        boolean isShootNine = ShootMachineCode.isShootNine(machineName);
         String deviceName = StrUtil.isNotBlank(areaName) ? StrUtil.subPre(areaName, 100) : "";
         if ("4射枪温度".equals(categoryName)) {
             entity.setDeviceName(isShootFive ? deviceName : "");

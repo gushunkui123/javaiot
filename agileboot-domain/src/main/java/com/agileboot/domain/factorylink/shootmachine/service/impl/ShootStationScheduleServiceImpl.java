@@ -16,6 +16,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationS
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,11 +92,12 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
     @Transactional(rollbackFor = Exception.class)
     public ShootStationScheduleEntity create(ShootStationScheduleEntity entity) {
         ShootMachineStationEntity station = getStationOrThrow(entity.getStationId());
-        shootMoldService.getByIdOrThrow(entity.getMoldId());
+        shootMoldService.getEnabledOrThrow(entity.getMoldId());
         validateSchedule(entity);
         checkNoOverlap(entity.getStationId(), entity.getMoldSide(),
                 entity.getStartTime(), entity.getEndTime(), null);
         fillFromStation(entity, station);
+        applyCrossDayCount(entity);
         if (StrUtil.isBlank(entity.getStatus())) {
             entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
         }
@@ -111,7 +113,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         if (ShootStationScheduleEntity.STATUS_CANCELLED.equals(existing.getStatus())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "已取消的生产计划不能编辑");
         }
-        shootMoldService.getByIdOrThrow(entity.getMoldId());
+        shootMoldService.getEnabledOrThrow(entity.getMoldId());
         validateSchedule(entity);
         checkNoOverlap(entity.getStationId(), entity.getMoldSide(),
                 entity.getStartTime(), entity.getEndTime(), id);
@@ -122,6 +124,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         if (StrUtil.isBlank(entity.getStatus())) {
             entity.setStatus(existing.getStatus());
         }
+        applyCrossDayCount(entity);
         updateById(entity);
         return entity;
     }
@@ -177,7 +180,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         if (items == null || items.isEmpty()) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "请至少选择一个站位模向");
         }
-        shootMoldService.getByIdOrThrow(request.getMoldId());
+        shootMoldService.getEnabledOrThrow(request.getMoldId());
 
         List<ShootStationScheduleEntity> successItems = new ArrayList<>();
         List<BatchCreateStationScheduleResult.Failure> failures = new ArrayList<>();
@@ -213,6 +216,7 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
                 entity.setStatus(ShootStationScheduleEntity.STATUS_PENDING);
                 entity.setDeleted(false);
                 fillFromStation(entity, station);
+                applyCrossDayCount(entity);
                 save(entity);
                 successItems.add(entity);
                 batchUsedKeys.add(key);
@@ -240,6 +244,19 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         entity.setStationId(station.getId());
         entity.setMachineId(station.getMachineId());
         entity.setStationNo(station.getStationNo());
+    }
+
+    /**
+     * 计算并写入"跨自然日数"：仅取 start_time/end_time 的年月日之差（忽略时分秒）。
+     * 该值为派生字段，始终以起止时间为准重算，忽略任何客户端传入的值。
+     */
+    private void applyCrossDayCount(ShootStationScheduleEntity entity) {
+        if (entity.getStartTime() != null && entity.getEndTime() != null) {
+            long days = ChronoUnit.DAYS.between(
+                    entity.getStartTime().toLocalDate(),
+                    entity.getEndTime().toLocalDate());
+            entity.setCrossDayCount((int) days);
+        }
     }
 
     private void checkNoOverlap(Long stationId, String moldSide,

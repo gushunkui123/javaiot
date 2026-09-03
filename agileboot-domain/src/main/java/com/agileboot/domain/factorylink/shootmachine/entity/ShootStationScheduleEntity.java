@@ -78,4 +78,8 @@ public class ShootStationScheduleEntity implements Serializable {
     /** 射枪编号（计划级选枪，用于射枪温度等按枪比较的工艺参数校验，如 1枪/2枪...） */
     @TableField("gun_no")
     private Integer gunNo;
+
+    /** 跨自然日数：按 start_time/end_time 的"年月日"之差计算（忽略时分秒），后端在新增/编辑/批量时自动计算落库；0=不跨天，N=跨N天 */
+    @TableField("cross_day_count")
+    private Integer crossDayCount;
 }

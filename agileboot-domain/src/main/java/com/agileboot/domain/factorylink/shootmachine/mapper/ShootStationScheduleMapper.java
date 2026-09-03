@@ -8,6 +8,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface ShootStationScheduleMapper extends BaseMapper<ShootStationScheduleEntity> {
@@ -17,7 +18,7 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
                     + "SELECT s.id, s.machine_id, s.station_id, s.station_no, s.mold_id, "
                     + "s.start_time, s.end_time, s.status, s.remark, "
                     + "s.created_at, s.updated_at, s.deleted, "
-                    + "s.mold_side, s.gun_no, "
+                    + "s.mold_side, s.gun_no, s.cross_day_count, "
                     + "m.mold_model, m.color "
                     + "FROM shoot_station_schedule s "
                     + "LEFT JOIN shoot_mold m ON s.mold_id = m.id AND m.deleted = 0 "
@@ -37,7 +38,7 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
             "SELECT s.id, s.machine_id, s.station_id, s.station_no, s.mold_id, "
                     + "s.start_time, s.end_time, s.status, s.remark, "
                     + "s.created_at, s.updated_at, s.deleted, "
-                    + "s.mold_side, s.gun_no, "
+                    + "s.mold_side, s.gun_no, s.cross_day_count, "
                     + "m.mold_model, m.color "
                     + "FROM shoot_station_schedule s "
                     + "LEFT JOIN shoot_mold m ON s.mold_id = m.id AND m.deleted = 0 "
@@ -51,7 +52,7 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
             "SELECT s.id, s.machine_id, s.station_id, s.station_no, s.mold_id, "
                     + "s.start_time, s.end_time, s.status, s.remark, "
                     + "s.created_at, s.updated_at, s.deleted, "
-                    + "s.mold_side, s.gun_no, "
+                    + "s.mold_side, s.gun_no, s.cross_day_count, "
                     + "m.mold_model, m.color "
                     + "FROM shoot_station_schedule s "
                     + "LEFT JOIN shoot_mold m ON s.mold_id = m.id AND m.deleted = 0 "
@@ -73,4 +74,12 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
                           @Param("startTime") LocalDateTime startTime,
                           @Param("endTime") LocalDateTime endTime,
                           @Param("excludeId") Long excludeId);
+
+    /**
+     * 模具停用时取消其全部未结束排期（pending/running -> cancelled），已结束的历史排期保留
+     */
+    @Update("UPDATE shoot_station_schedule SET status = 'cancelled', remark = #{remark} "
+            + "WHERE deleted = 0 AND mold_id = #{moldId} "
+            + "AND status IN ('pending', 'running')")
+    int cancelUnfinishedByMoldId(@Param("moldId") Long moldId, @Param("remark") String remark);
 }

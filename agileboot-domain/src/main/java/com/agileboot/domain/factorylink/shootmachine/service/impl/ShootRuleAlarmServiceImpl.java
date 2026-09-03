@@ -51,6 +51,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     /** 黄色报警导出上限：超过则只保留最近 3000 条 */
     private static final int YELLOW_EXPORT_LIMIT = 3000;
 
+    /** 报警字段的阈值规则被删除/清空后自动取消的处理备注 */
+    private static final String RULE_REMOVED_CANCEL_REMARK = "阈值已删除自动取消";
+
     private Map<String, AlarmStateRuleEntity> alarmStateRuleCache = new LinkedHashMap<>();
     private Map<String, List<FieldMappingEntity>> fieldMappingByInternalKey = new HashMap<>();
     private Map<String, FieldMappingEntity> fieldMappingByMatchPattern = new HashMap<>();
@@ -327,6 +330,13 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
                     }
                 }
                 if (matched == null) {
+                    // 该报警字段在当前模具已无存活阈值规则（阈值被清空/删除），
+                    // 不再有判定依据，视为失去约束自动取消，避免死报警一直挂在看板
+                    int n = baseMapper.cancelRedAlarmByIdWithRemark(id, RULE_REMOVED_CANCEL_REMARK);
+                    if (n > 0) {
+                        cancelled++;
+                        log.info("阈值规则已删除，自动取消红色报警: alarmId={}, fieldCode={}", id, fieldCode);
+                    }
                     continue;
                 }
 

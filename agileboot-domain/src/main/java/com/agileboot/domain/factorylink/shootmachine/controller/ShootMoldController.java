@@ -36,8 +36,11 @@ public class ShootMoldController {
             int pageNum,
             @Parameter(description = "每页数量", example = "20")
             @RequestParam(value = "pageSize", defaultValue = "20")
-            int pageSize) {
-        return ResponseDTO.ok(shootMoldService.list(pageNum, pageSize));
+            int pageSize,
+            @Parameter(description = "是否仅返回启用模具（排期下拉用）")
+            @RequestParam(value = "enabled", required = false)
+            Boolean enabled) {
+        return ResponseDTO.ok(shootMoldService.list(pageNum, pageSize, enabled));
     }
 
     @Operation(summary = "查询模具详情")

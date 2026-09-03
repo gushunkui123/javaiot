@@ -237,6 +237,14 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     int handleYellowAlarmsByMachine(@Param("machineId") Long machineId);
 
     /**
+     * 模具停用时取消其全部未处理红色报警（看板不再报警）
+     */
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = #{remark} "
+            + "WHERE deleted = 0 AND mold_id = #{moldId} "
+            + "AND alarm_level = 'red' AND handle_status = 'false'")
+    int cancelUnhandledRedByMoldId(@Param("moldId") Long moldId, @Param("remark") String remark);
+
+    /**
      * 状态恢复时仅取消该站位指定 field_code 的黄色报警，不影响其他黄色报警
      */
     @Update("<script>UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '状态恢复自动取消' "
@@ -493,6 +501,13 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
     @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = '参数恢复正常自动取消', updated_at = NOW() "
             + "WHERE deleted = 0 AND id = #{id} AND handle_status = 'false'")
     int cancelRedAlarmById(@Param("id") Long id);
+
+    /**
+     * 将指定红色报警标记为已处理（阈值规则被删除/清空后自动取消，备注区分来源）。
+     */
+    @Update("UPDATE shoot_rule_alarm SET handle_status = 'true', handle_remark = #{remark}, updated_at = NOW() "
+            + "WHERE deleted = 0 AND id = #{id} AND handle_status = 'false'")
+    int cancelRedAlarmByIdWithRemark(@Param("id") Long id, @Param("remark") String remark);
 
     /**
      * 查询站位名称（用于报警自动取消时按站台过滤 PLC 实时值）。

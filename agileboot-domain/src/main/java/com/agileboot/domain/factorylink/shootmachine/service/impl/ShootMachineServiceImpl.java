@@ -43,7 +43,10 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
     public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize) {
         Page<ShootMachineEntity> page = new Page<>(pageNum, pageSize);
         Page<ShootMachineEntity> result =
-                lambdaQuery().orderByDesc(ShootMachineEntity::getUpdatedAt).page(page);
+                lambdaQuery()
+                        .orderByAsc(ShootMachineEntity::getSort)
+                        .orderByDesc(ShootMachineEntity::getUpdatedAt)
+                        .page(page);
         fillPlcRunStatus(result.getRecords());
         fillHasUnhandledAlarm(result.getRecords());
         return new PageDTO<>(result.getRecords(), result.getTotal());
@@ -70,6 +73,9 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         }
         if (entity.getGunCount() == null || entity.getGunCount() < 1) {
             entity.setGunCount(DEFAULT_GUN_COUNT);
+        }
+        if (entity.getSort() == null) {
+            entity.setSort(0);
         }
         entity.setDeleted(false);
         save(entity);
