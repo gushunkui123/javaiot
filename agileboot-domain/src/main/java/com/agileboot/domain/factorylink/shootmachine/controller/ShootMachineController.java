@@ -35,8 +35,11 @@ public class ShootMachineController {
             int pageNum,
             @Parameter(description = "每页数量", example = "20")
             @RequestParam(value = "pageSize", defaultValue = "20")
-            int pageSize) {
-        return ResponseDTO.ok(shootMachineService.list(pageNum, pageSize));
+            int pageSize,
+            @Parameter(description = "是否启用过滤（不传返回全部，true 启用 / false 停用）")
+            @RequestParam(value = "enabled", required = false)
+            Boolean enabled) {
+        return ResponseDTO.ok(shootMachineService.list(pageNum, pageSize, enabled));
     }
 
     @Operation(summary = "查询机台详情")

@@ -40,11 +40,15 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
     private final ShootRuleAlarmMapper shootRuleAlarmMapper;
 
     @Override
-    public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize) {
+    public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize, Boolean enabled) {
         Page<ShootMachineEntity> page = new Page<>(pageNum, pageSize);
+        var query = lambdaQuery();
+        // 不传 enabled 返回全部；传 true/false 按启用状态过滤
+        if (enabled != null) {
+            query.eq(ShootMachineEntity::getEnabled, enabled);
+        }
         Page<ShootMachineEntity> result =
-                lambdaQuery()
-                        .orderByAsc(ShootMachineEntity::getSort)
+                query.orderByAsc(ShootMachineEntity::getSort)
                         .orderByDesc(ShootMachineEntity::getUpdatedAt)
                         .page(page);
         fillPlcRunStatus(result.getRecords());

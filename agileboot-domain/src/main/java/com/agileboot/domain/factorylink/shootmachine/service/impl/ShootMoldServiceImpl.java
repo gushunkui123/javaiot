@@ -34,12 +34,19 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     private final ShootRuleAlarmMapper alarmMapper;
 
     @Override
-    public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, Boolean enabled) {
+    public PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, Boolean enabled, String moldModel, String color) {
         Page<ShootMoldEntity> page = new Page<>(pageNum, pageSize);
         var query = lambdaQuery();
-        // enabled=true 时仅返回启用模具（排期下拉用）；不传则返回全部（模具管理页需看到停用模具）
-        if (Boolean.TRUE.equals(enabled)) {
-            query.eq(ShootMoldEntity::getEnabled, true);
+        // enabled 非 null 时按值过滤（1 启用 / 0 禁用）；不传则返回全部（模具管理页需看到停用模具）
+        if (enabled != null) {
+            query.eq(ShootMoldEntity::getEnabled, enabled);
+        }
+        // 模具型号/颜色模糊匹配（留空不参与过滤）
+        if (StrUtil.isNotBlank(moldModel)) {
+            query.like(ShootMoldEntity::getMoldModel, moldModel);
+        }
+        if (StrUtil.isNotBlank(color)) {
+            query.like(ShootMoldEntity::getColor, color);
         }
         query.orderByDesc(ShootMoldEntity::getUpdatedAt);
         Page<ShootMoldEntity> result = query.page(page);
@@ -68,6 +75,7 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     @Transactional(rollbackFor = Exception.class)
     public ShootMoldEntity create(ShootMoldEntity entity) {
         validateMold(entity);
+        assertMoldModelUnique(entity.getMoldModel(), null);
         if (entity.getEnabled() == null) {
             entity.setEnabled(true);
         }
@@ -80,6 +88,7 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     public ShootMoldEntity update(Long id, ShootMoldEntity entity) {
         ShootMoldEntity existing = getByIdOrThrow(id);
         validateMold(entity);
+        assertMoldModelUnique(entity.getMoldModel(), id);
         // 模具由启用切为停用：取消其未结束排期，并自动取消该模具未处理红色报警（看板不再报警）
         boolean disabling = Boolean.TRUE.equals(existing.getEnabled())
                 && Boolean.FALSE.equals(entity.getEnabled());
@@ -124,6 +133,19 @@ public class ShootMoldServiceImpl extends ServiceImpl<ShootMoldMapper, ShootMold
     private void validateMold(ShootMoldEntity entity) {
         if (StrUtil.isBlank(entity.getMoldModel())) {
             throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具型号不能为空");
+        }
+    }
+
+    /** 校验模具型号在"未删除"数据中唯一；excludeId 用于更新时排除自身 */
+    private void assertMoldModelUnique(String moldModel, Long excludeId) {
+        var query = lambdaQuery()
+                .eq(ShootMoldEntity::getMoldModel, moldModel)
+                .eq(ShootMoldEntity::getDeleted, false);
+        if (excludeId != null) {
+            query.ne(ShootMoldEntity::getId, excludeId);
+        }
+        if (query.count() > 0) {
+            throw new ApiException(Client.COMMON_REQUEST_PARAMETERS_INVALID, "模具型号已存在：" + moldModel);
         }
     }
 }

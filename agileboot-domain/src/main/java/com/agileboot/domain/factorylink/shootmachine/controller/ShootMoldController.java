@@ -39,8 +39,14 @@ public class ShootMoldController {
             int pageSize,
             @Parameter(description = "是否仅返回启用模具（排期下拉用）")
             @RequestParam(value = "enabled", required = false)
-            Boolean enabled) {
-        return ResponseDTO.ok(shootMoldService.list(pageNum, pageSize, enabled));
+            Boolean enabled,
+            @Parameter(description = "模具型号（模糊匹配）")
+            @RequestParam(value = "moldModel", required = false)
+            String moldModel,
+            @Parameter(description = "颜色（模糊匹配）")
+            @RequestParam(value = "color", required = false)
+            String color) {
+        return ResponseDTO.ok(shootMoldService.list(pageNum, pageSize, enabled, moldModel, color));
     }
 
     @Operation(summary = "查询模具详情")

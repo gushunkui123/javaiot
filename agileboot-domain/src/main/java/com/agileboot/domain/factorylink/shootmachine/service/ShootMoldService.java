@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 
 public interface ShootMoldService extends IService<ShootMoldEntity> {
 
-    PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, Boolean enabled);
+    PageDTO<ShootMoldEntity> list(int pageNum, int pageSize, Boolean enabled, String moldModel, String color);
 
     ShootMoldEntity getByIdOrThrow(Long id);
 
