@@ -7,8 +7,10 @@ import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
 import com.agileboot.common.exception.error.ErrorCode.Client;
 import com.agileboot.domain.factorylink.plc.service.PlcDataService;
+import com.agileboot.domain.factorylink.shootmachine.entity.MachineGroupEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineStationEntity;
+import com.agileboot.domain.factorylink.shootmachine.mapper.MachineGroupMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineStationMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
@@ -38,14 +40,19 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
     private final ShootDeleteValidator deleteValidator;
     private final ShootMachineStationMapper shootMachineStationMapper;
     private final ShootRuleAlarmMapper shootRuleAlarmMapper;
+    private final MachineGroupMapper machineGroupMapper;
 
     @Override
-    public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize, Boolean enabled) {
+    public PageDTO<ShootMachineEntity> list(int pageNum, int pageSize, Boolean enabled, String group) {
         Page<ShootMachineEntity> page = new Page<>(pageNum, pageSize);
         var query = lambdaQuery();
         // 不传 enabled 返回全部；传 true/false 按启用状态过滤
         if (enabled != null) {
             query.eq(ShootMachineEntity::getEnabled, enabled);
+        }
+        // 不传 group 返回全部；传分组编码按 machine_group 过滤
+        if (StrUtil.isNotBlank(group)) {
+            query.eq(ShootMachineEntity::getMachineGroup, group);
         }
         Page<ShootMachineEntity> result =
                 query.orderByAsc(ShootMachineEntity::getSort)
@@ -54,6 +61,15 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         fillPlcRunStatus(result.getRecords());
         fillHasUnhandledAlarm(result.getRecords());
         return new PageDTO<>(result.getRecords(), result.getTotal());
+    }
+
+    @Override
+    public List<MachineGroupEntity> listGroups() {
+        return machineGroupMapper.selectList(
+                Wrappers.<MachineGroupEntity>lambdaQuery()
+                        .eq(MachineGroupEntity::getEnabled, true)
+                        .orderByAsc(MachineGroupEntity::getSort)
+                        .orderByAsc(MachineGroupEntity::getId));
     }
 
     @Override

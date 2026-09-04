@@ -3,11 +3,13 @@ import com.agileboot.common.annotation.AccessLog;
 import com.agileboot.common.core.dto.ResponseDTO;
 import com.agileboot.common.core.page.PageDTO;
 import com.agileboot.common.enums.common.BusinessTypeEnum;
+import com.agileboot.domain.factorylink.shootmachine.entity.MachineGroupEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootMachineEntity;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,8 +40,17 @@ public class ShootMachineController {
             int pageSize,
             @Parameter(description = "是否启用过滤（不传返回全部，true 启用 / false 停用）")
             @RequestParam(value = "enabled", required = false)
-            Boolean enabled) {
-        return ResponseDTO.ok(shootMachineService.list(pageNum, pageSize, enabled));
+            Boolean enabled,
+            @Parameter(description = "分组编码过滤（不传返回全部，如 workshop_1）")
+            @RequestParam(value = "group_code", required = false)
+            String group) {
+        return ResponseDTO.ok(shootMachineService.list(pageNum, pageSize, enabled, group));
+    }
+
+    @Operation(summary = "查询机台分组列表（筛选/表单下拉用）")
+    @GetMapping("/groups")
+    public ResponseDTO<List<MachineGroupEntity>> groups() {
+        return ResponseDTO.ok(shootMachineService.listGroups());
     }
 
     @Operation(summary = "查询机台详情")

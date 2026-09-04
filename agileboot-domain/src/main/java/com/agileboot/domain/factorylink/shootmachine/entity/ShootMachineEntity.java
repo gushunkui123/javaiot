@@ -29,6 +29,10 @@ public class ShootMachineEntity implements Serializable {
     @TableField("remark")
     private String remark;
 
+    /** 机台分组编码（对应 machine_group.group_code，如 workshop_1） */
+    @TableField("machine_group")
+    private String machineGroup;
+
     /** 站位数量，新增机台时前端输入，后端自动生成对应站位记录 */
     @TableField("station_count")
     private Integer stationCount;
