@@ -138,6 +138,8 @@ public class SecurityConfig {
                 .requestMatchers("/login", "/register", "/getConfig").anonymous()
                 // 报警、PLC数据、机器列表、机台分组、站点、字段映射和大屏排期接口允许所有访问（匿名和已认证）
                 .requestMatchers(HttpMethod.GET, "/api/shoot/machines", "/api/shoot/machines/groups", "/api/shoot/stations/{machineId}", "/api/shoot/station-mold-models", "/api/shoot/alarm/**", "/api/shoot/board/fixed-fields-batch", "/api/field-mapping/**", "/factorylink/plc/**").permitAll()
+                // 安冬接口（规则预览/下发、设备查询）允许所有访问，便于定时任务与边缘设备直接调用
+                .requestMatchers("/factorylink/alarm-rule/**", "/factorylink/anton/**").permitAll()
                 // 射出机管理接口需要认证
                 .requestMatchers("/api/shoot/machines/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/", "/*.html", "/*.css", "/*.js",

@@ -145,7 +145,7 @@ public class PlcDataSyncService {
                     continue;
                 }
                 totalRows += rows.size();
-                List<ConvertResult> batchResults = convertAndFilter(rows, machineName, cachedMachine, resultFilter);
+                List<ConvertResult> batchResults = convertAndFilter(rows, machineName, cachedMachine, cfg.getDataCode(), resultFilter);
                 allResults.addAll(batchResults);
             }
         }
@@ -179,7 +179,7 @@ public class PlcDataSyncService {
         return entities.size();
     }
 
-    private List<ConvertResult> convertAndFilter(List<?> rows, String machineName, ShootMachineEntity cachedMachine, Predicate<ConvertResult> resultFilter) {
+    private List<ConvertResult> convertAndFilter(List<?> rows, String machineName, ShootMachineEntity cachedMachine, String configDataCode, Predicate<ConvertResult> resultFilter) {
         List<ConvertResult> out = new ArrayList<>();
         int skipped = 0;
         int unMatched = 0;
@@ -188,7 +188,7 @@ public class PlcDataSyncService {
                 skipped++;
                 continue;
             }
-            ConvertResult r = toEntity(map, machineName, cachedMachine);
+            ConvertResult r = toEntity(map, machineName, cachedMachine, configDataCode);
             if (r == null) {
                 skipped++;
                 continue;
@@ -249,13 +249,16 @@ public class PlcDataSyncService {
      * 核心改动：用 FieldMatchingEngine 把第三方中文 fieldKey → field_mapping.internal_key，
      *          category_name 优先保留第三方原样，空时按 category_template + stationNo/gunCount 兜底重算。
      * @param cachedMachine 由 doSync 预查的机台实体（避免 N+1），可为 null（本地未配置该机台）
+     * @param configDataCode 当前 config 行的 data_code（调接口入参），填充到 device_code
      */
-    private ConvertResult toEntity(Map<?, ?> map, String machineName, ShootMachineEntity cachedMachine) {
+    private ConvertResult toEntity(Map<?, ?> map, String machineName, ShootMachineEntity cachedMachine, String configDataCode) {
         String remark = getStr(map, "remark");
         String dataCode = getStr(map, "dataCode");
         if (StrUtil.isBlank(dataCode)) {
             return null;
         }
+        // 设备编码 deviceCode：config 行的 data_code（调接口入参），非行内 dataCode
+        String deviceCode = configDataCode;
 
         // field_key 优先使用第三方返回的 displayName；displayName 缺失时回退 remark
         String displayName = getStr(map, "displayName");
@@ -320,6 +323,7 @@ public class PlcDataSyncService {
         String englishFieldKey = FieldMatchingEngine.buildFieldKey(match);
         entity.setFieldKey(StrUtil.isNotBlank(englishFieldKey) ? englishFieldKey : fieldKeySource);
         entity.setDataCode(dataCode);
+        entity.setDeviceCode(StrUtil.isBlank(deviceCode) ? null : deviceCode);
         entity.setFieldValue(StrUtil.subPre(fieldValue, 500));
         entity.setCategoryName(StrUtil.subPre(categoryName, 100));
         // 第三方接口返回的原始点位名称（displayName/remark），用于追溯与展示

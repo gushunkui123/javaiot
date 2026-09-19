@@ -1,5 +1,7 @@
 package com.agileboot.domain.factorylink.shootmachine.service;
 
+import com.agileboot.domain.factorylink.plc.dto.MoldRulePushDTO;
+import com.agileboot.domain.factorylink.plc.dto.RulePushItem;
 import com.agileboot.domain.factorylink.shootmachine.dto.AlarmPageResponse;
 import com.agileboot.domain.factorylink.shootmachine.entity.ShootRuleAlarmEntity;
 import com.agileboot.domain.factorylink.shootmachine.entity.AlarmExportResult;
@@ -38,4 +40,9 @@ public interface ShootRuleAlarmService extends IService<ShootRuleAlarmEntity> {
 
     /** 根据 plc_data_latest 表数据检测黄色/红色报警（第三方接口同步后调用） */
     void detectAlarmsByPlcData(Long machineId);
+
+    /** 构建下发给第三方的告警规则报文：按(deviceCode, 模具)分组的数组，每组含设备编码、模具ID与规则列表(datacode + max/min)。
+     *  按当前在产排期遍历，将规则的 field_code 解析为完整 field_key 后，
+     *  从 plc_data_latest 定位出第三方唯一点位码 datacode 与设备编码 device_code。machineId 为 null 时遍历全部启用机台。 */
+    List<MoldRulePushDTO> buildRulePushPayload(Long machineId);
 }

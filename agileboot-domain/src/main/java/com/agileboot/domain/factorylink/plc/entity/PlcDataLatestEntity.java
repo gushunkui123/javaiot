@@ -38,6 +38,10 @@ public class PlcDataLatestEntity implements Serializable {
     @TableField("data_code")
     private String dataCode;
 
+    /** 第三方设备编码 deviceCode，随第三方数据落库（追溯设备归属） */
+    @TableField("device_code")
+    private String deviceCode;
+
     /** 展示用中文名，非表字段。 */
     @TableField(exist = false)
     private String name;

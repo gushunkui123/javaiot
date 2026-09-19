@@ -21,14 +21,15 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
      */
     @Insert(
             "<script>"
-                    + "INSERT INTO plc_data_latest (device_name, machine_id, `timestamp`, data_code, field_key, field_value, category_name, third_point_name, create_time, value_changed_at) VALUES "
+                    + "INSERT INTO plc_data_latest (device_name, machine_id, `timestamp`, data_code, device_code, field_key, field_value, category_name, third_point_name, create_time, value_changed_at) VALUES "
                     + "<foreach collection='rows' item='row' separator=','>"
-                    + "(#{row.deviceName}, #{row.machineId}, #{row.dataTimestamp}, #{row.dataCode}, #{row.fieldKey}, #{row.fieldValue}, #{row.categoryName}, #{row.thirdPointName}, #{row.createTime}, #{row.valueChangedAt})"
+                    + "(#{row.deviceName}, #{row.machineId}, #{row.dataTimestamp}, #{row.dataCode}, #{row.deviceCode}, #{row.fieldKey}, #{row.fieldValue}, #{row.categoryName}, #{row.thirdPointName}, #{row.createTime}, #{row.valueChangedAt})"
                     + "</foreach>"
                     + "ON DUPLICATE KEY UPDATE "
                     + "machine_id = VALUES(machine_id), "
                     + "`timestamp` = VALUES(`timestamp`), "
                     + "field_key = VALUES(field_key), "
+                    + "device_code = VALUES(device_code), "
                     + "value_changed_at = IF(VALUES(field_value) != field_value, VALUES(value_changed_at), value_changed_at), "
                     + "field_value = VALUES(field_value), "
                     + "category_name = VALUES(category_name), "
@@ -121,7 +122,8 @@ public interface PlcDataLatestMapper extends BaseMapper<PlcDataLatestEntity> {
     @Select(
             "<script>"
                     + "SELECT id, device_name AS deviceName, machine_id AS machineId, `timestamp` AS dataTimestamp, "
-                    + "field_key AS fieldKey, field_value AS fieldValue, category_name AS categoryName, create_time AS createTime "
+                    + "field_key AS fieldKey, field_value AS fieldValue, category_name AS categoryName, "
+                    + "data_code AS dataCode, device_code AS deviceCode, create_time AS createTime "
                     + "FROM plc_data_latest "
                     + "WHERE machine_id = #{machineId} "
                     + "AND (field_key, category_name) IN "

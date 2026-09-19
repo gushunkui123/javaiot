@@ -6,6 +6,8 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.agileboot.common.exception.ApiException;
 import com.agileboot.common.exception.error.ErrorCode.Business;
+import com.agileboot.domain.factorylink.plc.dto.MoldRulePushDTO;
+import com.agileboot.domain.factorylink.plc.dto.RulePushItem;
 import com.agileboot.domain.factorylink.plc.entity.FieldMappingEntity;
 import com.agileboot.domain.factorylink.plc.entity.PlcDataLatestEntity;
 import com.agileboot.domain.factorylink.plc.mapper.FieldMappingMapper;
@@ -21,6 +23,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStation
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -50,6 +53,19 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     /** 黄色报警导出上限：超过则只保留最近 3000 条 */
     private static final int YELLOW_EXPORT_LIMIT = 3000;
+
+    /*
+     * 【临时联调开关】安冬联调试推时用，现已停用（用真实 deviceCode）。
+     * 需要再联调时：取消下面一行注释，并把报文组装处的 deviceCode 改成 DEVICE_CODE_OVERRIDE。
+     */
+    // private static final String DEVICE_CODE_OVERRIDE = "Gg3sWz";
+
+    /*
+     * 【临时联调开关】安冬联调试推时用，现已停用（用真实 dataCode）。
+     * 需要再联调时：取消下面两行注释，并把报文组装处改为按 DATA_CODE_OVERRIDES 取码、每组限 5 条。
+     */
+    // private static final List<String> DATA_CODE_OVERRIDES =
+    //         List.of("NGqVxJ", "mRjIOd", "9IZkvd", "xH47dt", "g6JYS7");
 
     /** 报警字段的阈值规则被删除/清空后自动取消的处理备注 */
     private static final String RULE_REMOVED_CANCEL_REMARK = "阈值已删除自动取消";
@@ -265,6 +281,99 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         if (recoveredCancelled > 0) {
             log.info("自动取消{}条参数已恢复的红色报警", recoveredCancelled);
         }
+    }
+
+    @Override
+    public List<MoldRulePushDTO> buildRulePushPayload(Long machineId) {
+        List<Long> machineIds = machineId != null
+                ? List.of(machineId)
+                : shootMachineMapper.selectList(
+                        new LambdaQueryWrapper<ShootMachineEntity>()
+                                .eq(ShootMachineEntity::getEnabled, true)
+                                .orderByAsc(ShootMachineEntity::getSort))
+                .stream().map(ShootMachineEntity::getId).collect(Collectors.toList());
+
+        List<MoldRulePushDTO> result = new ArrayList<>();
+        for (Long mid : machineIds) {
+            buildPayloadForMachine(mid, result);
+        }
+        // 兜底清理：某组全部点位未解析出 datacode 时可能留下空 rules
+        result.removeIf(dto -> dto.getRules() == null || dto.getRules().isEmpty());
+        return result;
+    }
+
+    /** 单台机台的下发报文组装：解析规则 → 批量查 datacode/device_code → 按(device_code, 模具)去重组装 */
+    private void buildPayloadForMachine(Long mid, List<MoldRulePushDTO> result) {
+        ShootMachineEntity machine = shootMachineMapper.selectById(mid);
+        if (machine == null) return;
+        int gunCount = machine.getGunCount() != null ? machine.getGunCount() : 4;
+
+        List<ShootStationScheduleEntity> schedules = shootStationScheduleService.listCurrentByMachineId(mid);
+        String gunCategory = gunCount + "射枪温度";
+
+        List<RuleResolution> resolutions = new ArrayList<>();
+        Set<String> lookupKeys = new LinkedHashSet<>();
+
+        for (ShootStationScheduleEntity schedule : schedules) {
+            if (schedule.getMoldId() == null) continue;
+            List<ShootMoldRuleEntity> rules;
+            try {
+                rules = shootMoldRuleService.listByMoldId(schedule.getMoldId());
+            } catch (Exception e) {
+                log.warn("构建下发报文加载模具规则失败，跳过: moldId={}, machineId={}", schedule.getMoldId(), mid);
+                continue;
+            }
+            String stationCategory = "站台" + schedule.getStationNo();
+            for (ShootMoldRuleEntity rule : rules) {
+                if (Boolean.FALSE.equals(rule.getEnabled()) || StrUtil.isBlank(rule.getFieldCode())) continue;
+                if (rule.getMinValue() == null || rule.getMaxValue() == null) continue;
+                for (ResolvedKey rk : resolveRuleToPlcKeys(
+                        rule, schedule.getMoldSide(), gunCount, schedule.getGunNo(), schedule.getStationNo())) {
+                    String category = "GUN_TEMP_CAT".equals(rk.categoryTemplate()) ? gunCategory : stationCategory;
+                    lookupKeys.add(rk.fieldKey() + "|" + category);
+                    resolutions.add(new RuleResolution(schedule.getMoldId(), rule, rk, category));
+                }
+            }
+        }
+        if (lookupKeys.isEmpty()) return;
+
+        // 批量查 plc_data_latest：(field_key, category_name) → 行记录（含 data_code + device_code）
+        Map<String, PlcDataLatestEntity> dataByKey = new HashMap<>();
+        List<Map<String, String>> fieldCategories = lookupKeys.stream().map(key -> {
+            String[] p = key.split("\\|", 2);
+            return Map.of("fieldKey", p[0], "categoryName", p[1]);
+        }).collect(Collectors.toList());
+        for (PlcDataLatestEntity row : plcDataLatestMapper.selectLatestByFieldAndCategoryList(mid, fieldCategories)) {
+            dataByKey.putIfAbsent(row.getFieldKey() + "|" + row.getCategoryName(), row);
+        }
+
+        // 按(device_code, 模具)分组组装报文，去重键 = 模具id + field_key + category
+        Map<String, MoldRulePushDTO> grouped = new LinkedHashMap<>();
+        Set<String> seen = new HashSet<>();
+        for (RuleResolution rr : resolutions) {
+            PlcDataLatestEntity row = dataByKey.get(rr.rk.fieldKey() + "|" + rr.category);
+            if (row == null || StrUtil.isBlank(row.getDataCode())) continue;
+            if (!seen.add(rr.moldId + "|" + rr.rk.fieldKey() + "|" + rr.category)) continue;
+            // 该点位所属生产设备编码（来源 plc_data_latest.device_code）
+            // 【临时联调】需验证安冬硬件绑定时，改为：String deviceCode = DEVICE_CODE_OVERRIDE;
+            String deviceCode = StrUtil.blankToDefault(row.getDeviceCode(), "");
+            String groupKey = deviceCode + "|" + rr.moldId;
+            MoldRulePushDTO dto = grouped.computeIfAbsent(groupKey, k -> {
+                MoldRulePushDTO d = new MoldRulePushDTO();
+                d.setDeviceCode(deviceCode);
+                d.setMoldId(String.valueOf(rr.moldId));
+                d.setRules(new ArrayList<>());
+                return d;
+            });
+            RulePushItem item = new RulePushItem();
+            // 【临时联调】需验证安冬点位码时，改为按 DATA_CODE_OVERRIDES 取码，并在上方加"每组限 5 条"判断
+            item.setDataCode(row.getDataCode());
+            // 第三方契约要求 min/max 为字符串，用 toPlainString 避免科学计数法
+            item.setMax(rr.rule.getMaxValue().toPlainString());
+            item.setMin(rr.rule.getMinValue().toPlainString());
+            dto.getRules().add(item);
+        }
+        result.addAll(grouped.values());
     }
 
     /**
@@ -1032,5 +1141,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     }
 
     private record ResolvedKey(String fieldKey, String categoryName, String displayName, String categoryTemplate, boolean isSideLess) {
+    }
+
+    /** 告警规则下发报文的一次解析结果：模具 + 规则 + 解析出的点位（用于批量查询 datacode 后按模具组装） */
+    private record RuleResolution(Long moldId, ShootMoldRuleEntity rule, ResolvedKey rk, String category) {
     }
 }
