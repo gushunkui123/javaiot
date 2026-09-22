@@ -34,7 +34,6 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
 
     private static final int PLC_STOP_MINUTES = 2;
     private static final int DEFAULT_STATION_COUNT = 10;
-    private static final int DEFAULT_GUN_COUNT = 4;
 
     private final PlcDataService plcDataService;
     private final ShootDeleteValidator deleteValidator;
@@ -91,8 +90,9 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         if (entity.getStationCount() == null || entity.getStationCount() < 1) {
             entity.setStationCount(DEFAULT_STATION_COUNT);
         }
+        // gun_count 按 station_count 自动推导：10站位=4枪，其他(8/6)=2枪
         if (entity.getGunCount() == null || entity.getGunCount() < 1) {
-            entity.setGunCount(DEFAULT_GUN_COUNT);
+            entity.setGunCount(ShootMachineStationEntity.resolveGunCount(entity.getStationCount()));
         }
         if (entity.getSort() == null) {
             entity.setSort(0);
@@ -121,9 +121,12 @@ public class ShootMachineServiceImpl extends ServiceImpl<ShootMachineMapper, Sho
         ShootMachineEntity old = getByIdOrThrow(id);
         validateMachineName(entity.getMachineName());
         entity.setId(id);
-        if (entity.getGunCount() != null && entity.getGunCount() < 1) {
-            entity.setGunCount(old.getGunCount() != null && old.getGunCount() >= 1
-                    ? old.getGunCount() : DEFAULT_GUN_COUNT);
+        // gun_count 为空或非法时按 station_count 推导；station_count 取入参，否则取旧值
+        if (entity.getGunCount() == null || entity.getGunCount() < 1) {
+            int stationCount = entity.getStationCount() != null && entity.getStationCount() >= 1
+                    ? entity.getStationCount()
+                    : (old.getStationCount() != null ? old.getStationCount() : DEFAULT_STATION_COUNT);
+            entity.setGunCount(ShootMachineStationEntity.resolveGunCount(stationCount));
         }
         updateById(entity);
         return entity;

@@ -311,6 +311,47 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         List<ShootStationScheduleEntity> schedules = shootStationScheduleService.listCurrentByMachineId(mid);
         String gunCategory = gunCount + "射枪温度";
 
+        // 【去重优先级】同一台机台有多个在产模具时，射枪温度这类与站台无关的点会被多个模具解析到
+        // 同一个 PLC 点位，需要决定保留哪个模具的阈值：占用在产站台数多的模具优先 → 排期开始早的优先
+        // → 模具ID小的优先（保证结果稳定可复现，不随排期遍历顺序变化）。
+        Map<Long, Set<Long>> stationsByMold = new HashMap<>();
+        Map<Long, LocalDateTime> earliestStartByMold = new HashMap<>();
+        for (ShootStationScheduleEntity schedule : schedules) {
+            Long moldId = schedule.getMoldId();
+            if (moldId == null) {
+                continue;
+            }
+            if (schedule.getStationNo() != null) {
+                stationsByMold.computeIfAbsent(moldId, k -> new HashSet<>())
+                        .add(schedule.getStationNo().longValue());
+            }
+            if (schedule.getStartTime() != null) {
+                earliestStartByMold.merge(moldId, schedule.getStartTime(), (a, b) -> a.isBefore(b) ? a : b);
+            }
+        }
+        Map<Long, Integer> stationCountByMold = new HashMap<>();
+        stationsByMold.forEach((moldId, stations) -> stationCountByMold.put(moldId, stations.size()));
+        Comparator<Long> moldPriority = (a, b) -> {
+            int cmp = Integer.compare(
+                    stationCountByMold.getOrDefault(b, 0), stationCountByMold.getOrDefault(a, 0));
+            if (cmp != 0) {
+                return cmp;
+            }
+            LocalDateTime startA = earliestStartByMold.get(a);
+            LocalDateTime startB = earliestStartByMold.get(b);
+            if (startA != null && startB != null) {
+                cmp = startA.compareTo(startB);
+                if (cmp != 0) {
+                    return cmp;
+                }
+            } else if (startA != null) {
+                return -1;
+            } else if (startB != null) {
+                return 1;
+            }
+            return Long.compare(a, b);
+        };
+
         List<RuleResolution> resolutions = new ArrayList<>();
         Set<String> lookupKeys = new LinkedHashSet<>();
 
@@ -373,7 +414,43 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
             item.setMin(rr.rule.getMinValue().toPlainString());
             dto.getRules().add(item);
         }
-        result.addAll(grouped.values());
+
+        // 【跨模具去重】射枪温度这类与站台无关的点，会被多个在产模具解析到同一个 PLC 点位，
+        // 导致同一个 (deviceCode, dataCode) 在报文里出现多份，而安冬侧要求同一数据点只能下发一次。
+        // 按上面的模具优先级顺序遍历分组，同一个 (deviceCode, dataCode) 只保留优先级最高的一份。
+        List<MoldRulePushDTO> groups = new ArrayList<>(grouped.values());
+        groups.sort((a, b) -> moldPriority.compare(toMoldId(a), toMoldId(b)));
+
+        int ruleCountBefore = groups.stream().mapToInt(g -> g.getRules().size()).sum();
+        Set<String> emittedPoints = new HashSet<>();
+        List<MoldRulePushDTO> dedupedGroups = new ArrayList<>();
+        for (MoldRulePushDTO dto : groups) {
+            List<RulePushItem> keptRules = new ArrayList<>();
+            for (RulePushItem item : dto.getRules()) {
+                if (emittedPoints.add(dto.getDeviceCode() + "|" + item.getDataCode())) {
+                    keptRules.add(item);
+                }
+            }
+            if (!keptRules.isEmpty()) {
+                dto.setRules(keptRules);
+                dedupedGroups.add(dto);
+            }
+        }
+        int ruleCountAfter = dedupedGroups.stream().mapToInt(g -> g.getRules().size()).sum();
+        if (ruleCountAfter < ruleCountBefore) {
+            log.info("[AntonPush] 跨模具点位去重: machineId={}, 分组 {}→{}, 规则 {}→{}",
+                    mid, groups.size(), dedupedGroups.size(), ruleCountBefore, ruleCountAfter);
+        }
+        result.addAll(dedupedGroups);
+    }
+
+    /** 从下发的模具分组里取模具ID（mold_id 为字符串），解析失败时排到最后 */
+    private long toMoldId(MoldRulePushDTO dto) {
+        try {
+            return Long.parseLong(dto.getMoldId());
+        } catch (Exception e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     /**
