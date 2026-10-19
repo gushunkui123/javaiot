@@ -19,6 +19,7 @@ import com.agileboot.domain.factorylink.shootmachine.entity.*;
 import com.agileboot.domain.factorylink.shootmachine.mapper.AlarmStateRuleMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootMachineMapper;
 import com.agileboot.domain.factorylink.shootmachine.mapper.ShootRuleAlarmMapper;
+import com.agileboot.domain.factorylink.shootmachine.mapper.ShootStationScheduleMapper;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMachineStationService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootMoldRuleService;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootRuleAlarmService;
@@ -50,6 +51,7 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
     private final ShootMachineMapper shootMachineMapper;
     private final AlarmStateRuleMapper alarmStateRuleMapper;
     private final FieldMappingMapper fieldMappingMapper;
+    private final ShootStationScheduleMapper shootStationScheduleMapper;
 
     /** 黄色报警导出上限：超过则只保留最近 3000 条 */
     private static final int YELLOW_EXPORT_LIMIT = 3000;
@@ -69,6 +71,9 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
 
     /** 报警字段的阈值规则被删除/清空后自动取消的处理备注 */
     private static final String RULE_REMOVED_CANCEL_REMARK = "阈值已删除自动取消";
+
+    /** 报警所属站台+模具已无当前有效排期时自动取消的处理备注 */
+    private static final String ORPHAN_CANCEL_REMARK = "排期变更自动取消";
 
     private Map<String, AlarmStateRuleEntity> alarmStateRuleCache = new LinkedHashMap<>();
     private Map<String, List<FieldMappingEntity>> fieldMappingByInternalKey = new HashMap<>();
@@ -272,7 +277,12 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         // 任一模具规则超限即报警，所有模具规则都正常才取消
         detectSideLessGlobalRedAlarms(machineId, schedulesByStation, gunCount, rulesByMold, insertedKeys);
 
-        int orphanCancelled = baseMapper.autoCancelAlarmsWithoutCurrentSchedule();
+        // 死锁修复：原 autoCancelAlarmsWithoutCurrentSchedule 多表 UPDATE 会对全库未处理红警
+        // 加 next-key 锁并 LEFT JOIN 排期表，与并发事务（清空计划批量删除、MQTT 黄警写入）
+        // 的行锁互相等待成环，导致 Deadlock found when trying to get lock。
+        // 改为 Java 两步（同 autoCancelRecoveredRedAlarmsJava 思路）：
+        // 一致读（不加锁）+ 内存比对 + 按 id 升序逐条单行更新，把锁冲突降级为单行锁等待。
+        int orphanCancelled = autoCancelOrphanRedAlarmsJava();
         if (orphanCancelled > 0) {
             log.info("自动取消{}条无当前排期的红色报警", orphanCancelled);
         }
@@ -451,6 +461,55 @@ public class ShootRuleAlarmServiceImpl extends ServiceImpl<ShootRuleAlarmMapper,
         } catch (Exception e) {
             return Long.MAX_VALUE;
         }
+    }
+
+    /**
+     * 兜底自动取消孤儿红色报警（所属站台+模具已无当前有效排期）。
+     * 死锁修复版：替代原 autoCancelAlarmsWithoutCurrentSchedule 多表 UPDATE——
+     * 原 SQL 需对全库未处理红警加 next-key/间隙锁并 LEFT JOIN 排期表，
+     * 与并发事务（清空计划批量删除、MQTT 黄警写入、排期变更）的锁互相等待成环，
+     * 触发 Deadlock found when trying to get lock。
+     * 现改为：一致读未处理红警（不加锁）+ 一致读当前排期 (stationId, moldId) 组合，
+     * 内存反连接比对找出孤儿，按 id 升序逐条单行 UPDATE（单行锁、短暂持有），
+     * 与 autoCancelRecoveredRedAlarmsJava 同一模式。
+     */
+    private int autoCancelOrphanRedAlarmsJava() {
+        // 当前生效排期的 (stationId, moldId) 组合
+        Set<String> activePairs = new HashSet<>();
+        for (Map<String, Object> pair : shootStationScheduleMapper.selectCurrentStationMoldPairs()) {
+            Long stationId = Convert.toLong(pair.get("stationId"));
+            Long moldId = Convert.toLong(pair.get("moldId"));
+            if (stationId != null && moldId != null) {
+                activePairs.add(stationId + ":" + moldId);
+            }
+        }
+
+        int cancelled = 0;
+        List<Map<String, Object>> alarms = baseMapper.selectUnhandledRedAlarms();
+        // 按 id 升序处理，保证多实例并发时锁获取顺序一致，降低再次死锁概率
+        alarms.sort(Comparator.comparing(a -> Convert.toLong(a.get("id"), 0L)));
+        for (Map<String, Object> alarm : alarms) {
+            try {
+                Long id = Convert.toLong(alarm.get("id"));
+                Long stationId = Convert.toLong(alarm.get("stationId"));
+                Long moldId = Convert.toLong(alarm.get("moldId"));
+                if (id == null || stationId == null || moldId == null) {
+                    continue;
+                }
+                if (activePairs.contains(stationId + ":" + moldId)) {
+                    continue;
+                }
+                int n = baseMapper.cancelRedAlarmByIdWithRemark(id, ORPHAN_CANCEL_REMARK);
+                if (n > 0) {
+                    cancelled++;
+                    log.info("排期变更，自动取消无当前排期的红色报警: alarmId={}, stationId={}, moldId={}",
+                            id, stationId, moldId);
+                }
+            } catch (Exception e) {
+                log.warn("Java 兜底自动取消无排期红色报警失败: alarmId={}", alarm.get("id"), e);
+            }
+        }
+        return cancelled;
     }
 
     /**

@@ -4,6 +4,7 @@ import com.agileboot.domain.factorylink.shootmachine.entity.ShootStationSchedule
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -74,6 +75,16 @@ public interface ShootStationScheduleMapper extends BaseMapper<ShootStationSched
                           @Param("startTime") LocalDateTime startTime,
                           @Param("endTime") LocalDateTime endTime,
                           @Param("excludeId") Long excludeId);
+
+    /**
+     * 全局查询当前生效排期的 (station_id, mold_id) 组合，供孤儿报警取消做 Java 层比对。
+     * 一致读（普通 SELECT），不加锁，避免与并发排期/报警事务互锁。
+     * 有效排期定义：未删除、且 start_time <= NOW() < end_time（与原孤儿取消 SQL 语义一致）。
+     */
+    @Select("SELECT DISTINCT s.station_id, s.mold_id "
+            + "FROM shoot_station_schedule s "
+            + "WHERE s.deleted = 0 AND s.start_time <= NOW() AND s.end_time > NOW()")
+    List<Map<String, Object>> selectCurrentStationMoldPairs();
 
     /**
      * 模具停用时取消其全部未结束排期（pending/running -> cancelled），已结束的历史排期保留

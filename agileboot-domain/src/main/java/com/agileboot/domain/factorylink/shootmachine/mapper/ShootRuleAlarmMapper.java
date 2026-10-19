@@ -466,25 +466,6 @@ public interface ShootRuleAlarmMapper extends BaseMapper<ShootRuleAlarmEntity> {
             @Param("moldId") Long moldId);
 
     /**
-     * 自动取消「所属模具已无当前排期」的红色报警（孤儿报警清理）。
-     * 业务约定：只在有排期时才做阈值检测与处理；一旦告警所属的模具在该站台当前无有效排期，
-     * 该告警即为失效告警，应自动标记为已处理。
-     * 有效排期定义：未删除、且 start_time <= NOW() < end_time。
-     */
-    @Update("<script>"
-            + "UPDATE shoot_rule_alarm a "
-            + "LEFT JOIN ("
-            + "    SELECT sc.station_id, sc.mold_id "
-            + "    FROM shoot_station_schedule sc "
-            + "    WHERE sc.deleted = 0 AND sc.start_time &lt;= NOW() AND sc.end_time &gt; NOW()"
-            + ") cur ON cur.station_id = a.station_id AND cur.mold_id = a.mold_id "
-            + "SET a.handle_status = 'true', a.handle_remark = '排期变更自动取消' "
-            + "WHERE a.deleted = 0 AND a.handle_status = 'false' AND a.alarm_level = 'red' "
-            + "  AND cur.station_id IS NULL"
-            + "</script>")
-    int autoCancelAlarmsWithoutCurrentSchedule();
-
-    /**
      * 查询所有未处理红色报警的聚合键（用于 Java 层兜底自动取消）。
      * 注意：自动取消逻辑放到 Java 层实现（遍历 + 取对应站台 PLC 最新值 + 当前模具有效规则阈值判断），
      * 避免在 UPDATE 上使用复杂多表 JOIN / 窗口函数（MyBatis-Plus 的 JSqlParser 无法解析，会导致事务回滚、报警全部消失）。

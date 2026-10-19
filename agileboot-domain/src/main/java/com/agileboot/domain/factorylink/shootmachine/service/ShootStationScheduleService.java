@@ -30,4 +30,20 @@ public interface ShootStationScheduleService extends IService<ShootStationSchedu
     void delete(Long id);
 
     void cancel(Long id);
+
+    /**
+     * 统计机台下所有未逻辑删除的生产计划数量。
+     *
+     * @param machineId 机台ID
+     * @return 计划数量
+     */
+    long countByMachineId(Long machineId);
+
+    /**
+     * 逻辑删除机台下所有生产计划（所有状态），返回删除条数。
+     *
+     * @param machineId 机台ID
+     * @return 删除的计划条数
+     */
+    long deleteByMachineId(Long machineId);
 }

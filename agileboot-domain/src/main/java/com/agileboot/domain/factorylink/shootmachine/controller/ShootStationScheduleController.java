@@ -88,6 +88,21 @@ public class ShootStationScheduleController {
         return ResponseDTO.ok();
     }
 
+    @Operation(summary = "统计机台下所有生产计划数量")
+    @GetMapping("/machine/{machineId}/count")
+    public ResponseDTO<Long> countByMachine(
+            @Parameter(description = "机台ID", required = true) @PathVariable Long machineId) {
+        return ResponseDTO.ok(shootStationScheduleService.countByMachineId(machineId));
+    }
+
+    @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.DELETE)
+    @Operation(summary = "批量删除机台下所有生产计划")
+    @DeleteMapping("/by-machine/{machineId}")
+    public ResponseDTO<Long> deleteByMachine(
+            @Parameter(description = "机台ID", required = true) @PathVariable Long machineId) {
+        return ResponseDTO.ok(shootStationScheduleService.deleteByMachineId(machineId));
+    }
+
     @AccessLog(title = "模具生产记录", businessType = BusinessTypeEnum.MODIFY)
     @Operation(summary = "取消生产记录")
     @PatchMapping("/{id}/cancel")

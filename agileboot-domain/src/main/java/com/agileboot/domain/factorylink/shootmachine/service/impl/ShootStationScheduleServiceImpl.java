@@ -14,6 +14,7 @@ import com.agileboot.domain.factorylink.shootmachine.service.StationMoldModelRes
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleRequest;
 import com.agileboot.domain.factorylink.shootmachine.service.BatchCreateStationScheduleResult;
 import com.agileboot.domain.factorylink.shootmachine.service.ShootStationScheduleService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -24,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -146,6 +148,55 @@ public class ShootStationScheduleServiceImpl extends ServiceImpl<ShootStationSch
         }
         existing.setStatus(ShootStationScheduleEntity.STATUS_CANCELLED);
         updateById(existing);
+    }
+
+    @Override
+    public long countByMachineId(Long machineId) {
+        shootMachineService.getByIdOrThrow(machineId);
+        return baseMapper.selectCount(
+                Wrappers.<ShootStationScheduleEntity>lambdaQuery()
+                        .eq(ShootStationScheduleEntity::getMachineId, machineId));
+    }
+
+    @Override
+    public long deleteByMachineId(Long machineId) {
+        shootMachineService.getByIdOrThrow(machineId);
+        // 单条 DELETE 语句自身原子，无需外层事务。
+        // 与并发告警检测（detectAlarmsByPlcData）/排期变更事务竞争锁时可能触发 MySQL 死锁
+        // （Deadlock found when trying to get lock），死锁会自动回滚其中一方，
+        // 这里捕获后随机退避重试，对调用方透明。
+        int maxAttempts = 3;
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return baseMapper.delete(
+                        Wrappers.<ShootStationScheduleEntity>lambdaQuery()
+                                .eq(ShootStationScheduleEntity::getMachineId, machineId));
+            } catch (Exception e) {
+                if (attempt >= maxAttempts || !isDeadlockError(e)) {
+                    throw e;
+                }
+                try {
+                    long backoffMs = 20L + ThreadLocalRandom.current().nextLong(80L);
+                    Thread.sleep(backoffMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+    }
+
+    /** 判断异常链中是否为 MySQL 死锁（1213 Deadlock found when trying to get lock） */
+    private boolean isDeadlockError(Throwable e) {
+        Throwable cur = e;
+        while (cur != null) {
+            String msg = cur.getMessage();
+            if (msg != null && msg.contains("Deadlock found")) {
+                return true;
+            }
+            cur = cur.getCause() == cur ? null : cur.getCause();
+        }
+        return false;
     }
 
     private ShootStationScheduleEntity requireExists(Long id) {
